@@ -12,8 +12,8 @@
 
 ### DataFrame 特点
 
-- **二维结构：** `DataFrame` 是一个二维表格，可以被看作是一个 Excel 电子表格或 SQL 表，具有行和列。可以将其视为多个 `Series` 对象组成的字典。
-- **列的数据类型：** 不同的列可以包含不同的数据类型，例如整数、浮点数、字符串或 Python 对象等。
+- **二维结构**： `DataFrame` 是一个二维表格，可以被看作是一个 Excel 电子表格或 SQL 表，具有行和列。可以将其视为多个 `Series` 对象组成的字典。
+- **列的数据类型**： 不同的列可以包含不同的数据类型，例如整数、浮点数、字符串或 Python 对象等。
 - **索引**：`DataFrame` 可以拥有行索引和列索引，类似于 Excel 中的行号和列标。
 - **大小可变**：可以添加和删除列，类似于 Python 中的字典。
 - **自动对齐**：在进行算术运算或数据对齐操作时，`DataFrame` 会自动对齐索引。
@@ -237,7 +237,7 @@ Name: 年龄, dtype: float64
 
 #### 实例
 
-**从字典创建：**字典的键成为列名，值成为列数据。
+**从字典创建**：字典的键成为列名，值成为列数据。
 
 ```py
 import pandas as pd
@@ -250,7 +250,7 @@ df = pd.DataFrame({'Column1': [1, 2, 3], 'Column2': [4, 5, 6]})
 
 #### 实例
 
-**从列表的列表创建：**外层列表代表行，内层列表代表列。
+**从列表的列表创建**：外层列表代表行，内层列表代表列。
 
 ```py
 # 通过列表的列表创建 DataFrame
@@ -262,7 +262,7 @@ df = pd.DataFrame([[1, 2, 3], [4, 5, 6], [7, 8, 9]],
 
 #### 实例
 
-**从 NumPy 数组创建：**提供一个二维 NumPy 数组。
+从 **NumPy** 数组创建：提供一个二维 NumPy 数组。
 
 ```py
 import numpy as np
@@ -275,7 +275,7 @@ df = pd.DataFrame(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]))
 
 #### 实例
 
-**从 Series 创建 DataFrame：**通过 **pd.Series()** 创建。
+从 Series 创建 **DataFrame**：通过 **pd.Series()** 创建。
 
 ```py
 # 从 Series 创建 DataFrame
@@ -310,7 +310,7 @@ print**(df.sum())   # 求和
 
 #### 访问 DataFrame 元素
 
-**访问列：**使用列名作为属性或通过 **.loc[]**、**.iloc[]** 访问，也可以使用标签或位置索引。。
+**访问列**：使用列名作为属性或通过 **.loc[]**、**.iloc[]** 访问，也可以使用标签或位置索引。。
 
 #### 实例
 
@@ -335,7 +335,7 @@ print(df['Name'][0])
 
 #### 实例
 
-**访问行：**使用行的标签和 **.loc[]** 访问。
+**访问行**：使用行的标签和 **.loc[]** 访问。
 
 ```py
 # 通过行标签访问
@@ -344,13 +344,13 @@ print(df.loc[0, 'Column1'])
 
 #### 修改 DataFrame
 
-**修改列数据：**直接对列进行赋值。
+**修改列数据**：直接对列进行赋值。
 
 ```py
 df['Column1'] = [10, 11, 12]
 ```
 
-**添加新列：**给新列赋值。
+**添加新列**：给新列赋值。
 
 ```py
 df['NewColumn'] = [100, 200, 300]
@@ -360,7 +360,7 @@ df['NewColumn'] = [100, 200, 300]
 
 #### 实例
 
-**添加新行：**使用 loc、append 或 concat 方法。
+**添加新行**：使用 loc、append 或 concat 方法。
 
 ```py
 # 使用 loc 为特定索引添加新行
@@ -371,7 +371,7 @@ new_row = {'Column1': 13, 'Column2': 14, 'NewColumn': 16}
 df = df.append(new_row, ignore_index=True)
 ```
 
-**注意：**append() 方法在 pandas 版本 1.4.0 中已经被标记为弃用，并将在未来的版本中被移除，官方推荐使用 **concat()** 作为替代方法来进行数据的合并操作。
+**注意**：append() 方法在 pandas 版本 1.4.0 中已经被标记为弃用，并将在未来的版本中被移除，官方推荐使用 **concat()** 作为替代方法来进行数据的合并操作。
 
 concat() 方法用于合并两个或多个 DataFrame，当你想要添加一行到另一个 DataFrame 时，可以将新行作为一个新的 DataFrame，然后使用 concat()：
 
@@ -391,13 +391,13 @@ print(df)
 
 #### 删除 DataFrame 元素
 
-**删除列：**使用 drop 方法。
+**删除列**：使用 drop 方法。
 
 ```py
 df_dropped = df.drop('Column1', axis=1)
 ```
 
-**删除行：**同样使用 drop 方法。
+**删除行**：同样使用 drop 方法。
 
 ```py
 df_dropped = df.drop(0)  # 删除索引为 0 的行
@@ -405,13 +405,13 @@ df_dropped = df.drop(0)  # 删除索引为 0 的行
 
 #### DataFrame 的统计分析
 
-**描述性统计：**使用 **.describe()** 查看数值列的统计摘要。
+**描述性统计**：使用 **.describe()** 查看数值列的统计摘要。
 
 ```py
 df.describe()
 ```
 
-**计算统计数据：**使用聚合函数如 **.sum()、.mean()、.max()** 等。
+**计算统计数据**：使用聚合函数如 **.sum()、.mean()、.max()** 等。
 
 ```py
 df['Column1'].sum()
@@ -420,13 +420,13 @@ df.mean()
 
 #### DataFrame 的索引操作
 
-**重置索引：**使用 **.reset_index()**。
+**重置索引**：使用 **.reset_index()**。
 
 ```py
 df_reset = df.reset_index(drop=True)
 ```
 
-**设置索引：**使用 **.set_index()**。
+**设置索引**：使用 **.set_index()**。
 
 ```py
 df_set = df.set_index('Column1')
@@ -434,7 +434,7 @@ df_set = df.set_index('Column1')
 
 #### DataFrame 的布尔索引
 
-使用布尔表达式：根据条件过滤 DataFrame。
+**使用布尔表达式**：根据条件过滤 DataFrame。
 
 ```py
 df[df['Column1'] > 2]
@@ -442,7 +442,7 @@ df[df['Column1'] > 2]
 
 #### DataFrame 的数据类型
 
-查看数据类型：使用 **dtypes** 属性。
+**查看数据类型**：使用 **dtypes** 属性。
 
 ```py
 df.dtypes
@@ -456,7 +456,7 @@ df['Column1'] = df['Column1'].astype('float64')
 
 #### DataFrame 的合并与分割
 
-**合并：**使用 **concat** 或 **merge** 方法。
+**合并**：使用 **concat** 或 **merge** 方法。
 
 ```py
 # 纵向合并
@@ -466,7 +466,7 @@ pd.concat([df1, df2], ignore_index=True)
 pd.merge(df1, df2, on='Column1')
 ```
 
-**分割：**使用 **pivot、melt** 或自定义函数。
+**分割**：使用 **pivot、melt** 或自定义函数。
 
 ```py
 # 长格式转宽格式
@@ -482,7 +482,7 @@ df_melt = df.melt(id_vars='Column1', value_vars=['Column2', 'Column3'])
 
 #### 实例
 
-DataFrame 支持对行和列进行索引和切片操作。
+**DataFrame** 支持对行和列进行索引和切片操作。
 
 ```py
 # 索引和切片
