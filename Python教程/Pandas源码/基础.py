@@ -30,6 +30,5 @@ import pandas as pd
 
 a = ["Google", "Runoob", "Wiki"]
 myvar = pd.Series(a)
-print(myvar[2])  #这儿通过index获取值
-print(myvar.iloc[-1]) #这个ilco是通过位置获取值,等同列表的切片方法
-
+print(myvar[2])  # 这儿通过index获取值
+print(myvar.iloc[-1])  # 这个ilco是通过位置获取值,等同列表的切片方法
