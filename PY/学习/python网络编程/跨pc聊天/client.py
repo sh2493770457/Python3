@@ -4,7 +4,7 @@ import socket
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 # 连接到服务器
-server_address = ('服务器IP地址', 65432)  # 用实际的服务器 IP 地址替换 '服务器IP地址'
+server_address = ('127.0.0.1', 65432)
 client_socket.connect(server_address)
 
 try:
