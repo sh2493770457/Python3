@@ -26,11 +26,14 @@
 ## 📦 快速开始
 
 ### 环境准备
+
+访问[GitHub开发者设置](https://github.com/settings/tokens)页面。
+
 ```bash
 # 安装依赖库
 pip install requests openpyxl
 # 配置GitHub令牌（必需）
-export GITHUB_TOKEN=你的个人访问令牌
+set GITHUB_TOKEN=你的个人访问令牌
 ```
 
 ### 基础使用示例
