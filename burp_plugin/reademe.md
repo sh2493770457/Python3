@@ -74,9 +74,55 @@ print('[状态码]:', response.status_code)
 print('[响应正文]:\n', response.text)
 ```
 
+#### 支持的数据类型处理
+
+| 数据类型   | 处理方式              | 示例代码片段                     |
+| :--------- | :-------------------- | :------------------------------- |
+| URL 参数   | `params` 字典自动生成 | `params = {'page': '2'}`         |
+| 表单数据   | `data` 字典自动生成   | `data = {'user': 'test'}`        |
+| JSON 数据  | 原生 JSON 解析        | `json.loads(r"""{}""")`          |
+| 二进制数据 | Base64 编码传输       | `data = base64.b64decode('...')` |
+
+## ⚠️ 注意事项
+
+1. **依赖管理**
+
+   生成的脚本需要安装 `requests` 库：
+
+   ```cmd
+   pip install requests
+   ```
+
+2. **编码处理**
+
+   遇到特殊字符时建议使用原始字符串
+
+   ```py
+   data = r'''raw_content_with_special_chars'''
+   ```
+
+3. **HTTPS 证书验证**
+
+   如需跳过证书验证，可在代码中添加：
+
+   ```py
+   response = requests.post(url, verify=False)
+   ```
+
+4. **二进制文件处理**
+
+   - 超过 1MB 的文件建议使用文件流处理
+
+   ```py
+   with open('file.zip', 'rb') as f:
+       response = requests.post(url, files={'file': f})
+   ```
+
 *****
 
 ### http.py
 
 - 这个为项目的初始版本,用户快速接口调试,也可快速将数据包转化为支持python格式的数据请求
 - `不支持`导入burp
+
+![image-20250313134754727](./assets/image-20250313134754727.png)
