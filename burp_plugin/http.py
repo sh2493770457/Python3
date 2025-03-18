@@ -87,7 +87,7 @@ def generate_requests_code(parsed):
     else:
         code_lines.append(f"\nresponse = requests.{request_method}(url, headers=headers)")
     
-    # 新增响应处理模块（集成网页1的响应拦截逻辑）
+    # 新增响应处理模块
     code_lines.extend([
         "\n# 响应分析",
         "print(f'[状态码] {response.status_code}')",
