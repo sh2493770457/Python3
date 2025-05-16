@@ -1,6 +1,8 @@
 package burp;
 
+import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -16,7 +18,10 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.regex.Pattern;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
@@ -66,9 +71,12 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
     private JTextField thresholdField;
     private int responseLengthThreshold = 50; // 默认50字节的差异阈值
     
-    // 新增：所有流量表格和模型
+    // 流量表格和模型
     private JTable trafficTable;
     private TrafficTableModel trafficTableModel;
+    
+    // 过滤状态标签
+    private JLabel filterStatusLabel;
     
     // 存储检测到的问题
     private List<ScanIssue> issues = new ArrayList<>();
@@ -81,8 +89,37 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
     // 需要删除的认证头列表
     private List<String> headersToRemove = new ArrayList<>();
     
+    // 资源过滤相关
+    private boolean filterEnabled = true; // 是否启用资源过滤
+    private boolean filterImages = true; // 过滤图片
+    private boolean filterCSS = true; // 过滤CSS
+    private boolean filterJS = true; // 过滤JavaScript
+    private boolean filterFonts = true; // 过滤字体文件
+    private boolean filterStatic = true; // 过滤静态资源
+    private String customFilterPattern = ""; // 自定义过滤正则表达式
+    private Pattern compiledCustomPattern; // 编译后的正则表达式
+    
+    // 用于过滤的UI元素
+    private JCheckBox filterEnabledCheckBox;
+    private JCheckBox filterImagesCheckBox;
+    private JCheckBox filterCSSCheckBox;
+    private JCheckBox filterJSCheckBox;
+    private JCheckBox filterFontsCheckBox;
+    private JCheckBox filterStaticCheckBox;
+    private JTextField customFilterTextField;
+    
+    // 用于过滤的预定义正则表达式
+    private static final Pattern IMAGE_PATTERN = Pattern.compile("(?i)\\.(png|jpg|jpeg|gif|bmp|ico|svg|webp)$");
+    private static final Pattern CSS_PATTERN = Pattern.compile("(?i)\\.(css)$");
+    private static final Pattern JS_PATTERN = Pattern.compile("(?i)\\.(js)$");
+    private static final Pattern FONT_PATTERN = Pattern.compile("(?i)\\.(woff|woff2|ttf|eot|otf)$");
+    private static final Pattern STATIC_PATTERN = Pattern.compile("(?i)\\.(pdf|zip|rar|doc|docx|xls|xlsx|ppt|pptx|txt|xml|json)$");
+    
     // 当前选中的问题
     private ScanIssue currentlyDisplayedItem;  // 新增：当前显示的问题
+    
+    // 存储原始的所有流量和用于显示的过滤后流量
+    private List<IHttpRequestResponse> filteredTraffic = new ArrayList<>();
 
     @Override
     public void registerExtenderCallbacks(IBurpExtenderCallbacks callbacks) {
@@ -123,135 +160,267 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
         JPanel configPanel = new JPanel(new GridBagLayout());
         configPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("配置"));
         
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.gridwidth = 1;
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.insets = new Insets(5, 5, 5, 5);
-        configPanel.add(new JLabel("需要删除的认证头 (每行一个):"), gbc);
+        // 创建一个水平功能按钮面板，将所有功能放在同一排
+        JPanel functionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 2));
+        functionPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("功能控制"));
         
-        gbc.gridy = 1;
-        gbc.weightx = 1.0;
-        gbc.weighty = 0.3;
-        gbc.fill = GridBagConstraints.BOTH;
-        headersTextArea = new JTextArea();
-        headersTextArea.setText("Authorization\nCookie\nX-Auth-Token\nJWT-Token");
-        JScrollPane headersScrollPane = new JScrollPane(headersTextArea);
-        configPanel.add(headersScrollPane, gbc);
+        // 添加所有功能控制到同一行
+        // 启用插件复选框
+        enabledCheckBox = new JCheckBox("启用插件");
+        enabledCheckBox.setSelected(true);
+        enabledCheckBox.setToolTipText("全局开关，控制插件是否处理请求");
+        enabledCheckBox.setFont(enabledCheckBox.getFont().deriveFont(enabledCheckBox.getFont().getSize2D() - 1f));
+        functionPanel.add(enabledCheckBox);
         
-        gbc.gridy = 2;
-        gbc.weightx = 0;
-        gbc.weighty = 0;
-        gbc.fill = GridBagConstraints.NONE;
+        // 主动扫描复选框
+        activeCheckBox = new JCheckBox("启用主动扫描");
+        activeCheckBox.setSelected(true);
+        activeCheckBox.setFont(activeCheckBox.getFont().deriveFont(activeCheckBox.getFont().getSize2D() - 1f));
+        functionPanel.add(activeCheckBox);
         
-        // 创建水平面板放置按钮和复选框
-        JPanel controlPanel = new JPanel();
-        JButton updateButton = new JButton("更新认证头列表");
-        updateButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                updateHeadersList();
-            }
-        });
-        controlPanel.add(updateButton);
+        // 被动扫描复选框
+        passiveScanCheckBox = new JCheckBox("启用被动扫描");
+        passiveScanCheckBox.setSelected(true);
+        passiveScanCheckBox.setFont(passiveScanCheckBox.getFont().deriveFont(passiveScanCheckBox.getFont().getSize2D() - 1f));
+        functionPanel.add(passiveScanCheckBox);
         
-        // 新增：添加导出按钮
+        // 导出为MD文档按钮
         exportButton = new JButton("导出为MD文档");
+        exportButton.setFont(exportButton.getFont().deriveFont(exportButton.getFont().getSize2D() - 1f));
+        exportButton.setMargin(new Insets(1, 2, 1, 2));
         exportButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 exportToMarkdown();
             }
         });
-        controlPanel.add(exportButton);
+        functionPanel.add(exportButton);
         
-        // 新增：添加导出TXT按钮
+        // 导出为TXT按钮
         JButton exportTxtButton = new JButton("导出为TXT");
+        exportTxtButton.setFont(exportTxtButton.getFont().deriveFont(exportTxtButton.getFont().getSize2D() - 1f));
+        exportTxtButton.setMargin(new Insets(1, 2, 1, 2));
         exportTxtButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 exportToTxt();
             }
         });
-        controlPanel.add(exportTxtButton);
+        functionPanel.add(exportTxtButton);
         
-        // 新增：添加清空结果按钮
+        // 清空结果按钮
         JButton clearButton = new JButton("清空结果");
+        clearButton.setFont(clearButton.getFont().deriveFont(clearButton.getFont().getSize2D() - 1f));
+        clearButton.setMargin(new Insets(1, 2, 1, 2));
         clearButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 clearResults();
             }
         });
-        controlPanel.add(clearButton);
+        functionPanel.add(clearButton);
         
-        configPanel.add(controlPanel, gbc);
-        
-        gbc.gridy = 3;
-        JPanel thresholdPanel = new JPanel(new GridBagLayout());
-        GridBagConstraints thresholdGbc = new GridBagConstraints();
-        thresholdGbc.gridx = 0;
-        thresholdGbc.gridy = 0;
-        thresholdGbc.anchor = GridBagConstraints.WEST;
-        thresholdGbc.insets = new Insets(0, 0, 5, 5);
-        
-        thresholdPanel.add(new JLabel("响应长度差异阈值(字节):"), thresholdGbc);
-        
-        thresholdGbc.gridx = 1;
-        thresholdField = new JTextField("50", 4);
-        thresholdField.setToolTipText("原始响应与未授权响应的长度差异阈值，小于此值视为潜在漏洞，默认50字节");
-        thresholdPanel.add(thresholdField, thresholdGbc);
-        
-        JButton applyThresholdBtn = new JButton("应用");
-        applyThresholdBtn.addActionListener(new ActionListener() {
+        // 过滤器开关
+        filterEnabledCheckBox = new JCheckBox("启用过滤");
+        filterEnabledCheckBox.setSelected(filterEnabled);
+        filterEnabledCheckBox.setToolTipText("是否启用资源过滤功能");
+        filterEnabledCheckBox.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                try {
-                    int newThreshold = Integer.parseInt(thresholdField.getText().trim());
-                    if (newThreshold >= 0) {
-                        responseLengthThreshold = newThreshold;
-                        stdout.println("设置未授权检测响应长度差异阈值为: " + responseLengthThreshold + " 字节");
-                        JOptionPane.showMessageDialog(mainPanel, "设置已更新！新阈值: " + responseLengthThreshold + " 字节", "成功", JOptionPane.INFORMATION_MESSAGE);
-                    } else {
-                        JOptionPane.showMessageDialog(mainPanel, "阈值必须是非负整数", "错误", JOptionPane.ERROR_MESSAGE);
-                    }
-                } catch (NumberFormatException ex) {
-                    JOptionPane.showMessageDialog(mainPanel, "请输入有效的数字", "错误", JOptionPane.ERROR_MESSAGE);
-                }
+                filterEnabled = filterEnabledCheckBox.isSelected();
+                applyFilter();
             }
         });
-        thresholdGbc.gridx = 2;
-        thresholdPanel.add(applyThresholdBtn, thresholdGbc);
+        functionPanel.add(filterEnabledCheckBox);
         
-        configPanel.add(thresholdPanel, gbc);
+        // 将功能面板添加到配置面板顶部
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.weightx = 1.0;
+        gbc.weighty = 0.1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.gridwidth = 2; // 让功能面板跨越两列
+        configPanel.add(functionPanel, gbc);
         
-        gbc.gridy = 4;
-        gbc.gridwidth = 1;
-        gbc.insets = new Insets(10, 5, 5, 5);
-        JPanel checkboxPanel = new JPanel(new GridBagLayout());
-        GridBagConstraints cbGbc = new GridBagConstraints();
-        cbGbc.gridx = 0;
-        cbGbc.gridy = 0;
-        cbGbc.anchor = GridBagConstraints.WEST;
-        cbGbc.insets = new Insets(0, 0, 5, 10);
+        // 创建资源过滤控制面板
+        JPanel filterPanel = new JPanel(new GridBagLayout());
+        filterPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("资源过滤"));
+        GridBagConstraints filterGbc = new GridBagConstraints();
+        filterGbc.gridx = 0;
+        filterGbc.gridy = 0;
+        filterGbc.insets = new Insets(1, 1, 1, 3); // 减小内边距使布局更紧凑
+        filterGbc.anchor = GridBagConstraints.WEST;
         
-        // 新增：全局启用开关
-        enabledCheckBox = new JCheckBox("启用插件");
-        enabledCheckBox.setSelected(true);
-        enabledCheckBox.setToolTipText("全局开关，控制插件是否处理请求");
-        checkboxPanel.add(enabledCheckBox, cbGbc);
+        // 注意：不再创建重复的过滤器开关，使用上面功能控制面板中的filterEnabledCheckBox
         
-        cbGbc.gridx = 1;
-        activeCheckBox = new JCheckBox("启用主动扫描");
-        activeCheckBox.setSelected(true);
-        checkboxPanel.add(activeCheckBox, cbGbc);
+        // 过滤图片 - 紧凑布局
+        filterImagesCheckBox = new JCheckBox("图片");
+        filterImagesCheckBox.setSelected(filterImages);
+        filterImagesCheckBox.setToolTipText("过滤图片资源 (PNG, JPG, GIF等)");
+        filterImagesCheckBox.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                filterImages = filterImagesCheckBox.isSelected();
+                applyFilter();
+            }
+        });
+        filterImagesCheckBox.setMargin(new Insets(0, 0, 0, 0)); // 减小复选框内边距
+        filterPanel.add(filterImagesCheckBox, filterGbc);
         
-        cbGbc.gridx = 2;
-        passiveScanCheckBox = new JCheckBox("启用被动扫描");
-        passiveScanCheckBox.setSelected(true);
-        checkboxPanel.add(passiveScanCheckBox, cbGbc);
+        // 过滤CSS - 紧凑布局
+        filterGbc.gridx++;
+        filterCSSCheckBox = new JCheckBox("CSS");
+        filterCSSCheckBox.setSelected(filterCSS);
+        filterCSSCheckBox.setToolTipText("过滤CSS样式表");
+        filterCSSCheckBox.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                filterCSS = filterCSSCheckBox.isSelected();
+                applyFilter();
+            }
+        });
+        filterCSSCheckBox.setMargin(new Insets(0, 0, 0, 0)); // 减小复选框内边距
+        filterPanel.add(filterCSSCheckBox, filterGbc);
         
-        configPanel.add(checkboxPanel, gbc);
+        // 过滤JS - 紧凑布局
+        filterGbc.gridx++;
+        filterJSCheckBox = new JCheckBox("JS");
+        filterJSCheckBox.setSelected(filterJS);
+        filterJSCheckBox.setToolTipText("过滤JavaScript文件");
+        filterJSCheckBox.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                filterJS = filterJSCheckBox.isSelected();
+                applyFilter();
+            }
+        });
+        filterJSCheckBox.setMargin(new Insets(0, 0, 0, 0)); // 减小复选框内边距
+        filterPanel.add(filterJSCheckBox, filterGbc);
+        
+        // 过滤字体 - 紧凑布局
+        filterGbc.gridx++;
+        filterFontsCheckBox = new JCheckBox("字体");
+        filterFontsCheckBox.setSelected(filterFonts);
+        filterFontsCheckBox.setToolTipText("过滤字体文件 (WOFF, TTF等)");
+        filterFontsCheckBox.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                filterFonts = filterFontsCheckBox.isSelected();
+                applyFilter();
+            }
+        });
+        filterFontsCheckBox.setMargin(new Insets(0, 0, 0, 0)); // 减小复选框内边距
+        filterPanel.add(filterFontsCheckBox, filterGbc);
+        
+        // 过滤静态资源 - 紧凑布局
+        filterGbc.gridx++;
+        filterStaticCheckBox = new JCheckBox("其他静态");
+        filterStaticCheckBox.setSelected(filterStatic);
+        filterStaticCheckBox.setToolTipText("过滤其他静态资源 (PDF, ZIP等)");
+        filterStaticCheckBox.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                filterStatic = filterStaticCheckBox.isSelected();
+                applyFilter();
+            }
+        });
+        filterStaticCheckBox.setMargin(new Insets(0, 0, 0, 0)); // 减小复选框内边距
+        filterPanel.add(filterStaticCheckBox, filterGbc);
+        
+        // 自定义过滤器输入框 - 紧凑布局
+        filterGbc.gridx = 0;
+        filterGbc.gridy = 1;
+        filterGbc.gridwidth = 2; // 减少标签宽度
+        JLabel filterLabel = new JLabel("自定义过滤正则:");
+        filterLabel.setFont(filterLabel.getFont().deriveFont(filterLabel.getFont().getSize2D() - 1f)); // 稍微减小字体
+        filterPanel.add(filterLabel, filterGbc);
+        
+        filterGbc.gridx = 2; // 向左移动
+        filterGbc.gridwidth = 2;
+        customFilterTextField = new JTextField(20);
+        customFilterTextField.setText(customFilterPattern);
+        customFilterTextField.setToolTipText("输入正则表达式来过滤URL");
+        filterPanel.add(customFilterTextField, filterGbc);
+        
+        filterGbc.gridx = 4;
+        filterGbc.gridwidth = 1;
+        JButton applyCustomFilterButton = new JButton("应用");
+        applyCustomFilterButton.setMargin(new Insets(1, 3, 1, 3)); // 减小按钮边距
+        applyCustomFilterButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                customFilterPattern = customFilterTextField.getText().trim();
+                updateCustomFilterPattern();
+                applyFilter();
+            }
+        });
+        filterPanel.add(applyCustomFilterButton, filterGbc);
+        
+        // 添加过滤状态标签
+        JPanel filterStatusPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 3, 1)); // 减小组件间距
+        filterStatusLabel = new JLabel("过滤状态: 原始流量 0 条，显示 0 条");
+        filterStatusLabel.setFont(filterStatusLabel.getFont().deriveFont(filterStatusLabel.getFont().getSize2D() - 1f)); // 稍微减小字体
+        filterStatusPanel.add(filterStatusLabel);
+        
+        JButton refreshButton = new JButton("刷新流量");
+        refreshButton.setMargin(new Insets(1, 3, 1, 3)); // 减小按钮边距
+        refreshButton.setFont(refreshButton.getFont().deriveFont(refreshButton.getFont().getSize2D() - 1f)); // 稍微减小字体
+        refreshButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                applyFilter();
+                stdout.println("手动刷新流量表格，当前记录: " + allTraffic.size() + " 条，显示: " + filteredTraffic.size() + " 条");
+            }
+        });
+        filterStatusPanel.add(refreshButton);
+        
+        // 创建认证头部分面板
+        JPanel authHeaderPanel = new JPanel(new BorderLayout(2, 2));
+        authHeaderPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("认证头"));
+        JLabel headerLabel = new JLabel("需要删除的认证头:");
+        headerLabel.setFont(headerLabel.getFont().deriveFont(headerLabel.getFont().getSize2D() - 1f));
+        authHeaderPanel.add(headerLabel, BorderLayout.NORTH);
+        
+        headersTextArea = new JTextArea(3, 15);
+        headersTextArea.setText("Authorization\nCookie\nX-Auth-Token\nJWT-Token");
+        headersTextArea.setFont(headersTextArea.getFont().deriveFont(headersTextArea.getFont().getSize2D() - 1f));
+        JScrollPane headersScrollPane = new JScrollPane(headersTextArea);
+        authHeaderPanel.add(headersScrollPane, BorderLayout.CENTER);
+        
+        // 添加认证头部分的更新按钮
+        JButton headerUpdateButton = new JButton("应用");
+        headerUpdateButton.setFont(headerUpdateButton.getFont().deriveFont(headerUpdateButton.getFont().getSize2D() - 1f));
+        headerUpdateButton.setMargin(new Insets(1, 2, 1, 2));
+        headerUpdateButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                updateHeadersList();
+            }
+        });
+        authHeaderPanel.add(headerUpdateButton, BorderLayout.SOUTH);
+        
+        // 将过滤器面板和认证头面板添加到配置面板的第二行，左右排列
+        gbc.gridwidth = 1; // 重置为1列宽
+        gbc.gridy = 1;
+        gbc.gridx = 0;
+        gbc.weightx = 0.5; // 左侧占一半宽度
+        gbc.weighty = 0.15;
+        gbc.fill = GridBagConstraints.BOTH;
+        configPanel.add(authHeaderPanel, gbc);
+        
+        gbc.gridx = 1;
+        configPanel.add(filterPanel, gbc);
+        
+        // 添加过滤状态面板到配置面板最底部
+        gbc.gridy = 2;
+        gbc.gridx = 0;
+        gbc.gridwidth = 2; // 跨越2列
+        gbc.weighty = 0.05;
+        configPanel.add(filterStatusPanel, gbc);
+        
+        // 隐藏阈值设置，但保留默认值
+        thresholdField = new JTextField("50", 4);
+        responseLengthThreshold = 50; // 设置默认阈值
         
         // 创建选项卡面板包含结果和流量
         JTabbedPane resultsTabbedPane = new JTabbedPane();
@@ -277,38 +446,12 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
         TableRowSorter<TableModel> trafficSorter = new TableRowSorter<>(trafficTableModel);
         trafficTable.setRowSorter(trafficSorter);
         
-        // 添加流量控制面板
-        JPanel trafficControlPanel = new JPanel();
-        JButton refreshButton = new JButton("刷新流量");
-        refreshButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                trafficTableModel.fireTableDataChanged();
-                stdout.println("手动刷新流量表格，当前记录: " + allTraffic.size() + " 条");
-            }
-        });
-        trafficControlPanel.add(refreshButton);
-        
-        // 创建流量面板
-        JPanel trafficPanel = new JPanel(new GridBagLayout());
-        GridBagConstraints trafficGbc = new GridBagConstraints();
-        trafficGbc.gridx = 0;
-        trafficGbc.gridy = 0;
-        trafficGbc.weightx = 1.0;
-        trafficGbc.fill = GridBagConstraints.HORIZONTAL;
-        trafficPanel.add(trafficControlPanel, trafficGbc);
-        
-        trafficGbc.gridy = 1;
-        trafficGbc.weighty = 1.0;
-        trafficGbc.fill = GridBagConstraints.BOTH;
-        trafficPanel.add(trafficScrollPane, trafficGbc);
-        
         // 启用流量表格多选
         trafficTable.setSelectionMode(javax.swing.ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
         
         // 添加到选项卡
         resultsTabbedPane.addTab("未授权漏洞", issuesScrollPane);
-        resultsTabbedPane.addTab("所有流量", trafficPanel);
+        resultsTabbedPane.addTab("所有流量", trafficScrollPane);
         
         // 初始化消息查看器
         requestResponseViewer = new JTabbedPane();
@@ -355,22 +498,32 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
             }
         });
         
-        // 新增：添加流量表格选择监听器
+        // 添加流量表格选择监听器
         trafficTable.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
                 int viewRow = trafficTable.getSelectedRow();
                 int row = viewRow != -1 ? trafficTable.convertRowIndexToModel(viewRow) : -1;
-                if (row != -1 && row < allTraffic.size()) {
-                    IHttpRequestResponse message = allTraffic.get(row);
+                
+                if (row == -1) return;
+                
+                // 获取当前使用的流量列表（根据过滤状态）
+                List<IHttpRequestResponse> trafficToUse = filterEnabled ? filteredTraffic : allTraffic;
+                
+                if (row < trafficToUse.size()) {
+                    IHttpRequestResponse message = trafficToUse.get(row);
                     
                     // 显示原始请求和响应
                     originalRequestViewer.setMessage(message.getRequest(), true);
                     originalResponseViewer.setMessage(message.getResponse(), false);
                     
+                    // 找出该消息在原始列表中的索引，以便获取对应的未授权请求
+                    int originalIndex = allTraffic.indexOf(message);
+                    
                     // 显示未授权请求和响应（如果存在）
-                    if (row < unauthorizedTraffic.size() && unauthorizedTraffic.get(row) != null) {
-                        IHttpRequestResponse unauthorizedMessage = unauthorizedTraffic.get(row);
+                    if (originalIndex != -1 && originalIndex < unauthorizedTraffic.size() && 
+                        unauthorizedTraffic.get(originalIndex) != null) {
+                        IHttpRequestResponse unauthorizedMessage = unauthorizedTraffic.get(originalIndex);
                         unauthorizedRequestViewer.setMessage(unauthorizedMessage.getRequest(), true);
                         unauthorizedResponseViewer.setMessage(unauthorizedMessage.getResponse(), false);
                     } else {
@@ -395,11 +548,11 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
         
         // 创建一个垂直分割面板包含表格和请求/响应查看器
         JSplitPane resultsSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, resultsTabbedPane, requestResponseViewer);
-        resultsSplitPane.setResizeWeight(0.3);
+        resultsSplitPane.setResizeWeight(0.5); // 增加上部表格的权重，使表格和请求/响应查看器各占一半
         
         // 将配置面板和结果分割面板添加到主分割面板
         JSplitPane mainSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, configPanel, resultsSplitPane);
-        mainSplitPane.setResizeWeight(0.2);
+        mainSplitPane.setResizeWeight(0.1); // 减小配置区域的权重，使结果区域占据更多空间
         
         gbc = new GridBagConstraints();
         gbc.gridx = 0;
@@ -411,6 +564,10 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
         
         // 初始化认证头列表
         updateHeadersList();
+        
+        // 初始化过滤器
+        updateCustomFilterPattern();
+        applyFilter();
         
         // 将面板添加到Burp的UI
         callbacks.customizeUiComponent(mainPanel);
@@ -427,21 +584,9 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
             }
         }
         stdout.println("更新认证头列表: " + headersToRemove);
-        
-        // 更新阈值设置
-        try {
-            int newThreshold = Integer.parseInt(thresholdField.getText().trim());
-            if (newThreshold >= 0) {
-                responseLengthThreshold = newThreshold;
-                stdout.println("更新响应长度差异阈值: " + responseLengthThreshold + " 字节");
-            } else {
-                thresholdField.setText(String.valueOf(responseLengthThreshold));
-                stdout.println("警告: 阈值必须是非负整数，重置为: " + responseLengthThreshold);
-            }
-        } catch (NumberFormatException ex) {
-            thresholdField.setText(String.valueOf(responseLengthThreshold));
-            stdout.println("警告: 阈值不是有效数字，重置为: " + responseLengthThreshold);
-        }
+        // 使用默认阈值
+        responseLengthThreshold = 50;
+        stdout.println("使用默认响应长度差异阈值: " + responseLengthThreshold + " 字节");
     }
 
     @Override
@@ -453,6 +598,12 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
         
         // 记录所有经过的流量
         recordTraffic(baseRequestResponse);
+        
+        // 如果是静态资源且过滤功能开启，不进行未授权检测
+        if (filterEnabled && shouldFilter(baseRequestResponse)) {
+            stdout.println("跳过对静态资源的未授权检测: " + helpers.analyzeRequest(baseRequestResponse).getUrl());
+            return null;
+        }
         
         return checkForUnauthorizedAccess(baseRequestResponse);
     }
@@ -466,6 +617,12 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
         
         // 记录所有经过的流量
         recordTraffic(baseRequestResponse);
+        
+        // 如果是静态资源且过滤功能开启，不进行未授权检测
+        if (filterEnabled && shouldFilter(baseRequestResponse)) {
+            stdout.println("跳过对静态资源的主动扫描: " + helpers.analyzeRequest(baseRequestResponse).getUrl());
+            return null;
+        }
         
         return checkForUnauthorizedAccess(baseRequestResponse);
     }
@@ -758,7 +915,25 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
                         "确定"
                 );
                 
-                issues.add(issue);
+                // 检查是否已存在相同URL的漏洞，实现去重
+                boolean duplicateFound = false;
+                for (int i = 0; i < issues.size(); i++) {
+                    ScanIssue existingIssue = issues.get(i);
+                    if (existingIssue.getUrl().toString().equals(requestInfo.getUrl().toString())) {
+                        // 发现相同URL的漏洞，更新它
+                        issues.set(i, issue);
+                        duplicateFound = true;
+                        stdout.println("更新已存在的未授权漏洞: " + requestInfo.getUrl());
+                        break;
+                    }
+                }
+                
+                // 如果没有找到重复的，则添加新漏洞
+                if (!duplicateFound) {
+                    issues.add(issue);
+                    stdout.println("添加新的未授权漏洞: " + requestInfo.getUrl());
+                }
+                
                 SwingUtilities.invokeLater(new Runnable() {
                     @Override
                     public void run() {
@@ -1386,7 +1561,9 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
         return null;
     }
 
-    // 新增：清空方法增加清空流量记录
+    /**
+     * 清空所有结果和流量记录
+     */
     private void clearResults() {
         if (issues.isEmpty() && allTraffic.isEmpty()) {
             return;
@@ -1404,6 +1581,7 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
             allTraffic.clear();
             unauthorizedTraffic.clear();
             isVulnerableList.clear();
+            filteredTraffic.clear();
             issuesModel.fireTableDataChanged();
             trafficTableModel.fireTableDataChanged();
             
@@ -1414,6 +1592,8 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
             unauthorizedResponseViewer.setMessage(new byte[0], false);
             
             currentlyDisplayedItem = null;
+            
+            stdout.println("所有结果和流量记录已清空");
         }
     }
     
@@ -1455,7 +1635,7 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
         }
     }
 
-    // 新增：流量表格右键菜单
+    // 流量表格右键菜单
     private void showTrafficContextMenu(MouseEvent e, Component component) {
         if (component != trafficTable) {
             return;
@@ -1466,6 +1646,10 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
         // 添加Burp工具菜单项
         int viewRow = trafficTable.getSelectedRow();
         int row = viewRow != -1 ? trafficTable.convertRowIndexToModel(viewRow) : -1;
+        
+        // 获取当前使用的流量列表（根据过滤状态）
+        List<IHttpRequestResponse> trafficToUse = filterEnabled ? filteredTraffic : allTraffic;
+        
         // 将所有选中的行索引从视图转换为模型索引，方便后续批量删除操作
         int[] viewRows = trafficTable.getSelectedRows();
         final int[] selectedModelRows = new int[viewRows.length];
@@ -1473,8 +1657,8 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
             selectedModelRows[i] = trafficTable.convertRowIndexToModel(viewRows[i]);
         }
         
-        if (row != -1 && row < allTraffic.size()) {
-            IHttpRequestResponse message = allTraffic.get(row);
+        if (row != -1 && row < trafficToUse.size()) {
+            IHttpRequestResponse message = trafficToUse.get(row);
             IHttpService service = message.getHttpService();
             byte[] request = message.getRequest();
             byte[] response = message.getResponse();
@@ -1483,8 +1667,9 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
             addBurpToolsMenuItems(menu, service, request, response);
             
             // 添加未授权请求相关菜单
-            if (row < unauthorizedTraffic.size() && unauthorizedTraffic.get(row) != null) {
-                IHttpRequestResponse unauthorizedMessage = unauthorizedTraffic.get(row);
+            int originalIndex = allTraffic.indexOf(message);
+            if (originalIndex != -1 && originalIndex < unauthorizedTraffic.size() && unauthorizedTraffic.get(originalIndex) != null) {
+                IHttpRequestResponse unauthorizedMessage = unauthorizedTraffic.get(originalIndex);
                 menu.addSeparator();
                 menu.add(new JLabel("未授权请求:"));
                 addBurpToolsMenuItems(menu, unauthorizedMessage.getHttpService(), 
@@ -1495,9 +1680,27 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
             // 添加检测按钮
             menu.addSeparator();
             JMenuItem checkItem = new JMenuItem("检测未授权访问漏洞");
+            // 如果是静态资源且过滤器开启，则禁用检测按钮
+            boolean isStaticResource = filterEnabled && shouldFilter(message);
+            checkItem.setEnabled(!isStaticResource);
+            if (isStaticResource) {
+                checkItem.setToolTipText("静态资源无需检测未授权访问");
+            }
+            
             checkItem.addActionListener(new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent e) {
+                    // 再次检查是否是静态资源，双重保险
+                    if (filterEnabled && shouldFilter(message)) {
+                        JOptionPane.showMessageDialog(
+                            mainPanel,
+                            "静态资源（JS/CSS/图片等）无需检测未授权访问",
+                            "提示",
+                            JOptionPane.INFORMATION_MESSAGE
+                        );
+                        return;
+                    }
+                    
                     List<IScanIssue> foundIssues = checkForUnauthorizedAccess(message);
                     if (foundIssues != null && !foundIssues.isEmpty()) {
                         callbacks.addScanIssue(foundIssues.get(0));
@@ -1522,16 +1725,41 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
             
             // 添加生成未授权请求按钮
             JMenuItem generateItem = new JMenuItem("生成/更新未授权请求");
+            // 如果是静态资源且过滤器开启，则禁用生成按钮
+            generateItem.setEnabled(!isStaticResource);
+            if (isStaticResource) {
+                generateItem.setToolTipText("静态资源无需生成未授权请求");
+            }
+            
             generateItem.addActionListener(new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent e) {
+                    // 再次检查是否是静态资源，双重保险
+                    if (filterEnabled && shouldFilter(message)) {
+                        JOptionPane.showMessageDialog(
+                            mainPanel,
+                            "静态资源（JS/CSS/图片等）无需生成未授权请求",
+                            "提示",
+                            JOptionPane.INFORMATION_MESSAGE
+                        );
+                        return;
+                    }
+                    
                     IHttpRequestResponse unauthorizedReq = createUnauthorizedRequest(message);
                     if (unauthorizedReq != null) {
+                        // 获取消息在原始列表中的索引
+                        int originalIndex = allTraffic.indexOf(message);
+                        if (originalIndex == -1) {
+                            // 如果未找到，尝试添加到列表末尾
+                            originalIndex = allTraffic.size();
+                            allTraffic.add(message);
+                        }
+                        
                         // 更新未授权请求
-                        if (row < unauthorizedTraffic.size()) {
-                            unauthorizedTraffic.set(row, unauthorizedReq);
+                        if (originalIndex < unauthorizedTraffic.size()) {
+                            unauthorizedTraffic.set(originalIndex, unauthorizedReq);
                         } else {
-                            while (unauthorizedTraffic.size() < row) {
+                            while (unauthorizedTraffic.size() < originalIndex) {
                                 unauthorizedTraffic.add(null);
                             }
                             unauthorizedTraffic.add(unauthorizedReq);
@@ -1560,24 +1788,47 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
                 @Override
                 public void actionPerformed(ActionEvent e) {
                     if (selectedModelRows.length == 0) return;
+                    
+                    // 用于确认对话框
                     int result = JOptionPane.showConfirmDialog(
                         mainPanel,
                         "确定要删除选中的 " + selectedModelRows.length + " 个流量记录吗？",
                         "确认删除",
                         JOptionPane.YES_NO_OPTION
                     );
+                    
                     if (result == JOptionPane.YES_OPTION) {
-                        Arrays.sort(selectedModelRows);
-                        for (int i = selectedModelRows.length - 1; i >= 0; i--) {
-                            allTraffic.remove(selectedModelRows[i]);
-                            if (selectedModelRows[i] < unauthorizedTraffic.size()) {
-                                unauthorizedTraffic.remove(selectedModelRows[i]);
-                            }
-                            if (selectedModelRows[i] < isVulnerableList.size()) {
-                                isVulnerableList.remove(selectedModelRows[i]);
+                        // 获取当前使用的流量列表
+                        List<IHttpRequestResponse> currentTraffic = filterEnabled ? filteredTraffic : allTraffic;
+                        
+                        // 获取要删除的请求对象
+                        Set<IHttpRequestResponse> toDelete = new HashSet<>();
+                        for (int modelRow : selectedModelRows) {
+                            if (modelRow < currentTraffic.size()) {
+                                toDelete.add(currentTraffic.get(modelRow));
                             }
                         }
+                        
+                        // 从主列表和关联列表中删除
+                        for (IHttpRequestResponse reqResp : toDelete) {
+                            int origIndex = allTraffic.indexOf(reqResp);
+                            if (origIndex != -1) {
+                                allTraffic.remove(origIndex);
+                                if (origIndex < unauthorizedTraffic.size()) {
+                                    unauthorizedTraffic.remove(origIndex);
+                                }
+                                if (origIndex < isVulnerableList.size()) {
+                                    isVulnerableList.remove(origIndex);
+                                }
+                            }
+                        }
+                        
+                        // 如果过滤器启用，重新应用过滤
+                        if (filterEnabled) {
+                            applyFilter();
+                        } else {
                         trafficTableModel.fireTableDataChanged();
+                        }
                     }
                 }
             });
@@ -1587,13 +1838,14 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
         menu.show(component, e.getX(), e.getY());
     }
 
-    // 新增：流量表格模型
+    // 流量表格模型
     private class TrafficTableModel extends AbstractTableModel {
         private final String[] COLUMNS = { "编号", "URL", "请求方法", "状态码", "响应长度", "未授权响应长度", "差异", "是否存在漏洞" };
         
         @Override
         public int getRowCount() {
-            return allTraffic.size();
+            // 使用过滤后的流量集合
+            return filterEnabled ? filteredTraffic.size() : allTraffic.size();
         }
         
         @Override
@@ -1620,11 +1872,14 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
         
         @Override
         public Object getValueAt(int rowIndex, int columnIndex) {
-            if (rowIndex >= allTraffic.size()) {
+            // 使用过滤后的流量或原始流量
+            List<IHttpRequestResponse> trafficToUse = filterEnabled ? filteredTraffic : allTraffic;
+            
+            if (rowIndex >= trafficToUse.size()) {
                 return "";
             }
             
-            IHttpRequestResponse message = allTraffic.get(rowIndex);
+            IHttpRequestResponse message = trafficToUse.get(rowIndex);
             IRequestInfo requestInfo = helpers.analyzeRequest(message);
             
             switch (columnIndex) {
@@ -1684,7 +1939,9 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
         }
     }
 
-    // 新增：记录所有流量
+    /**
+     * 记录请求响应流量
+     */
     private void recordTraffic(IHttpRequestResponse requestResponse) {
         try {
             // 确保请求和响应都不为空
@@ -1715,32 +1972,39 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
                 isVulnerableList.remove(0); // 同时移除相应的漏洞标记
             }
             
+            // 检查是否为静态资源
+            boolean isStaticResource = shouldFilter(requestResponse);
+            
             // 处理新请求或更新已存在的请求
             if (existingIndex == -1) {
                 // 添加新请求
                 allTraffic.add(requestResponse);
                 
-                // 创建和记录未授权请求版本
-                IHttpRequestResponse unauthorizedReq = createUnauthorizedRequest(requestResponse);
+                // 创建和记录未授权请求版本（仅对非静态资源或过滤未启用时）
+                IHttpRequestResponse unauthorizedReq = null;
+                if (!filterEnabled || !isStaticResource) {
+                    unauthorizedReq = createUnauthorizedRequest(requestResponse);
+                } else {
+                    // 对于静态资源，创建一个空标记，但不实际发送请求
+                    stdout.println("跳过对静态资源创建未授权请求: " + url);
+                }
                 unauthorizedTraffic.add(unauthorizedReq);
                 
-                // 判断是否存在漏洞并记录
-                boolean isVulnerable = checkVulnerability(requestResponse, unauthorizedReq);
+                // 判断是否存在漏洞并记录（仅对非静态资源或过滤未启用时）
+                boolean isVulnerable = false;
+                if (!filterEnabled || !isStaticResource) {
+                    isVulnerable = checkVulnerability(requestResponse, unauthorizedReq);
+                }
                 isVulnerableList.add(isVulnerable);
                 
                 // 调试信息
-                stdout.println("记录新流量: " + requestInfo.getUrl() + (isVulnerable ? " [存在漏洞]" : ""));
+                stdout.println("记录新流量: " + url + 
+                               (isStaticResource ? " [静态资源]" : "") + 
+                               (isVulnerable ? " [存在漏洞]" : ""));
 
-                // 新增：如果存在漏洞且未在issues表中，则自动添加
+                // 如果存在漏洞且未在issues表中，则自动添加
                 if (isVulnerable) {
-                    boolean alreadyExists = false;
-                    for (ScanIssue issue : issues) {
-                        if (issue.getUrl().toString().equals(url)) {
-                            alreadyExists = true;
-                            break;
-                        }
-                    }
-                    if (!alreadyExists && unauthorizedReq != null && unauthorizedReq.getResponse() != null) {
+                    if (unauthorizedReq != null && unauthorizedReq.getResponse() != null) {
                         IResponseInfo originalResponseInfo = helpers.analyzeResponse(requestResponse.getResponse());
                         IResponseInfo unauthorizedResponseInfo = helpers.analyzeResponse(unauthorizedReq.getResponse());
                         int originalLength = requestResponse.getResponse().length - originalResponseInfo.getBodyOffset();
@@ -1764,7 +2028,26 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
                             "高",
                             "确定"
                         );
-                        issues.add(issue);
+                        
+                        // 检查是否已存在相同URL的漏洞，实现去重
+                        boolean duplicateFound = false;
+                        for (int i = 0; i < issues.size(); i++) {
+                            ScanIssue existingIssue = issues.get(i);
+                            if (existingIssue.getUrl().toString().equals(url)) {
+                                // 发现相同URL的漏洞，更新它
+                                issues.set(i, issue);
+                                duplicateFound = true;
+                                stdout.println("更新已存在的未授权漏洞: " + url);
+                                break;
+                            }
+                        }
+                        
+                        // 如果没有找到重复的，则添加新漏洞
+                        if (!duplicateFound) {
+                            issues.add(issue);
+                            stdout.println("添加新的未授权漏洞: " + url);
+                        }
+                        
                         SwingUtilities.invokeLater(new Runnable() {
                             @Override
                             public void run() {
@@ -1777,8 +2060,18 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
                 // 更新已存在的请求
                 allTraffic.set(existingIndex, requestResponse);
                 
-                // 更新未授权请求版本
-                IHttpRequestResponse unauthorizedReq = createUnauthorizedRequest(requestResponse);
+                // 更新未授权请求版本（仅对非静态资源或过滤未启用时）
+                IHttpRequestResponse unauthorizedReq = null;
+                if (!filterEnabled || !isStaticResource) {
+                    unauthorizedReq = createUnauthorizedRequest(requestResponse);
+                } else {
+                    // 对于静态资源，保留原有的未授权请求（如果有）
+                    if (existingIndex < unauthorizedTraffic.size()) {
+                        unauthorizedReq = unauthorizedTraffic.get(existingIndex);
+                    }
+                    stdout.println("跳过对静态资源更新未授权请求: " + url);
+                }
+                
                 if (existingIndex < unauthorizedTraffic.size()) {
                     unauthorizedTraffic.set(existingIndex, unauthorizedReq);
                 } else {
@@ -1788,8 +2081,12 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
                     unauthorizedTraffic.add(unauthorizedReq);
                 }
                 
-                // 更新漏洞标记
-                boolean isVulnerable = checkVulnerability(requestResponse, unauthorizedReq);
+                // 更新漏洞标记（仅对非静态资源或过滤未启用时）
+                boolean isVulnerable = false;
+                if (!filterEnabled || !isStaticResource) {
+                    isVulnerable = checkVulnerability(requestResponse, unauthorizedReq);
+                }
+                
                 if (existingIndex < isVulnerableList.size()) {
                     isVulnerableList.set(existingIndex, isVulnerable);
                 } else {
@@ -1799,7 +2096,27 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
                     isVulnerableList.add(isVulnerable);
                 }
                 
-                stdout.println("更新已存在流量: " + requestInfo.getUrl() + (isVulnerable ? " [存在漏洞]" : ""));
+                stdout.println("更新已存在流量: " + url + 
+                               (isStaticResource ? " [静态资源]" : "") + 
+                               (isVulnerable ? " [存在漏洞]" : ""));
+            }
+            
+            // 如果请求不应被过滤，则添加到过滤后列表
+            if (!shouldFilter(requestResponse)) {
+                // 检查是否已存在
+                boolean alreadyInFiltered = filteredTraffic.contains(requestResponse);
+                // 添加到过滤后列表或更新
+                if (!alreadyInFiltered) {
+                    filteredTraffic.add(requestResponse);
+                } else {
+                    int idx = filteredTraffic.indexOf(requestResponse);
+                    if (idx != -1) {
+                        filteredTraffic.set(idx, requestResponse);
+                    }
+                }
+            } else {
+                // 如果应该被过滤，确保从过滤后列表中移除
+                filteredTraffic.remove(requestResponse);
             }
             
             // 更新UI
@@ -2131,7 +2448,137 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
     public void processHttpMessage(int toolFlag, boolean messageIsRequest, IHttpRequestResponse messageInfo) {
         // 只处理响应且不处理我们自己发起的请求（避免无限循环）
         if (!messageIsRequest && toolFlag != IBurpExtenderCallbacks.TOOL_EXTENDER && enabledCheckBox != null && enabledCheckBox.isSelected()) {
+            // 即使是静态资源也记录流量，但不进行未授权测试
+            // 这样可以在UI中展示所有流量，但不会发送不必要的请求
             recordTraffic(messageInfo);
         }
     }
-} 
+    
+    /**
+     * 判断请求是否应该被过滤掉
+     * @param requestResponse 请求响应对象
+     * @return 如果应该被过滤则返回true，否则返回false
+     */
+    private boolean shouldFilter(IHttpRequestResponse requestResponse) {
+        // 如果过滤功能未启用，则不过滤
+        if (!filterEnabled) {
+            return false;
+        }
+
+        try {
+            // 提取URL字符串
+            IRequestInfo requestInfo = helpers.analyzeRequest(requestResponse);
+            String url = requestInfo.getUrl().toString();
+            
+            // 提取MIME类型
+            String mimeType = "";
+            if (requestResponse.getResponse() != null) {
+                IResponseInfo responseInfo = helpers.analyzeResponse(requestResponse.getResponse());
+                mimeType = responseInfo.getStatedMimeType().toLowerCase();
+            }
+            
+            // 判断是否为静态资源（基于URL和MIME类型）
+            
+            // 检查图片
+            if (filterImages && (IMAGE_PATTERN.matcher(url).find() || 
+                                mimeType.contains("image"))) {
+                return true;
+            }
+            
+            // 检查CSS
+            if (filterCSS && (CSS_PATTERN.matcher(url).find() || 
+                             mimeType.contains("css") || 
+                             mimeType.contains("style"))) {
+                return true;
+            }
+            
+            // 检查JavaScript
+            if (filterJS && (JS_PATTERN.matcher(url).find() || 
+                            mimeType.contains("javascript") || 
+                            mimeType.contains("script"))) {
+                return true;
+            }
+            
+            // 检查字体
+            if (filterFonts && (FONT_PATTERN.matcher(url).find() || 
+                               mimeType.contains("font"))) {
+                return true;
+            }
+            
+            // 检查其他静态资源
+            if (filterStatic && STATIC_PATTERN.matcher(url).find()) {
+                return true;
+            }
+            
+            // 检查自定义过滤条件
+            if (compiledCustomPattern != null && compiledCustomPattern.matcher(url).find()) {
+                return true;
+            }
+            
+            // 已经明确是某些静态资源的MIME类型
+            Set<String> staticMimeTypes = new HashSet<>(Arrays.asList(
+                "image", "font", "css", "javascript", "text/plain", "audio", "video"
+            ));
+            
+            for (String staticType : staticMimeTypes) {
+                if (mimeType.contains(staticType)) {
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            // 出错时不过滤
+            stderr.println("过滤请求时出错: " + e.getMessage());
+        }
+        
+        return false;
+    }
+    
+    /**
+     * 应用过滤器并更新流量显示
+     */
+    private void applyFilter() {
+        filteredTraffic.clear();
+        
+        // 从所有流量中筛选不需要过滤的请求
+        for (IHttpRequestResponse traffic : allTraffic) {
+            if (!shouldFilter(traffic)) {
+                filteredTraffic.add(traffic);
+            }
+        }
+        
+        // 更新过滤状态标签
+        final String statusText = String.format("过滤状态: 原始流量 %d 条，显示 %d 条%s", 
+                allTraffic.size(), 
+                filteredTraffic.size(),
+                allTraffic.size() > 0 ? String.format(" (%.1f%%)", (float)filteredTraffic.size() / allTraffic.size() * 100) : "");
+        
+        // 更新表格和标签
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                trafficTableModel.fireTableDataChanged();
+                if (filterStatusLabel != null) {
+                    filterStatusLabel.setText(statusText);
+                }
+            }
+        });
+        
+        stdout.println("过滤器已应用，" + statusText);
+    }
+    
+    /**
+     * 更新自定义过滤器正则表达式
+     */
+    private void updateCustomFilterPattern() {
+        try {
+            if (customFilterPattern != null && !customFilterPattern.trim().isEmpty()) {
+                compiledCustomPattern = Pattern.compile(customFilterPattern, Pattern.CASE_INSENSITIVE);
+            } else {
+                compiledCustomPattern = null;
+            }
+        } catch (Exception e) {
+            stderr.println("编译自定义过滤正则表达式时出错: " + e.getMessage());
+            compiledCustomPattern = null;
+        }
+    }
+}
