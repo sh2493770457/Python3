@@ -41,6 +41,7 @@ import javax.swing.table.AbstractTableModel;
 import javax.swing.table.TableModel;
 import javax.swing.RowSorter;
 import javax.swing.table.TableRowSorter;
+import java.awt.GridLayout;
 
 /**
  * 未授权访问检测Burp扩展
@@ -60,7 +61,7 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
     private JCheckBox activeCheckBox;
     private JCheckBox passiveScanCheckBox;
     private JCheckBox enabledCheckBox;  // 新增：是否启用插件的全局开关
-    private JTabbedPane requestResponseViewer;  // 新增：请求和响应查看器
+    private JPanel requestResponseViewer;  // 改为：
     private IMessageEditor originalRequestViewer;  // 新增：原始请求查看器
     private IMessageEditor originalResponseViewer;  // 新增：原始响应查看器
     private IMessageEditor unauthorizedRequestViewer;  // 新增：未授权请求查看器
@@ -450,11 +451,13 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
         trafficTable.setSelectionMode(javax.swing.ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
         
         // 添加到选项卡
-        resultsTabbedPane.addTab("未授权漏洞", issuesScrollPane);
-        resultsTabbedPane.addTab("所有流量", trafficScrollPane);
+        resultsTabbedPane.addTab("未授权漏洞(自行筛选)", issuesScrollPane);
+        resultsTabbedPane.addTab("所有流量(重复的包不检测)", trafficScrollPane);
         
         // 初始化消息查看器
-        requestResponseViewer = new JTabbedPane();
+        requestResponseViewer = new JPanel();
+        requestResponseViewer.setLayout(new GridLayout(1, 4, 4, 0)); // 四列，间距4像素
+        
         // 创建消息编辑器并设置它们为只读模式
         MessageEditorController editorController = new MessageEditorController();
         originalRequestViewer = callbacks.createMessageEditor(editorController, false);
@@ -462,10 +465,27 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
         unauthorizedRequestViewer = callbacks.createMessageEditor(editorController, false);
         unauthorizedResponseViewer = callbacks.createMessageEditor(editorController, false);
         
-        requestResponseViewer.addTab("原始请求", originalRequestViewer.getComponent());
-        requestResponseViewer.addTab("原始响应", originalResponseViewer.getComponent());
-        requestResponseViewer.addTab("未授权请求", unauthorizedRequestViewer.getComponent());
-        requestResponseViewer.addTab("未授权响应", unauthorizedResponseViewer.getComponent());
+        // 每个编辑器加标题
+        JPanel originalRequestPanel = new JPanel(new BorderLayout());
+        originalRequestPanel.add(new JLabel("原始请求", JLabel.CENTER), BorderLayout.NORTH);
+        originalRequestPanel.add(originalRequestViewer.getComponent(), BorderLayout.CENTER);
+        
+        JPanel originalResponsePanel = new JPanel(new BorderLayout());
+        originalResponsePanel.add(new JLabel("原始响应", JLabel.CENTER), BorderLayout.NORTH);
+        originalResponsePanel.add(originalResponseViewer.getComponent(), BorderLayout.CENTER);
+        
+        JPanel unauthorizedRequestPanel = new JPanel(new BorderLayout());
+        unauthorizedRequestPanel.add(new JLabel("未授权请求", JLabel.CENTER), BorderLayout.NORTH);
+        unauthorizedRequestPanel.add(unauthorizedRequestViewer.getComponent(), BorderLayout.CENTER);
+        
+        JPanel unauthorizedResponsePanel = new JPanel(new BorderLayout());
+        unauthorizedResponsePanel.add(new JLabel("未授权响应", JLabel.CENTER), BorderLayout.NORTH);
+        unauthorizedResponsePanel.add(unauthorizedResponseViewer.getComponent(), BorderLayout.CENTER);
+        
+        requestResponseViewer.add(originalRequestPanel);
+        requestResponseViewer.add(originalResponsePanel);
+        requestResponseViewer.add(unauthorizedRequestPanel);
+        requestResponseViewer.add(unauthorizedResponsePanel);
         
         // 添加表格选择监听器
         resultsTable.addMouseListener(new MouseAdapter() {
@@ -1882,6 +1902,15 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
             IHttpRequestResponse message = trafficToUse.get(rowIndex);
             IRequestInfo requestInfo = helpers.analyzeRequest(message);
             
+            // 找出当前消息在原始列表中的索引
+            int originalIndex = allTraffic.indexOf(message);
+            if (originalIndex == -1) {
+                // 如果在原始列表中找不到，无法获取未授权请求
+                if (columnIndex == 5 || columnIndex == 6 || columnIndex == 7) {
+                    return "N/A";
+                }
+            }
+            
             switch (columnIndex) {
                 case 0:
                     return rowIndex + 1; // 编号
@@ -1904,32 +1933,34 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
                         return "N/A";
                     }
                 case 5: // 未授权响应长度
-                    if (rowIndex < unauthorizedTraffic.size() && unauthorizedTraffic.get(rowIndex) != null && 
-                        unauthorizedTraffic.get(rowIndex).getResponse() != null) {
-                        IResponseInfo responseInfo = helpers.analyzeResponse(unauthorizedTraffic.get(rowIndex).getResponse());
-                        return unauthorizedTraffic.get(rowIndex).getResponse().length - responseInfo.getBodyOffset();
+                    if (originalIndex != -1 && originalIndex < unauthorizedTraffic.size() && 
+                        unauthorizedTraffic.get(originalIndex) != null && 
+                        unauthorizedTraffic.get(originalIndex).getResponse() != null) {
+                        IResponseInfo responseInfo = helpers.analyzeResponse(unauthorizedTraffic.get(originalIndex).getResponse());
+                        return unauthorizedTraffic.get(originalIndex).getResponse().length - responseInfo.getBodyOffset();
                     } else {
                         return "N/A";
                     }
                 case 6: // 差异
                     if (message.getResponse() != null && 
-                        rowIndex < unauthorizedTraffic.size() && 
-                        unauthorizedTraffic.get(rowIndex) != null && 
-                        unauthorizedTraffic.get(rowIndex).getResponse() != null) {
+                        originalIndex != -1 && 
+                        originalIndex < unauthorizedTraffic.size() && 
+                        unauthorizedTraffic.get(originalIndex) != null && 
+                        unauthorizedTraffic.get(originalIndex).getResponse() != null) {
                         
                         IResponseInfo origInfo = helpers.analyzeResponse(message.getResponse());
-                        IResponseInfo unauthInfo = helpers.analyzeResponse(unauthorizedTraffic.get(rowIndex).getResponse());
+                        IResponseInfo unauthInfo = helpers.analyzeResponse(unauthorizedTraffic.get(originalIndex).getResponse());
                         
                         int origLen = message.getResponse().length - origInfo.getBodyOffset();
-                        int unauthLen = unauthorizedTraffic.get(rowIndex).getResponse().length - unauthInfo.getBodyOffset();
+                        int unauthLen = unauthorizedTraffic.get(originalIndex).getResponse().length - unauthInfo.getBodyOffset();
                         
                         return Math.abs(origLen - unauthLen);
                     } else {
                         return "N/A";
                     }
                 case 7: // 是否存在漏洞
-                    if (rowIndex < isVulnerableList.size() && isVulnerableList.get(rowIndex) != null) {
-                        return isVulnerableList.get(rowIndex) ? "是" : "否";
+                    if (originalIndex != -1 && originalIndex < isVulnerableList.size() && isVulnerableList.get(originalIndex) != null) {
+                        return isVulnerableList.get(originalIndex) ? "是" : "否";
                     } else {
                         return "未检测";
                     }
