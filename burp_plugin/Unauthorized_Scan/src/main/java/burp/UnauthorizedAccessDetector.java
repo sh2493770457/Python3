@@ -122,6 +122,25 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
     // 存储原始的所有流量和用于显示的过滤后流量
     private List<IHttpRequestResponse> filteredTraffic = new ArrayList<>();
 
+    // 新增：设置键常量，用于持久化存储
+    private static final String SETTING_ENABLED = "unauthorized_detector.enabled";
+    private static final String SETTING_ACTIVE_SCAN = "unauthorized_detector.active_scan";
+    private static final String SETTING_PASSIVE_SCAN = "unauthorized_detector.passive_scan";
+    private static final String SETTING_FILTER_ENABLED = "unauthorized_detector.filter_enabled";
+    private static final String SETTING_FILTER_IMAGES = "unauthorized_detector.filter_images";
+    private static final String SETTING_FILTER_CSS = "unauthorized_detector.filter_css";
+    private static final String SETTING_FILTER_JS = "unauthorized_detector.filter_js";
+    private static final String SETTING_FILTER_FONTS = "unauthorized_detector.filter_fonts";
+    private static final String SETTING_FILTER_STATIC = "unauthorized_detector.filter_static";
+    private static final String SETTING_CUSTOM_FILTER = "unauthorized_detector.custom_filter";
+    private static final String SETTING_HEADERS_TO_REMOVE = "unauthorized_detector.headers_to_remove";
+    
+    // 新增：临时变量存储加载的设置值
+    private boolean loadedEnabledState = true;
+    private boolean loadedActiveScanState = true;
+    private boolean loadedPassiveScanState = true;
+    private String loadedHeadersText = "Authorization\nCookie\nX-Auth-Token\nJWT-Token";
+
     @Override
     public void registerExtenderCallbacks(IBurpExtenderCallbacks callbacks) {
         this.callbacks = callbacks;
@@ -131,6 +150,9 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
         
         // 设置扩展名称
         callbacks.setExtensionName("Unauthorized Scan");
+        
+        // 加载保存的设置
+        loadSettings();
         
         // 初始化UI
         SwingUtilities.invokeLater(new Runnable() {
@@ -168,21 +190,39 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
         // 添加所有功能控制到同一行
         // 启用插件复选框
         enabledCheckBox = new JCheckBox("启用插件");
-        enabledCheckBox.setSelected(true);
+        enabledCheckBox.setSelected(loadedEnabledState);
         enabledCheckBox.setToolTipText("全局开关，控制插件是否处理请求");
         enabledCheckBox.setFont(enabledCheckBox.getFont().deriveFont(enabledCheckBox.getFont().getSize2D() - 1f));
+        enabledCheckBox.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                saveSettings();
+            }
+        });
         functionPanel.add(enabledCheckBox);
         
         // 主动扫描复选框
         activeCheckBox = new JCheckBox("启用主动扫描");
-        activeCheckBox.setSelected(true);
+        activeCheckBox.setSelected(loadedActiveScanState);
         activeCheckBox.setFont(activeCheckBox.getFont().deriveFont(activeCheckBox.getFont().getSize2D() - 1f));
+        activeCheckBox.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                saveSettings();
+            }
+        });
         functionPanel.add(activeCheckBox);
         
         // 被动扫描复选框
         passiveScanCheckBox = new JCheckBox("启用被动扫描");
-        passiveScanCheckBox.setSelected(true);
+        passiveScanCheckBox.setSelected(loadedPassiveScanState);
         passiveScanCheckBox.setFont(passiveScanCheckBox.getFont().deriveFont(passiveScanCheckBox.getFont().getSize2D() - 1f));
+        passiveScanCheckBox.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                saveSettings();
+            }
+        });
         functionPanel.add(passiveScanCheckBox);
         
         // 导出为MD文档按钮
@@ -230,6 +270,7 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
             public void actionPerformed(ActionEvent e) {
                 filterEnabled = filterEnabledCheckBox.isSelected();
                 applyFilter();
+                saveSettings();
             }
         });
         functionPanel.add(filterEnabledCheckBox);
@@ -263,6 +304,7 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
             public void actionPerformed(ActionEvent e) {
                 filterImages = filterImagesCheckBox.isSelected();
                 applyFilter();
+                saveSettings();
             }
         });
         filterImagesCheckBox.setMargin(new Insets(0, 0, 0, 0)); // 减小复选框内边距
@@ -278,6 +320,7 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
             public void actionPerformed(ActionEvent e) {
                 filterCSS = filterCSSCheckBox.isSelected();
                 applyFilter();
+                saveSettings();
             }
         });
         filterCSSCheckBox.setMargin(new Insets(0, 0, 0, 0)); // 减小复选框内边距
@@ -293,6 +336,7 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
             public void actionPerformed(ActionEvent e) {
                 filterJS = filterJSCheckBox.isSelected();
                 applyFilter();
+                saveSettings();
             }
         });
         filterJSCheckBox.setMargin(new Insets(0, 0, 0, 0)); // 减小复选框内边距
@@ -308,6 +352,7 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
             public void actionPerformed(ActionEvent e) {
                 filterFonts = filterFontsCheckBox.isSelected();
                 applyFilter();
+                saveSettings();
             }
         });
         filterFontsCheckBox.setMargin(new Insets(0, 0, 0, 0)); // 减小复选框内边距
@@ -323,6 +368,7 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
             public void actionPerformed(ActionEvent e) {
                 filterStatic = filterStaticCheckBox.isSelected();
                 applyFilter();
+                saveSettings();
             }
         });
         filterStaticCheckBox.setMargin(new Insets(0, 0, 0, 0)); // 减小复选框内边距
@@ -353,6 +399,7 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
                 customFilterPattern = customFilterTextField.getText().trim();
                 updateCustomFilterPattern();
                 applyFilter();
+                saveSettings();
             }
         });
         filterPanel.add(applyCustomFilterButton, filterGbc);
@@ -383,7 +430,7 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
         authHeaderPanel.add(headerLabel, BorderLayout.NORTH);
         
         headersTextArea = new JTextArea(3, 15);
-        headersTextArea.setText("Authorization\nCookie\nX-Auth-Token\nJWT-Token");
+        headersTextArea.setText(loadedHeadersText);
         headersTextArea.setFont(headersTextArea.getFont().deriveFont(headersTextArea.getFont().getSize2D() - 1f));
         JScrollPane headersScrollPane = new JScrollPane(headersTextArea);
         authHeaderPanel.add(headersScrollPane, BorderLayout.CENTER);
@@ -396,6 +443,7 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
             @Override
             public void actionPerformed(ActionEvent e) {
                 updateHeadersList();
+                saveSettings();
             }
         });
         authHeaderPanel.add(headerUpdateButton, BorderLayout.SOUTH);
@@ -592,6 +640,15 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
         // 将面板添加到Burp的UI
         callbacks.customizeUiComponent(mainPanel);
         callbacks.addSuiteTab(this);
+        
+        // 添加关闭时自动保存设置的钩子
+        Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+            @Override
+            public void run() {
+                saveSettings();
+                stdout.println("应用关闭时保存设置完成");
+            }
+        }));
     }
     
     private void updateHeadersList() {
@@ -2610,6 +2667,109 @@ public class UnauthorizedAccessDetector implements IBurpExtender, IScannerCheck,
         } catch (Exception e) {
             stderr.println("编译自定义过滤正则表达式时出错: " + e.getMessage());
             compiledCustomPattern = null;
+        }
+    }
+    
+    /**
+     * 加载保存的设置
+     */
+    private void loadSettings() {
+        try {
+            // 加载复选框状态，如果没有保存的设置则使用默认值
+            String enabledSetting = callbacks.loadExtensionSetting(SETTING_ENABLED);
+            loadedEnabledState = enabledSetting == null ? true : Boolean.parseBoolean(enabledSetting);
+            
+            String activeScanSetting = callbacks.loadExtensionSetting(SETTING_ACTIVE_SCAN);
+            loadedActiveScanState = activeScanSetting == null ? true : Boolean.parseBoolean(activeScanSetting);
+            
+            String passiveScanSetting = callbacks.loadExtensionSetting(SETTING_PASSIVE_SCAN);
+            loadedPassiveScanState = passiveScanSetting == null ? true : Boolean.parseBoolean(passiveScanSetting);
+            
+            String filterEnabledSetting = callbacks.loadExtensionSetting(SETTING_FILTER_ENABLED);
+            filterEnabled = filterEnabledSetting == null ? true : Boolean.parseBoolean(filterEnabledSetting);
+            
+            // 加载过滤器选项
+            String filterImagesSetting = callbacks.loadExtensionSetting(SETTING_FILTER_IMAGES);
+            filterImages = filterImagesSetting == null ? true : Boolean.parseBoolean(filterImagesSetting);
+            
+            String filterCssSetting = callbacks.loadExtensionSetting(SETTING_FILTER_CSS);
+            filterCSS = filterCssSetting == null ? true : Boolean.parseBoolean(filterCssSetting);
+            
+            String filterJsSetting = callbacks.loadExtensionSetting(SETTING_FILTER_JS);
+            filterJS = filterJsSetting == null ? true : Boolean.parseBoolean(filterJsSetting);
+            
+            String filterFontsSetting = callbacks.loadExtensionSetting(SETTING_FILTER_FONTS);
+            filterFonts = filterFontsSetting == null ? true : Boolean.parseBoolean(filterFontsSetting);
+            
+            String filterStaticSetting = callbacks.loadExtensionSetting(SETTING_FILTER_STATIC);
+            filterStatic = filterStaticSetting == null ? true : Boolean.parseBoolean(filterStaticSetting);
+            
+            // 加载自定义过滤器
+            String customFilterSetting = callbacks.loadExtensionSetting(SETTING_CUSTOM_FILTER);
+            customFilterPattern = customFilterSetting == null ? "" : customFilterSetting;
+            
+            // 加载认证头设置
+            String headersSetting = callbacks.loadExtensionSetting(SETTING_HEADERS_TO_REMOVE);
+            loadedHeadersText = headersSetting == null ? "Authorization\nCookie\nX-Auth-Token\nJWT-Token" : headersSetting;
+            
+            stdout.println("设置加载完成: 启用插件=" + loadedEnabledState + ", 主动扫描=" + loadedActiveScanState + 
+                          ", 被动扫描=" + loadedPassiveScanState + ", 启用过滤=" + filterEnabled);
+                          
+        } catch (Exception e) {
+            stderr.println("加载设置时出错: " + e.getMessage());
+            e.printStackTrace(stderr);
+        }
+    }
+    
+    /**
+     * 保存当前设置
+     */
+    private void saveSettings() {
+        try {
+            // 保存复选框状态
+            if (enabledCheckBox != null) {
+                callbacks.saveExtensionSetting(SETTING_ENABLED, String.valueOf(enabledCheckBox.isSelected()));
+            }
+            if (activeCheckBox != null) {
+                callbacks.saveExtensionSetting(SETTING_ACTIVE_SCAN, String.valueOf(activeCheckBox.isSelected()));
+            }
+            if (passiveScanCheckBox != null) {
+                callbacks.saveExtensionSetting(SETTING_PASSIVE_SCAN, String.valueOf(passiveScanCheckBox.isSelected()));
+            }
+            if (filterEnabledCheckBox != null) {
+                callbacks.saveExtensionSetting(SETTING_FILTER_ENABLED, String.valueOf(filterEnabledCheckBox.isSelected()));
+            }
+            
+            // 保存过滤器选项
+            if (filterImagesCheckBox != null) {
+                callbacks.saveExtensionSetting(SETTING_FILTER_IMAGES, String.valueOf(filterImagesCheckBox.isSelected()));
+            }
+            if (filterCSSCheckBox != null) {
+                callbacks.saveExtensionSetting(SETTING_FILTER_CSS, String.valueOf(filterCSSCheckBox.isSelected()));
+            }
+            if (filterJSCheckBox != null) {
+                callbacks.saveExtensionSetting(SETTING_FILTER_JS, String.valueOf(filterJSCheckBox.isSelected()));
+            }
+            if (filterFontsCheckBox != null) {
+                callbacks.saveExtensionSetting(SETTING_FILTER_FONTS, String.valueOf(filterFontsCheckBox.isSelected()));
+            }
+            if (filterStaticCheckBox != null) {
+                callbacks.saveExtensionSetting(SETTING_FILTER_STATIC, String.valueOf(filterStaticCheckBox.isSelected()));
+            }
+            
+            // 保存自定义过滤器
+            if (customFilterTextField != null) {
+                callbacks.saveExtensionSetting(SETTING_CUSTOM_FILTER, customFilterTextField.getText());
+            }
+            
+            // 保存认证头设置
+            if (headersTextArea != null) {
+                callbacks.saveExtensionSetting(SETTING_HEADERS_TO_REMOVE, headersTextArea.getText());
+            }
+            
+        } catch (Exception e) {
+            stderr.println("保存设置时出错: " + e.getMessage());
+            e.printStackTrace(stderr);
         }
     }
 }
