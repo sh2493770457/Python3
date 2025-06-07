@@ -17,7 +17,7 @@
 
 ## 技能发展 💪
 
-- **编程语言**：掌握 Python、JavaScript、java 等语言，提升脚本编写能力。
+- **编程语言**：掌握 Python、JavaScript、Java 等语言，提升脚本编写能力。
 
 ## 个人格言 💬
 
