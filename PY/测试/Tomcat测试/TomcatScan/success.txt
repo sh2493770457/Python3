@@ -1,0 +1,167 @@
+http://156.236.73.104:8080/95pTnf/DfMblz.jsp
+http://47.116.193.185:8080/pi1b7K.jsp
+http://138.201.62.113:8080/KPR1EV/WmT7mW.jsp
+http://101.33.214.18:8080/5Tstmd/rbvnbD.jsp
+https://fmlcprod.faisalmovers.co:8080/nc0mEU/uSknon.jsp
+https://110.39.163.171:8080/kSxaZQ/TWBJe2.jsp
+http://182.92.195.71:8080/crWR0t.jsp
+http://8.138.164.84:8080/JEUc5U/yxgJUv.jsp
+http://175.143.84.116:8080/7J6Qeb/sCuaim.jsp
+http://47.76.187.220:8080/fwsndw.jsp
+http://47.121.132.255:8080/DzkaIQ/LTAMsZ.jsp
+http://8.210.102.198:8080/gqppc7/Jfijy1.jsp
+http://162.55.68.66:8080/fzNktw/Auctik.jsp
+http://8.217.106.167:8080/cA451A/ZQ6DFj.jsp
+http://8.217.106.167:8080/CeR427/bbioj5.jsp
+http://152.52.81.252:8080/3bXa88/n2FA59.jsp
+http://39.100.49.42:8080/JVe9p8/rwH8Uv.jsp
+http://112.106.28.77:8080/ulWio5/lIvTXZ.jsp
+http://5.9.54.10:8080/GrPKuv/6y5mzM.jsp
+http://115.93.10.51:8080/w9utni/r57WJS.jsp
+http://182.92.195.71:8080/E04FN0.jsp
+http://8.138.164.84:8080/aX9V5w/VE60NB.jsp
+http://175.143.84.116:8080/OegU4I/EQLfsu.jsp
+http:/http://47.121.132.255:8080/NJtdUS/PI1BXZ.jsp
+http://47.76.187.220:8080/fPtFIl.jsp
+http://8.210.102.198:8080/cfo7Uu/zSlFdS.jsp
+http://103.169.28.9:8080/DxyGuL/imMFFX.jsp
+http://162.55.68.66:8080/ydqm2u/orIJTr.jsp
+http://212.82.61.199:8080/x9H5Ek/P7oTwD.jsp
+http://5.9.153.181:8080/Z4efHm/GMig1e.jsp
+http://8.217.106.167:8080/21xSko/SASFKW.jsp
+http://47.116.193.185:8080/dHgUov.jsp
+http://112.124.43.28:8080/CRK1D6/yxzVRb.jsp
+http://101.33.214.18:8080/TK5eo0/W8lb2i.jsp
+http://182.92.195.71:8080/A4hsZU.jsp
+http://8.138.164.84:8080/elTtGI/mcSpnR.jsp
+http://47.121.132.255:8080/Y1zpH2/XvK5qL.jsp
+http://47.76.187.220:8080/yMr6Sq.jsp
+http://8.210.102.198:8080/xr4XGC/UCJlKK.jsp
+http://8.217.106.167:8080/mtDHwV/bpQ7fo.jsp
+http://47.98.107.201:8080/Ynr8Gm/SLyzcj.jsp
+http://47.122.31.224:8080/6EMIy9/5KAzSP.jsp
+http://123.60.166.156:8080/IVpsgu/hQJO8c.jsp
+http://47.97.176.254:8080/A1nOAX/XsPoY5.jsp
+http://47.110.160.198:8080/feRVHH/hvLQvl.jsp
+http://8.155.0.232:8080/ZRzdnn/vAEUpU.jsp
+http://8.130.119.184:8080/GBiXpx/NEF6pB.jsp
+http://47.123.5.15:8080/VBmM21/hqk7aI.jsp
+http://61.132.87.153:8080/jXJ7U8/VEGMH0.jsp
+http://121.41.167.22:8080/Abj9rn.jsp
+http://39.107.235.198:8080/R1sv6B/VpSIsL.jsp
+http://121.41.167.22:8080/hlQGS8/3uO4Yi.jsp
+http://8.130.101.199:8080/SlBhN6/n5dX5t.jsp
+http://121.41.0.25:8080/9JNrE5.jsp
+
+121.41.16.245:8081 - CVE-2017-12615 Exploited: http://121.41.16.245:8081/kjdEWN.jsp
+http://213.170.71.187:8090/manager/html tomcat:tomcat
+http://47.110.244.158:8181/manager/html tomcat:tomcat
+http://103.113.85.10:8090/manager/html tomcat:tomcat
+http://119.23.239.39:8081/manager/html tomcat:tomcat
+http://119.23.239.39:8081 tomcat:tomcat - Webshell: http://119.23.239.39:8081/mjyD2J/XHCIrL.jsp
+http://14.195.116.192:8082/manager/html tomcat:tomcat
+http://222.92.99.124:8081/manager/html tomcat:123456
+8.134.182.185:8088 - CVE-2017-12615 Exploited: http://8.134.182.185:8088/tRVqLm.jsp
+http://154.216.33.88:8082/manager/html tomcat:tomcat
+http://202.100.246.140:8091/manager/html tomcat:tomcat
+http://101.132.169.20:8082/manager/html tomcat:tomcat
+http://101.132.169.20:8082 tomcat:tomcat - Webshell: http://101.132.169.20:8082/AsOIZS/NRuAQP.jsp
+http://171.101.120.96:8082/manager/html tomcat:tomcat
+http://14.195.116.196:8082/manager/html tomcat:tomcat
+http://39.98.82.249:8088/manager/html admin:123456
+http://39.98.82.249:8088 admin:123456 - Webshell: http://39.98.82.249:8088/vi00vl/ri5tHd.jsp
+http://123.166.135.8:8081/manager/html root:tomcat
+http://47.100.175.182:8082/manager/html tomcat:tomcat
+http://221.1.82.250:4443/manager/html tomcat:tomcat
+http://221.1.82.250:4443 tomcat:tomcat - Webshell: http://221.1.82.250:4443/hsoezB/aeXj2R.jsp
+http://36.137.33.174:8081/manager/html tomcat:tomcat
+http://222.76.205.254:8081/manager/html tomcat:tomcat
+http://148.69.146.63:8082/manager/html tomcat:tomcat
+http://148.69.146.63:8082 tomcat:tomcat - Webshell: http://148.69.146.63:8082/bh2Il4/6Mvewy.jsp
+http://194.65.151.209:8081/manager/html tomcat:tomcat
+http://185.182.216.61:8090/manager/html tomcat:tomcat
+http://164.85.12.7/manager/html tomcat:tomcat
+http://login-ciam.blau.de/manager/html tomcat:tomcat
+https://3.73.20.132/manager/html tomcat:tomcat
+149.20.188.19 - CNVD-2020-10487 Exploited: ajp://149.20.188.19:8009/WEB-INF/web.xml
+54.222.223.107 - CNVD-2020-10487 Exploited: ajp://54.222.223.107:8009/WEB-INF/web.xml
+183.73.57.161 - CNVD-2020-10487 Exploited: ajp://183.73.57.161:8009/WEB-INF/web.xml
+185.188.125.121 - CNVD-2020-10487 Exploited: ajp://185.188.125.121:8009/WEB-INF/web.xml
+1.72.196.7 - CNVD-2020-10487 Exploited: ajp://1.72.196.7:8009/WEB-INF/web.xml
+114.156.138.132 - CNVD-2020-10487 Exploited: ajp://114.156.138.132:8009/WEB-INF/web.xml
+27.228.45.169 - CNVD-2020-10487 Exploited: ajp://27.228.45.169:8009/WEB-INF/web.xml
+https://login-ciam.blau.de/manager/html tomcat:tomcat
+124.109.32.141 - CNVD-2020-10487 Exploited: ajp://124.109.32.141:8009/WEB-INF/web.xml
+http://176.34.123.83/manager/html tomcat:tomcat
+31.192.230.203 - CNVD-2020-10487 Exploited: ajp://31.192.230.203:8009/WEB-INF/web.xml
+47.106.96.226 - CNVD-2020-10487 Exploited: ajp://47.106.96.226:8009/WEB-INF/web.xml
+49.247.171.34 - CNVD-2020-10487 Exploited: ajp://49.247.171.34:8009/WEB-INF/web.xml
+49.110.143.42 - CNVD-2020-10487 Exploited: ajp://49.110.143.42:8009/WEB-INF/web.xml
+115.68.25.156 - CNVD-2020-10487 Exploited: ajp://115.68.25.156:8009/WEB-INF/web.xml
+157.90.240.6 - CNVD-2020-10487 Exploited: ajp://157.90.240.6:8009/WEB-INF/web.xml
+27.228.129.198 - CNVD-2020-10487 Exploited: ajp://27.228.129.198:8009/WEB-INF/web.xml
+138.197.209.51 - CNVD-2020-10487 Exploited: ajp://138.197.209.51:8009/WEB-INF/web.xml
+110.160.166.43 - CNVD-2020-10487 Exploited: ajp://110.160.166.43:8009/WEB-INF/web.xml
+27.229.106.212 - CNVD-2020-10487 Exploited: ajp://27.229.106.212:8009/WEB-INF/web.xml
+119.29.36.218 - CNVD-2020-10487 Exploited: ajp://119.29.36.218:8009/WEB-INF/web.xml
+54.165.209.140 - CNVD-2020-10487 Exploited: ajp://54.165.209.140:8009/WEB-INF/web.xml
+https://52.207.82.3/manager/html tomcat:tomcat
+192.241.167.127 - CNVD-2020-10487 Exploited: ajp://192.241.167.127:8009/WEB-INF/web.xml
+1.72.165.112 - CNVD-2020-10487 Exploited: ajp://1.72.165.112:8009/WEB-INF/web.xml
+1.74.110.19 - CNVD-2020-10487 Exploited: ajp://1.74.110.19:8009/WEB-INF/web.xml
+139.159.187.205 - CNVD-2020-10487 Exploited: ajp://139.159.187.205:8009/WEB-INF/web.xml
+https://3.125.177.123/manager/html tomcat:tomcat
+prototype.polysoft.com.au - CNVD-2020-10487 Exploited: ajp://prototype.polysoft.com.au:8009/WEB-INF/web.xml
+prototype.polysoft.com.au - CNVD-2020-10487 Exploited: ajp://prototype.polysoft.com.au:8009/WEB-INF/web.xml
+52.8.177.70 - CNVD-2020-10487 Exploited: ajp://52.8.177.70:8009/WEB-INF/web.xml
+43.139.70.32 - CNVD-2020-10487 Exploited: ajp://43.139.70.32:8009/WEB-INF/web.xml
+https://admin.aunz.zhouzx.com/manager/html tomcat:tomcat
+http://admin.aunz.zhouzx.com/manager/html tomcat:tomcat
+18.234.161.51 - CNVD-2020-10487 Exploited: ajp://18.234.161.51:8009/WEB-INF/web.xml
+http://103.148.40.130:9000/manager/html admin:tomcat
+www.vsc24.eu - CNVD-2020-10487 Exploited: ajp://www.vsc24.eu:8009/WEB-INF/web.xml
+vsc24.eu - CNVD-2020-10487 Exploited: ajp://vsc24.eu:8009/WEB-INF/web.xml
+https://xnetdev.hypertherm.com/manager/html tomcat:tomcat
+https://54.238.0.232/manager/html tomcat:tomcat
+http://xnetdev.hypertherm.com/manager/html tomcat:tomcat
+http://app.dfyoung.com/manager/html tomcat:tomcat
+34.219.213.109 - CNVD-2020-10487 Exploited: ajp://34.219.213.109:8009/WEB-INF/web.xml
+ik1-306-13226.vs.sakura.ne.jp - CNVD-2020-10487 Exploited: ajp://ik1-306-13226.vs.sakura.ne.jp:8009/WEB-INF/web.xml
+https://app.dfyoung.com/manager/html tomcat:tomcat
+http://89.106.25.188:9090/manager/html tomcat:tomcat
+176.9.58.7 - CNVD-2020-10487 Exploited: ajp://176.9.58.7:8009/WEB-INF/web.xml
+60.204.205.234 - CNVD-2020-10487 Exploited: ajp://60.204.205.234:8009/WEB-INF/web.xml
+https://124.43.132.109/manager/html tomcat:tomcat
+61.221.226.182 - CNVD-2020-10487 Exploited: ajp://61.221.226.182:8009/WEB-INF/web.xml
+https://ops.otn.ca/manager/html tomcat:tomcat
+http://nsfas.org.za/manager/html tomcat:tomcat
+https://nsfas.org.za/manager/html tomcat:tomcat
+121.201.95.192 - CNVD-2020-10487 Exploited: ajp://121.201.95.192:8009/WEB-INF/web.xml
+157.245.9.226 - CNVD-2020-10487 Exploited: ajp://157.245.9.226:8009/WEB-INF/web.xml
+40.118.209.26 - CNVD-2020-10487 Exploited: ajp://40.118.209.26:8009/WEB-INF/web.xml
+123.207.182.103 - CNVD-2020-10487 Exploited: ajp://123.207.182.103:8009/WEB-INF/web.xml
+128.199.107.59 - CNVD-2020-10487 Exploited: ajp://128.199.107.59:8009/WEB-INF/web.xml
+120.79.132.187 - CNVD-2020-10487 Exploited: ajp://120.79.132.187:8009/WEB-INF/web.xml
+199.126.241.33 - CNVD-2020-10487 Exploited: ajp://199.126.241.33:8009/WEB-INF/web.xml
+https://210.181.128.33/manager/html tomcat:tomcat
+https://18.224.102.86/manager/html tomcat:tomcat
+http://labkey.hyperunison.com/manager/html tomcat:tomcat
+183.111.165.208 - CNVD-2020-10487 Exploited: ajp://183.111.165.208:8009/WEB-INF/web.xml
+121.40.168.93 - CNVD-2020-10487 Exploited: ajp://121.40.168.93:8009/WEB-INF/web.xml
+153.126.140.230 - CNVD-2020-10487 Exploited: ajp://153.126.140.230:8009/WEB-INF/web.xml
+https://169.145.99.219/manager/html tomcat:tomcat
+https://34.205.180.233/manager/html tomcat:tomcat
+https://63.119.82.70/manager/html tomcat:tomcat
+112.163.71.70 - CNVD-2020-10487 Exploited: ajp://112.163.71.70:8009/WEB-INF/web.xml
+123.56.195.88 - CNVD-2020-10487 Exploited: ajp://123.56.195.88:8009/WEB-INF/web.xml
+https://196.21.232.170/manager/html tomcat:tomcat
+178.128.164.21 - CNVD-2020-10487 Exploited: ajp://178.128.164.21:8009/WEB-INF/web.xml
+104.237.139.201 - CNVD-2020-10487 Exploited: ajp://104.237.139.201:8009/WEB-INF/web.xml
+119.8.145.61 - CNVD-2020-10487 Exploited: ajp://119.8.145.61:8009/WEB-INF/web.xml
+190.106.12.70 - CNVD-2020-10487 Exploited: ajp://190.106.12.70:8009/WEB-INF/web.xml
+https://52.131.78.134/manager/html tomcat:tomcat
+http://203.142.125.21:8080/manager/html tomcat:tomcat
+http://203.142.125.24:8080/manager/html tomcat:tomcat
+https://63.119.82.70/manager/html tomcat:tomcat
+https://169.145.99.219/manager/html tomcat:tomcat
+https://34.205.180.233/manager/html tomcat:tomcat

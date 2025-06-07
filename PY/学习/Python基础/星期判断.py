@@ -1,0 +1,22 @@
+#输入星期几的第一个字母，根据字母来判断是星期几，如果第一个字母一样，判断第二个
+weekT={
+    'h':'Thursday-星期四',
+    'u':'Tuesday-星期二'
+}
+weekS={
+    'a':'Saturday-星期六',
+    'u':'Sunday-星期日'
+}
+week={
+    't':weekT,
+    's':weekS,
+    'm':'Monday-星期一',
+    'w':'Wensday-星期三',
+    'f':'Friday-星期五'
+}
+print('欢迎来到我设计的程序！')
+a=week[str(input('请输入第一位字母（不区分大小写）：')).lower()]
+if a==weekT or a==weekS:
+    print(a[str(input('请输入第二位字母（不区分大小写）：')).lower()])
+else:
+    print(a)

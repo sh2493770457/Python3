@@ -1,0 +1,72 @@
+http://115.93.10.51:8080/manager/html tomcat:tomcat
+http://18.234.252.10:8080/manager/html tomcat:tomcat
+http://115.93.10.51:8080 tomcat:tomcat - Webshell: http://115.93.10.51:8080/kAdn5Q/m4B04l.jsp
+http://18.234.252.10:8080 tomcat:tomcat - Webshell: http://18.234.252.10:8080/oiFGNG/PlGZmC.jsp
+http://112.46.132.28:8080/manager/html tomcat:tomcat
+182.92.195.71:8080 - CVE-2017-12615 Exploited: http://182.92.195.71:8080/EBEBak.jsp
+http://222.204.7.178:8080/manager/html tomcat:tomcat
+http://154.62.229.22:8080/manager/html tomcat:tomcat
+http://103.97.101.160:8080/manager/html tomcat:tomcat
+http://119.23.32.101:8080/manager/html tomcat:tomcat
+http://8.138.164.84:8080/manager/html tomcat:tomcat
+http://8.138.164.84:8080 tomcat:tomcat - Webshell: http://8.138.164.84:8080/0h1PTC/RFoKQQ.jsp
+http://176.236.169.37:8080/manager/html tomcat:tomcat
+http://176.236.169.37:8080/manager/html tomcat:tomcat
+http://110.166.216.154:8080/manager/html tomcat:tomcat
+http://183.236.21.250:8080/manager/html tomcat:tomcat
+http://189.243.234.249:8080/manager/html tomcat:tomcat
+http://189.243.234.249:8080 tomcat:tomcat - Webshell: http://189.243.234.249:8080/LDXsJj/bPSBIU.jsp
+http://182.61.23.171:8080/manager/html tomcat:tomcat
+http://102.88.18.106:8080/manager/html tomcat:tomcat
+http://222.204.7.142:8080/manager/html tomcat:tomcat
+http://222.204.7.225:8080/manager/html tomcat:tomcat
+http://222.204.7.182:8080/manager/html tomcat:tomcat
+http://219.140.183.45:8080/manager/html tomcat:tomcat
+http://85.105.91.249:8080/manager/html tomcat:tomcat
+http://175.143.84.116:8080/manager/html tomcat:tomcat
+http://85.105.91.249:8080/manager/html tomcat:tomcat
+http://175.143.84.116:8080 tomcat:tomcat - Webshell: http://175.143.84.116:8080/UbUToh/1uQaGT.jsp
+http://222.204.7.181:8080/manager/html tomcat:tomcat
+http://110.49.104.230:8080/manager/html tomcat:tomcat
+http://47.121.132.255:8080/manager/html tomcat:123456
+http://47.121.132.255:8080 tomcat:123456 - Webshell: http://47.121.132.255:8080/u5cXkv/CwVwNP.jsp
+http://212.156.94.134:8080/manager/html tomcat:tomcat
+http://113.143.34.107:8080/manager/html tomcat:tomcat
+47.76.187.220:8080 - CVE-2017-12615 Exploited: http://47.76.187.220:8080/GEQvPS.jsp
+http://91.5.235.126:8080/manager/html tomcat:tomcat
+http://59.61.84.244:8080/manager/html tomcat:tomcat
+http://8.210.102.198:8080/manager/html tomcat:tomcat
+http://8.210.102.198:8080 tomcat:tomcat - Webshell: http://8.210.102.198:8080/xALi62/odyh5R.jsp
+http://222.204.3.93:8080/manager/html tomcat:tomcat
+http://103.169.28.9:8080/manager/html tomcat:tomcat
+http://170.64.199.45:8080/manager/html tomcat:tomcat
+http://103.169.28.9:8080 tomcat:tomcat - Webshell: http://103.169.28.9:8080/azvhYx/GBssHl.jsp
+http://162.55.68.66:8080/manager/html tomcat:tomcat
+http://162.55.68.66:8080 tomcat:tomcat - Webshell: http://162.55.68.66:8080/0fBQbJ/yJ8bUj.jsp
+http://120.92.166.71:8080/manager/html tomcat:tomcat
+http://112.115.163.247:8080/manager/html tomcat:tomcat
+http://120.92.166.71:8080/manager/html tomcat:tomcat
+http://119.91.151.209:8080/manager/html admin:123456
+http://14.23.58.18:8080/manager/html tomcat:tomcat
+http://212.82.61.199:8080/manager/html tomcat:tomcat
+http://212.82.61.199:8080 tomcat:tomcat - Webshell: http://212.82.61.199:8080/AmTvit/u4t9qq.jsp
+http://119.147.214.158:8080/manager/html tomcat:tomcat
+http://176.42.232.204:8080/manager/html tomcat:tomcat
+http://89.214.95.55:8080/manager/html tomcat:tomcat
+http://122.112.197.70:8080/manager/html tomcat:tomcat
+http://5.9.153.181:8080/manager/html tomcat:tomcat
+http://5.9.153.181:8080 tomcat:tomcat - Webshell: http://5.9.153.181:8080/50yhP8/ALLqIL.jsp
+http://14.52.201.86:8080/manager/html tomcat:tomcat
+https://152.42.225.255:8080/manager/html tomcat:tomcat
+http://8.217.106.167:8080/manager/html tomcat:tomcat
+http://8.217.106.167:8080 tomcat:tomcat - Webshell: http://8.217.106.167:8080/Qw9UtY/txU08P.jsp
+http://143.64.165.78:8080/manager/html tomcat:tomcat
+http://143.64.165.78:8080/manager/html tomcat:tomcat
+http://8.130.89.32:8080/manager/html admin:tomcat
+http://8.219.186.238:8080/manager/html root:123456
+http://143.64.227.181:8080/manager/html tomcat:tomcat
+http://103.116.190.61:8080/manager/html tomcat:tomcat
+http://58.33.47.89:8080/manager/html tomcat:tomcat
+http://58.33.47.89:8080 tomcat:tomcat - Webshell: http://58.33.47.89:8080/xLYBEv/6VHNHh.jsp
+http://143.64.227.181:8080/manager/html tomcat:tomcat
+https://152.42.225.255:8080/manager/html tomcat:tomcat

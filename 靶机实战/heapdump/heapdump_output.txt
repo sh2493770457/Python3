@@ -1,0 +1,384 @@
+[2024-10-26 22:33:16][-] Start process keyword: password
+>> AbstractLdapAuthenticationProvider.emptyPassword -> Empty Password
+>> AbstractLdapAuthenticationProvider.emptyPassword -> 用户名或密码错误
+>> BindAuthenticator.emptyPassword -> Empty Password
+>> BindAuthenticator.emptyPassword -> 用户名或密码错误
+>> ConnectionProperties.Password -> The password to use when connecting
+>> ConnectionProperties.clientCertificateKeyStorePassword -> Password for the client certificates KeyStore
+>> ConnectionProperties.disconnectOnExpiredPasswords -> If "disconnectOnExpiredPasswords" is set to "false" and password is expired then server enters "sandbox" mode and sends ERR
+>> ConnectionProperties.passwordCharacterEncoding -> What character encoding is used for passwords? Leaving this set to the default value
+>> ConnectionProperties.trustCertificateKeyStorePassword -> Password for the trusted root certificates KeyStore
+>> MysqlClearPasswordPlugin.1 -> Unsupported character encoding ''{0}'' for ''passwordCharacterEncoding'' or ''characterEncoding''.
+>> MysqlNativePasswordPlugin.1 -> Unsupported character encoding ''{0}'' for ''passwordCharacterEncoding'' or ''characterEncoding''.
+>> PasswordComparisonAuthenticator.badCredentials -> Bad credentials
+>> PasswordComparisonAuthenticator.badCredentials -> 用户名或密码错误
+>> Sha256PasswordPlugin.0 -> Unable to read public key {0}
+>> Sha256PasswordPlugin.1 -> Unable to close public key file
+>> Sha256PasswordPlugin.2 -> Public Key Retrieval is not allowed
+>> Sha256PasswordPlugin.3 -> Unsupported character encoding ''{0}'' for ''passwordCharacterEncoding'' or ''characterEncoding''.
+>> combinedRealm.getPassword -> The getPassword
+>> dataSourceRealm.getPassword.exception -> Exception retrieving password for [{0}]
+>> org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter -> 1600
+>> sslHostConfig.invalid_truststore_password -> The provided trust store password could not be used to unlock and/or validate the trust store. Retrying to access the trust store with a null password which will skip validation.
+[2024-10-26 22:33:53][-] Start process keyword: mysql
+>> MysqlClearPasswordPlugin.1 -> Unsupported character encoding ''{0}'' for ''passwordCharacterEncoding'' or ''characterEncoding''.
+>> MysqlIO.1 -> Unexpected end of input stream
+>> MysqlIO.10 -> message from server: "
+>> MysqlIO.100 -> in binary-encoded result set.
+>> MysqlIO.102 -> , underlying cause:
+>> MysqlIO.103 -> Unexpected packet length
+>> MysqlIO.15 -> SSL Connection required, but not supported by server.
+>> MysqlIO.17 -> Attempt to close streaming result set
+>> MysqlIO.18 -> when no streaming  result set was registered. This is an internal error.
+>> MysqlIO.19 -> Attempt to close streaming result set
+>> MysqlIO.2 -> Reading packet of length
+>> MysqlIO.20 -> that was not registered.
+>> MysqlIO.21 -> Only one streaming result set may be open and in use per-connection. Ensure that you have called .close
+>> MysqlIO.22 -> any active result sets before attempting more queries.
+>> MysqlIO.23 -> Can not use streaming results with multiple result statements
+>> MysqlIO.25 -> ...
+>> MysqlIO.28 -> Not issuing EXPLAIN for query of size >
+>> MysqlIO.29 -> bytes.
+>> MysqlIO.3 -> 
+Packet header:
+
+>> MysqlIO.33 -> The following query was executed with a bad index, use 'EXPLAIN' for more details:
+>> MysqlIO.35 -> The following query was executed using no index, use 'EXPLAIN' for more details:
+>> MysqlIO.36 -> 
+
+Large packet dump truncated at
+>> MysqlIO.37 -> bytes.
+>> MysqlIO.39 -> Streaming result set
+>> MysqlIO.4 -> readPacket
+>> MysqlIO.40 -> is still active.
+>> MysqlIO.41 -> No statements may be issued when any streaming result sets are open and in use on a given connection.
+>> MysqlIO.42 -> Ensure that you have called .close
+>> MysqlIO.43 -> Unexpected end of input stream
+>> MysqlIO.44 -> Reading reusable packet of length
+>> MysqlIO.45 -> 
+Packet header:
+
+>> MysqlIO.46 -> reuseAndReadPacket
+>> MysqlIO.47 -> Unexpected end of input stream
+>> MysqlIO.48 -> Unexpected end of input stream
+>> MysqlIO.49 -> Packets received out of order
+>> MysqlIO.50 -> Short read from server, expected
+>> MysqlIO.51 -> bytes, received only
+>> MysqlIO.58 -> 
+
+Original packet
+>> MysqlIO.59 -> send
+>> MysqlIO.60 -> Unable to open file
+>> MysqlIO.63 -> for 'LOAD DATA LOCAL INFILE' command.
+>> MysqlIO.65 -> Unable to close local file during LOAD DATA LOCAL INFILE command
+>> MysqlIO.68 -> message from server: "
+>> MysqlIO.70 -> Unknown column
+>> MysqlIO.72 -> message from server: "
+>> MysqlIO.75 -> No name specified for socket factory
+>> MysqlIO.76 -> Could not create socket factory '
+>> MysqlIO.77 -> ' due to underlying exception:
+>> MysqlIO.79 -> Unexpected end of input stream
+>> MysqlIO.8 -> Slow query explain results for '
+>> MysqlIO.80 -> Unexpected end of input stream
+>> MysqlIO.80 -> Unexpected end of input stream
+>> MysqlIO.81 -> Unexpected end of input stream
+>> MysqlIO.82 -> Unexpected end of input stream
+>> MysqlIO.83 -> Packets received out of order
+>> MysqlIO.84 -> Packets received out of order
+>> MysqlIO.85 -> Unexpected end of input stream
+>> MysqlIO.86 -> Unexpected end of input stream
+>> MysqlIO.87 -> Unexpected end of input stream
+>> MysqlIO.88 -> Packets received out of order
+>> MysqlIO.89 -> Packets received out of order
+>> MysqlIO.9 -> ' :
+
+
+>> MysqlIO.9 -> ' :
+
+
+>> MysqlIO.91 -> Failed to create message digest 'SHA-1' for authentication.
+>> MysqlIO.92 -> You must use a JDK that supports JCE to be able to use secure connection authentication
+>> MysqlIO.98 -> in column
+>> MysqlIO.99 -> of
+>> MysqlIO.EOF -> Can not read response from server. Expected to read {0} bytes, read {1} bytes before connection was unexpectedly lost.
+>> MysqlIO.InnoDBStatusFailed -> Couldn't retrieve InnoDB status due to underlying exception:
+>> MysqlIO.LoadDataLocalNotAllowed -> Server asked for stream in response to LOAD DATA LOCAL INFILE but functionality is disabled at client by 'allowLoadLocalInfile' being set to 'false'.
+>> MysqlIO.NoInnoDBStatusFound -> No InnoDB status output returned by server.
+>> MysqlIO.ServerSlowQuery -> The server processing the query has indicated that the query was marked "slow".
+>> MysqlIO.SlowQuery -> Slow query
+>> MysqlIo.BadStatementInterceptor -> Unable to load statement interceptor ''{0}''.
+>> MysqlNativePasswordPlugin.1 -> Unsupported character encoding ''{0}'' for ''passwordCharacterEncoding'' or ''characterEncoding''.
+>> MysqlXAConnection.001 -> Invalid flag, must use TMNOFLAGS, or any combination of TMSTARTRSCAN and TMENDRSCAN
+>> MysqlXAConnection.002 -> Error while recovering XIDs from RM. GTRID and BQUAL are wrong sizes
+>> MysqlXAConnection.003 -> Undetermined error occurred in the underlying Connection - check your data for consistency
+[2024-10-26 22:34:50][-] Start process keyword: passwd
+>> passwdUserDatabase.readFail -> Failed to obtain a complete set of users from /etc/passwd
+[2024-10-26 22:35:05][-] Start process keyword: 13306
+[2024-10-26 22:35:12][-] Start process keyword: 3306
+[2024-10-26 22:35:41][-] Start process keyword: password
+>> AbstractLdapAuthenticationProvider.emptyPassword -> Empty Password
+>> AbstractLdapAuthenticationProvider.emptyPassword -> 用户名或密码错误
+>> BindAuthenticator.emptyPassword -> Empty Password
+>> BindAuthenticator.emptyPassword -> 用户名或密码错误
+>> ConnectionProperties.Password -> The password to use when connecting
+>> ConnectionProperties.clientCertificateKeyStorePassword -> Password for the client certificates KeyStore
+>> ConnectionProperties.disconnectOnExpiredPasswords -> If "disconnectOnExpiredPasswords" is set to "false" and password is expired then server enters "sandbox" mode and sends ERR
+>> ConnectionProperties.passwordCharacterEncoding -> What character encoding is used for passwords? Leaving this set to the default value
+>> ConnectionProperties.trustCertificateKeyStorePassword -> Password for the trusted root certificates KeyStore
+>> MysqlClearPasswordPlugin.1 -> Unsupported character encoding ''{0}'' for ''passwordCharacterEncoding'' or ''characterEncoding''.
+>> MysqlNativePasswordPlugin.1 -> Unsupported character encoding ''{0}'' for ''passwordCharacterEncoding'' or ''characterEncoding''.
+>> PasswordComparisonAuthenticator.badCredentials -> Bad credentials
+>> PasswordComparisonAuthenticator.badCredentials -> 用户名或密码错误
+>> Sha256PasswordPlugin.0 -> Unable to read public key {0}
+>> Sha256PasswordPlugin.1 -> Unable to close public key file
+>> Sha256PasswordPlugin.2 -> Public Key Retrieval is not allowed
+>> Sha256PasswordPlugin.3 -> Unsupported character encoding ''{0}'' for ''passwordCharacterEncoding'' or ''characterEncoding''.
+>> combinedRealm.getPassword -> The getPassword
+>> dataSourceRealm.getPassword.exception -> Exception retrieving password for [{0}]
+>> org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter -> 1600
+>> sslHostConfig.invalid_truststore_password -> The provided trust store password could not be used to unlock and/or validate the trust store. Retrying to access the trust store with a null password which will skip validation.
+[2024-10-26 22:36:02][-] Start process keyword: password=
+[2024-10-26 22:37:05][-] Start process keyword: db_password
+[2024-10-26 22:37:09][-] Start process keyword: jdbc
+>> ConnectionProperties.jdbcCompliantTruncation -> Should the driver throw java.sql.DataTruncation exceptions when data is truncated as is required by the JDBC specification when connected to a server that supports warnings
+>> JDBC4Connection.ClientInfoNotImplemented -> Configured clientInfoProvider class ''{0}'' does not implement com.mysql.jdbc.JDBC4ClientInfoProvider.
+>> JDBCStore.SQLException -> SQL Error [{0}]
+>> JDBCStore.checkConnectionClassNotFoundException -> JDBC driver class not found [{0}]
+>> JDBCStore.checkConnectionDBClosed -> The database connection is null or was found to be closed. Trying to re-open it.
+>> JDBCStore.checkConnectionDBReOpenFail -> The re-open on the database failed. The database could be down.
+>> JDBCStore.checkConnectionSQLException -> A SQL exception occurred [{0}]
+>> JDBCStore.close -> Exception closing database connection [{0}]
+>> JDBCStore.commitSQLException -> SQLException committing connection before closing
+>> JDBCStore.loading -> Loading Session [{0}] from database [{1}]
+>> JDBCStore.missingDataSourceName -> No valid JNDI name was given.
+>> JDBCStore.removing -> Removing Session [{0}] at database [{1}]
+>> JDBCStore.saving -> Saving Session [{0}] to database [{1}]
+>> JDBCStore.wrongDataSource -> Cannot open JNDI DataSource [{0}]
+>> JdbcDaoImpl.noAuthority -> User {0} has no GrantedAuthority
+>> JdbcDaoImpl.noAuthority -> 没有为用户{0}指定角色
+>> JdbcDaoImpl.notFound -> User {0} not found
+>> JdbcDaoImpl.notFound -> 未找到用户{0}
+>> jdbcAccessLogValve.close -> Failed to close database
+>> jdbcAccessLogValve.exception -> Exception performing insert access entry
+>> jdbcRealm.authenticateFailure -> Username [{0}] NOT successfully authenticated
+>> jdbcRealm.authenticateSuccess -> Username [{0}] successfully authenticated
+>> jdbcRealm.close -> Exception closing database connection
+>> jdbcRealm.exception -> Exception performing authentication
+>> jdbcRealm.open -> Exception opening database connection
+>> jdbcRealm.open.invalidurl -> Driver [{0}] does not support the url [{1}]
+>> webappClassLoader.clearJdbc -> The web application [{0}] registered the JDBC driver [{1}] but failed to unregister it when the web application was stopped. To prevent a memory leak, the JDBC Driver has been forcibly unregistered.
+>> webappClassLoader.jdbcRemoveFailed -> JDBC driver de-registration failed for web application [{0}]
+>> MysqlClearPasswordPlugin.1 -> Unsupported character encoding ''{0}'' for ''passwordCharacterEncoding'' or ''characterEncoding''.
+>> MysqlIO.1 -> Unexpected end of input stream
+>> MysqlIO.100 -> in binary-encoded result set.
+>> MysqlIO.102 -> , underlying cause:
+>> MysqlIO.103 -> Unexpected packet length
+>> MysqlIO.15 -> SSL Connection required, but not supported by server.
+>> MysqlIO.17 -> Attempt to close streaming result set
+>> MysqlIO.18 -> when no streaming  result set was registered. This is an internal error.
+>> MysqlIO.19 -> Attempt to close streaming result set
+>> MysqlIO.2 -> Reading packet of length
+>> MysqlIO.20 -> that was not registered.
+>> MysqlIO.21 -> Only one streaming result set may be open and in use per-connection. Ensure that you have called .close
+>> MysqlIO.22 -> any active result sets before attempting more queries.
+>> MysqlIO.23 -> Can not use streaming results with multiple result statements
+>> MysqlIO.25 -> ...
+>> MysqlIO.28 -> Not issuing EXPLAIN for query of size >
+>> MysqlIO.29 -> bytes.
+>> MysqlIO.3 -> 
+Packet header:
+
+>> MysqlIO.33 -> The following query was executed with a bad index, use 'EXPLAIN' for more details:
+>> MysqlIO.35 -> The following query was executed using no index, use 'EXPLAIN' for more details:
+>> MysqlIO.36 -> 
+
+Large packet dump truncated at
+>> MysqlIO.37 -> bytes.
+>> MysqlIO.39 -> Streaming result set
+>> MysqlIO.4 -> readPacket
+>> MysqlIO.40 -> is still active.
+>> MysqlIO.41 -> No statements may be issued when any streaming result sets are open and in use on a given connection.
+>> MysqlIO.42 -> Ensure that you have called .close
+>> MysqlIO.43 -> Unexpected end of input stream
+>> MysqlIO.44 -> Reading reusable packet of length
+>> MysqlIO.45 -> 
+Packet header:
+
+>> MysqlIO.46 -> reuseAndReadPacket
+>> MysqlIO.47 -> Unexpected end of input stream
+>> MysqlIO.48 -> Unexpected end of input stream
+>> MysqlIO.49 -> Packets received out of order
+>> MysqlIO.50 -> Short read from server, expected
+>> MysqlIO.51 -> bytes, received only
+>> MysqlIO.57 -> send
+>> MysqlIO.58 -> 
+
+Original packet
+>> MysqlIO.59 -> send
+>> MysqlIO.60 -> Unable to open file
+>> MysqlIO.63 -> for 'LOAD DATA LOCAL INFILE' command.
+>> MysqlIO.64 -> Due to underlying IOException:
+>> MysqlIO.65 -> Unable to close local file during LOAD DATA LOCAL INFILE command
+>> MysqlIO.68 -> message from server: "
+>> MysqlIO.70 -> Unknown column
+>> MysqlIO.72 -> message from server: "
+>> MysqlIO.75 -> No name specified for socket factory
+>> MysqlIO.76 -> Could not create socket factory '
+>> MysqlIO.77 -> ' due to underlying exception:
+>> MysqlIO.79 -> Unexpected end of input stream
+>> MysqlIO.8 -> Slow query explain results for '
+>> MysqlIO.80 -> Unexpected end of input stream
+>> MysqlIO.81 -> Unexpected end of input stream
+>> MysqlIO.82 -> Unexpected end of input stream
+>> MysqlIO.83 -> Packets received out of order
+>> MysqlIO.84 -> Packets received out of order
+>> MysqlIO.85 -> Unexpected end of input stream
+>> MysqlIO.86 -> Unexpected end of input stream
+>> MysqlIO.87 -> Unexpected end of input stream
+>> MysqlIO.88 -> Packets received out of order
+>> MysqlIO.89 -> Packets received out of order
+>> MysqlIO.9 -> ' :
+
+
+>> MysqlIO.91 -> Failed to create message digest 'SHA-1' for authentication.
+>> MysqlIO.92 -> You must use a JDK that supports JCE to be able to use secure connection authentication
+>> MysqlIO.97 -> Unknown type '
+>> MysqlIO.98 -> in column
+>> MysqlIO.99 -> of
+>> MysqlIO.EOF -> Can not read response from server. Expected to read {0} bytes, read {1} bytes before connection was unexpectedly lost.
+>> MysqlIO.InnoDBStatusFailed -> Couldn't retrieve InnoDB status due to underlying exception:
+>> MysqlIO.LoadDataLocalNotAllowed -> Server asked for stream in response to LOAD DATA LOCAL INFILE but functionality is disabled at client by 'allowLoadLocalInfile' being set to 'false'.
+>> MysqlIO.NoInnoDBStatusFound -> No InnoDB status output returned by server.
+>> MysqlIO.ServerSlowQuery -> The server processing the query has indicated that the query was marked "slow".
+>> MysqlIO.SlowQuery -> Slow query
+>> MysqlIo.BadStatementInterceptor -> Unable to load statement interceptor ''{0}''.
+>> MysqlNativePasswordPlugin.1 -> Unsupported character encoding ''{0}'' for ''passwordCharacterEncoding'' or ''characterEncoding''.
+>> MysqlXAConnection.001 -> Invalid flag, must use TMNOFLAGS, or any combination of TMSTARTRSCAN and TMENDRSCAN
+>> MysqlXAConnection.002 -> Error while recovering XIDs from RM. GTRID and BQUAL are wrong sizes
+>> MysqlXAConnection.003 -> Undetermined error occurred in the underlying Connection - check your data for consistency
+>> AbstractLdapAuthenticationProvider.emptyPassword -> Empty Password
+>> AbstractLdapAuthenticationProvider.emptyPassword -> 鐢ㄦ埛鍚嶆垨瀵嗙爜閿欒
+>> BindAuthenticator.emptyPassword -> Empty Password
+>> BindAuthenticator.emptyPassword -> 鐢ㄦ埛鍚嶆垨瀵嗙爜閿欒
+>> ConnectionProperties.Password -> The password to use when connecting
+>> ConnectionProperties.clientCertificateKeyStorePassword -> Password for the client certificates KeyStore
+>> ConnectionProperties.passwordCharacterEncoding -> What character encoding is used for passwords? Leaving this set to the default value
+>> ConnectionProperties.trustCertificateKeyStorePassword -> Password for the trusted root certificates KeyStore
+>> MysqlClearPasswordPlugin.1 -> Unsupported character encoding ''{0}'' for ''passwordCharacterEncoding'' or ''characterEncoding''.
+>> MysqlNativePasswordPlugin.1 -> Unsupported character encoding ''{0}'' for ''passwordCharacterEncoding'' or ''characterEncoding''.
+>> PasswordComparisonAuthenticator.badCredentials -> Bad credentials
+>> PasswordComparisonAuthenticator.badCredentials -> 鐢ㄦ埛鍚嶆垨瀵嗙爜閿欒
+>> Sha256PasswordPlugin.0 -> Unable to read public key {0}
+>> Sha256PasswordPlugin.1 -> Unable to close public key file
+>> Sha256PasswordPlugin.2 -> Public Key Retrieval is not allowed
+>> Sha256PasswordPlugin.3 -> Unsupported character encoding ''{0}'' for ''passwordCharacterEncoding'' or ''characterEncoding''.
+>> combinedRealm.getPassword -> The getPassword
+>> dataSourceRealm.getPassword.exception -> Exception retrieving password for [{0}]
+>> org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter -> 1600
+>> sslHostConfig.invalid_truststore_password -> The provided trust store password could not be used to unlock and/or validate the trust store. Retrying to access the trust store with a null password which will skip validation.
+>> AbstractUserDetailsAuthenticationProvider.credentialsExpired -> User credentials have expired
+>> AccountStatusUserDetailsChecker.disabled -> User is disabled
+>> Africa/Kampala -> Africa/Nairobi
+>> Africa/Kigali -> Africa/Maputo
+>> Africa/Kinshasa -> Africa/Lagos
+>> BreakIteratorInfo -> |  th
+>> CalendarData -> en en-GB en-IE en-MT |  ar be bg ca cs da de el el-CY es es-ES es-US et fi fr fr-CA hi hr hu in-ID is it iw ja ko lt lv mk ms-MY mt mt-MT nl no pl pt pt-BR pt-PT ro ru sk sl sq sr sr-Latn-BA sr-Latn-ME sr-Latn-RS sv th tr uk vi zh
+>> Clob.5 -> String to set can not be NULL
+>> ConnectionProperties.includeInnodbStatusInDeadlockExceptions -> Include the output of "SHOW ENGINE INNODB STATUS" in exception messages when deadlock exceptions are detected?
+>> ConnectionProperties.jdbcCompliantTruncation -> Should the driver throw java.sql.DataTruncation exceptions when data is truncated as is required by the JDBC specification when connected to a server that supports warnings
+>> ConnectionProperties.loadBalanceAutoCommitStatementRegex -> When load-balancing is enabled for auto-commit statements
+>> ConnectionProperties.loadBalanceAutoCommitStatementThreshold -> When auto-commit is enabled, the number of statements which should be executed before triggering load-balancing to rebalance.  Default value of 0 causes load-balanced connections to only rebalance when exceptions are encountered, or auto-commit is disabled and transactions are explicitly committed or rolled back.
+>> ConnectionProperties.loadBalanceBlacklistTimeout -> Time in milliseconds between checks of servers which are unavailable, by controlling how long a server lives in the global blacklist.
+>> ConnectionProperties.loadBalanceConnectionGroup -> Logical group of load-balanced connections within a classloader, used to manage different groups independently.  If not specified, live management of load-balanced connections is disabled.
+>> ConnectionProperties.loadBalanceEnableJMX -> Enables JMX-based management of load-balanced connection groups, including live addition/removal of hosts from load-balancing pool.
+>> ConnectionProperties.loadBalanceExceptionChecker -> Fully-qualified class name of custom exception checker.  The class must implement com.mysql.jdbc.LoadBalanceExceptionChecker interface, and is used to inspect SQLExceptions and determine whether they should trigger fail-over to another host in a load-balanced deployment.
+>> ConnectionProperties.loadBalancePingTimeout -> Time in milliseconds to wait for ping response from each of load-balanced physical connections when using load-balanced Connection.
+>> ConnectionProperties.loadBalanceSQLExceptionSubclassFailover -> Comma-delimited list of classes/interfaces used by default load-balanced exception checker to determine whether a given SQLException should trigger failover.  The comparison is done using Class.isInstance
+>> ConnectionProperties.loadBalanceSQLStateFailover -> Comma-delimited list of SQLState codes used by default load-balanced exception checker to determine whether a given SQLException should trigger failover.  The SQLState of a given SQLException is evaluated to determine whether it begins with any value in the comma-delimited list.
+>> ConnectionProperties.loadBalanceStrategy -> If using a load-balanced connection to connect to SQL nodes in a MySQL Cluster/NDB configuration
+>> ConnectionProperties.loadBalanceValidateConnectionOnSwapServer -> Should the load-balanced Connection explicitly check whether the connection is live when swapping to a new physical connection at commit/rollback?
+>> ConnectionProperties.netTimeoutForStreamingResults -> What value should the driver automatically set the server setting 'net_write_timeout' to when the streaming result sets feature is in use?
+>> ConnectionProperties.roundRobinLoadBalance -> When autoReconnect is enabled, and failoverReadonly is false, should we pick hosts to connect to on a round-robin basis?
+>> ConnectionProperties.tcpSoSndBuf -> If connecting using TCP/IP, should the driver set SO_SND_BUF to the given value? The default value of '0', means use the platform default value for this property)
+>> ConnectionProperties.transformedBitIsBoolean -> If the driver converts TINYINT
+>> ConnectionProperties.useJDBCCompliantTimezoneShift -> Should the driver use JDBC-compliant rules when converting TIME/TIMESTAMP/DATETIME values' time zone information for those JDBC arguments which take a java.util.Calendar argument? This is part of the legacy date-time code, thus the property has an effect only when "useLegacyDatetimeCode=true."
+>> CurrencyNames -> en-AU en-CA en-GB en-IE en-IN en-MT en-NZ en-PH en-SG en-US en-ZA |  ar-AE ar-BH ar-DZ ar-EG ar-IQ ar-JO ar-KW ar-LB ar-LY ar-MA ar-OM ar-QA ar-SA ar-SD ar-SY ar-TN ar-YE be-BY bg-BG ca-ES cs-CZ da-DK de de-AT de-CH de-DE de-GR de-LU el-CY el-GR es es-AR es-BO es-CL es-CO es-CR es-CU es-DO es-EC es-ES es-GT es-HN es-MX es-NI es-PA es-PE es-PR es-PY es-SV es-US es-UY es-VE et-EE fi-FI fr fr-BE fr-CA fr-CH fr-FR fr-LU ga-IE hi-IN hr-HR hu-HU in-ID is-IS it it-CH it-IT iw-IL ja ja-JP ko ko-KR lt-LT lv-LV mk-MK ms-MY mt-MT nl-BE nl-NL no-NO pl-PL pt pt-BR pt-PT ro-RO ru-RU sk-SK sl-SI sq-AL sr-BA sr-CS sr-Latn-BA sr-Latn-ME sr-Latn-RS sr-ME sr-RS sv sv-SE th-TH tr-TR uk-UA vi-VN zh-CN zh-HK zh-SG zh-TW
+>> EST -> -05:00
+>> FormatData -> en en-AU en-CA en-GB en-IE en-IN en-MT en-NZ en-PH en-SG en-US en-ZA |  ar ar-JO ar-LB ar-SY be be-BY bg bg-BG ca ca-ES cs cs-CZ da da-DK de de-AT de-CH de-DE de-LU el el-CY el-GR es es-AR es-BO es-CL es-CO es-CR es-DO es-EC es-ES es-GT es-HN es-MX es-NI es-PA es-PE es-PR es-PY es-SV es-US es-UY es-VE et et-EE fi fi-FI fr fr-BE fr-CA fr-CH fr-FR ga ga-IE hi-IN hr hr-HR hu hu-HU in in-ID is is-IS it it-CH it-IT iw iw-IL ja ja-JP ko ko-KR lt lt-LT lv lv-LV mk mk-MK ms ms-MY mt mt-MT nl nl-BE nl-NL no no-NO no-NO-NY pl pl-PL pt pt-BR pt-PT ro ro-RO ru ru-RU sk sk-SK sl sl-SI sq sq-AL sr sr-BA sr-CS sr-Latn sr-Latn-ME sr-ME sr-RS sv sv-SE th th-TH tr tr-TR uk uk-UA vi vi-VN zh zh-CN zh-HK zh-SG zh-TW
+>> HST -> -10:00
+>> InvalidLoadBalanceStrategy -> Invalid load balancing strategy ''{0}''.
+>> JDBC4Connection.ClientInfoNotImplemented -> Configured clientInfoProvider class ''{0}'' does not implement com.mysql.jdbc.JDBC4ClientInfoProvider.
+>> JDBCStore.SQLException -> SQL Error [{0}]
+>> JDBCStore.checkConnectionClassNotFoundException -> JDBC driver class not found [{0}]
+>> JDBCStore.checkConnectionDBClosed -> The database connection is null or was found to be closed. Trying to re-open it.
+>> JDBCStore.checkConnectionDBReOpenFail -> The re-open on the database failed. The database could be down.
+>> JDBCStore.checkConnectionSQLException -> A SQL exception occurred [{0}]
+>> JDBCStore.close -> Exception closing database connection [{0}]
+>> JDBCStore.commitSQLException -> SQLException committing connection before closing
+>> JDBCStore.loading -> Loading Session [{0}] from database [{1}]
+>> JDBCStore.missingDataSourceName -> No valid JNDI name was given.
+>> JDBCStore.removing -> Removing Session [{0}] at database [{1}]
+>> JDBCStore.saving -> Saving Session [{0}] to database [{1}]
+>> JDBCStore.wrongDataSource -> Cannot open JNDI DataSource [{0}]
+>> JdbcDaoImpl.noAuthority -> User {0} has no GrantedAuthority
+>> JdbcDaoImpl.notFound -> User {0} not found
+>> JdbcDaoImpl.notFound -> 鏈壘鍒扮敤鎴穥0}
+>> LoadBalancingConnectionProxy.badValueForLoadBalanceAutoCommitStatementRegex -> Bad value ''{0}'' for property "loadBalanceAutoCommitStatementRegex".
+>> LoadBalancingConnectionProxy.badValueForLoadBalanceAutoCommitStatementThreshold -> Invalid numeric value ''{0}'' for property "loadBalanceAutoCommitStatementThreshold".
+>> LoadBalancingConnectionProxy.badValueForLoadBalanceBlacklistTimeout -> Bad value ''{0}'' for property "loadBalanceBlacklistTimeout".
+>> LoadBalancingConnectionProxy.badValueForLoadBalanceEnableJMX -> Bad value ''{0}'' for property "loadBalanceEnableJMX".
+>> LoadBalancingConnectionProxy.badValueForRetriesAllDown -> Bad value ''{0}'' for property "retriesAllDown".
+>> MST -> -07:00
+>> MysqlIO.InnoDBStatusFailed -> Couldn't retrieve InnoDB status due to underlying exception:
+>> MysqlIO.NoInnoDBStatusFound -> No InnoDB status output returned by server.
+>> NotUpdatableReason.6 -> Result Set not updatable
+>> RowDataDynamic.6 -> 
+
+ResultSet was created at:
+>> UTC -> Etc/UTC
+>> abstractConnectionHandler.processorCreate -> Created new processor [{0}]
+>> abstractProtocol.waitingProcessor.remove -> Removed processor [{0}] from waiting processors
+>> authenticator.check.sso -> Not authenticated but SSO session ID [{0}] found. Attempting re-authentication.
+>> boldBlue -> ch.qos.logback.core.pattern.color.BoldBlueCompositeConverter
+>> containerBase.child.destroy -> Error destroying child
+>> cp1145 -> IBM01145
+>> endpoint -> org.springframework.boot.actuate.management.ThreadDumpEndpoint
+>> err.not_iso8859_1 -> Not an ISO 8859-1 character: [{0}]
+>> hostConfig.stop -> HostConfig: Processing STOP
+>> http.invalidCharacterDomain.atStart -> The character [{0}] is not valid at the start of a domain name.
+>> httpConstraintElement.invalidRolesDeny -> Roles may not be specified when using DENY
+>> httpMethodConstraintElement.invalidMethod -> Invalid HTTP method
+>> jarScan.jarUrlStart -> Scanning JAR at URL [{0}]
+>> jdbcAccessLogValve.close -> Failed to close database
+>> jdbcAccessLogValve.exception -> Exception performing insert access entry
+>> jdbcRealm.authenticateFailure -> Username [{0}] NOT successfully authenticated
+>> jdbcRealm.authenticateSuccess -> Username [{0}] successfully authenticated
+>> jdbcRealm.close -> Exception closing database connection
+>> jdbcRealm.exception -> Exception performing authentication
+>> jdbcRealm.open -> Exception opening database connection
+>> jdbcRealm.open.invalidurl -> Driver [{0}] does not support the url [{1}]
+>> ksc5601_1987 -> EUC-KR
+>> ksc5601_1992 -> x-Johab
+>> ksc_5601 -> EUC-KR
+>> l3 -> ISO-8859-3
+>> latin3 -> ISO-8859-3
+>> mBeanUtils.noManagedBean -> ManagedBean is not found with [{0}]
+>> nnd -> null
+>> norwegian-ny -> latin1
+>> prefix -> spring.servlet.multipart
+>> proxyBeanMethods -> false
+>> q -> 0.8
+>> registry.objectNameCreateError -> Error creating object name
+>> security.provider.7 -> com.sun.security.sasl.Provider
+>> standardContext.threadBindingListenerError -> An error occurred in the thread binding listener configured for Context [{0}]
+>> standardSession.bindingEvent -> Session binding event listener threw exception
+>> standardSession.setAttribute.iae -> setAttribute: Non-serializable attribute [{0}]
+>> state -> blocked
+>> value.false -> false
+>> value.true -> true
+>> webappClassLoader.clearJdbc -> The web application [{0}] registered the JDBC driver [{1}] but failed to unregister it when the web application was stopped. To prevent a memory leak, the JDBC Driver has been forcibly unregistered.
+>> webappClassLoader.jdbcRemoveFailed -> JDBC driver de-registration failed for web application [{0}]
+>> webappClassLoader.loadedByThisOrChildFail -> Failed to fully check the entries in an instance of [{0}] for potential memory leaks in context [{1}]
+>> wrapper.nullRequest -> Request cannot be null
+>> wrapper.nullResponse -> Response cannot be null
+>> aprListener.flags -> APR capabilities: IPv6 [{0}], sendfile [{1}], accept filters [{2}], random [{3}].

@@ -1,0 +1,109 @@
+,标签,缩写,单词意思
+,------,------,----------
+,`<!DOCTYPE>`,Document Type Declaration,文档类型声明
+,`<a>`,Anchor,锚
+,`<abbr>`,Abbreviation,缩写
+,`<address>`,Address,地址
+,`<area>`,Area,区域
+,`<article>`,Article,文章
+,`<aside>`,Aside,旁边
+,`<audio>`,Audio,音频
+,`<b>`,Bold,粗体
+,`<base>`,Base URL,基础URL
+,`<bdi>`,Bidirectional Isolation,双向隔离
+,`<bdo>`,Bidirectional Override,双向覆盖
+,`<blockquote>`,Block Quote,块引用
+,`<body>`,Body,主体
+,`<br>`,Break,换行
+,`<button>`,Button,按钮
+,`<canvas>`,Canvas,画布
+,`<caption>`,Caption,标题
+,`<cite>`,Citation,引用
+,`<code>`,Code,代码
+,`<col>`,Column,列
+,`<colgroup>`,Column Group,列组
+,`<data>`,Data,数据
+,`<datalist>`,Data List,数据列表
+,`<dd>`,Description Definition,描述定义
+,`<del>`,Deleted,删除
+,`<details>`,Details,细节
+,`<dfn>`,Definition,定义
+,`<dialog>`,Dialog,对话框
+,`<div>`,Division,分区
+,`<dl>`,Description List,描述列表
+,`<dt>`,Description Term,描述术语
+,`<em>`,Emphasis,强调
+,`<embed>`,Embed,嵌入
+,`<fieldset>`,Field Set,字段集
+,`<figcaption>`,Figure Caption,图例标题
+,`<figure>`,Figure,图
+,`<footer>`,Footer,页脚
+,`<form>`,Form,表单
+,`<h1>` - `<h6>`,Heading,标题
+,`<head>`,Head,头部
+,`<header>`,Header,头部
+,`<hr>`,Horizontal Rule,水平线
+,`<html>`,Hypertext Markup Language,超文本标记语言
+,`<i>`,Italic,斜体
+,`<iframe>`,Inline Frame,内联框架
+,`<img>`,Image,图像
+,`<input>`,Input,输入
+,`<ins>`,Inserted,插入
+,`<kbd>`,Keyboard,键盘
+,`<label>`,Label,标签
+,`<legend>`,Legend,图例
+,`<li>`,List Item,列表项
+,`<link>`,Link,链接
+,`<main>`,Main,主要
+,`<map>`,Map,地图
+,`<mark>`,Mark,标记
+,`<meta>`,Meta,元数据
+ChatGPT
+,
+,`<meter>`,Meter,计量
+,`<nav>`,Navigation,导航
+,`<noscript>`,No Script,无脚本
+,`<object>`,Object,对象
+,`<ol>`,Ordered List,有序列表
+,`<optgroup>`,Option Group,选项组
+,`<option>`,Option,选项
+,`<output>`,Output,输出
+,`<p>`,Paragraph,段落
+,`<param>`,Parameter,参数
+,`<picture>`,Picture,图片
+,`<pre>`,Preformatted,预格式化
+,`<progress>`,Progress,进度
+,`<q>`,Quote,引用
+,`<rp>`,Ruby Parentheses,注释括号
+,`<rt>`,Ruby Text,注释文本
+,`<ruby>`,Ruby,注释
+,`<s>`,Strikethrough,删除线
+,`<samp>`,Sample,示例
+,`<script>`,Script,脚本
+,`<section>`,Section,部分
+,`<select>`,Select,选择
+,`<small>`,Small,小
+,`<source>`,Source,来源
+,`<span>`,Span,范围
+,`<strong>`,Strong,强
+,`<style>`,Style,样式
+,`<sub>`,Subscript,下标
+,`<summary>`,Summary,概要
+,`<sup>`,Superscript,上标
+,`<table>`,Table,表格
+,`<tbody>`,Table Body,表格主体
+,`<td>`,Table Data,表格数据
+,`<template>`,Template,模板
+,`<textarea>`,Text Area,文本区域
+,`<tfoot>`,Table Foot,表格脚注
+,`<th>`,Table Header,表格头部
+,`<thead>`,Table Head,表格头部
+,`<time>`,Time,时间
+,`<title>`,Title,标题
+,`<tr>`,Table Row,表格行
+,`<track>`,Track,轨道
+,`<u>`,Underline,下划线
+,`<ul>`,Unordered List,无序列表
+,`<var>`,Variable,变量
+,`<video>`,Video,视频
+,`<wbr>`,Word Break Opportunity,词中断机会

