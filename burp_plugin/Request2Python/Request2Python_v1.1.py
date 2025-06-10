@@ -131,8 +131,42 @@ class BurpExtender(IBurpExtender, IContextMenuFactory, IMessageEditorTabFactory)
         callbacks.registerContextMenuFactory(self)
         callbacks.registerMessageEditorTabFactory(self)
         
-        # TODO: 初始化配置，默认导出路径为空
-        self._export_path = None
+        # TODO: 从Burp配置中恢复导出路径
+        self._export_path = self.load_export_path()
+
+    # TODO: 加载导出路径配置
+    def load_export_path(self):
+        """从Burp扩展设置中加载导出路径"""
+        try:
+            # TODO: 从Burp的扩展设置中获取保存的路径
+            saved_path = self._callbacks.loadExtensionSetting("export_path")
+            if saved_path:
+                # TODO: 验证路径是否存在
+                from java.io import File
+                if File(saved_path).exists():
+                    self._callbacks.printOutput(u"已恢复导出路径: {}".format(saved_path).encode('utf-8'))
+                    return saved_path
+                else:
+                    self._callbacks.printOutput(u"之前配置的路径不存在，已清除: {}".format(saved_path).encode('utf-8'))
+                    # TODO: 清除无效的路径配置
+                    self._callbacks.saveExtensionSetting("export_path", None)
+            return None
+        except Exception as e:
+            self._callbacks.printError(u"加载配置错误: {}".format(self.safe_unicode(str(e))).encode('utf-8'))
+            return None
+
+    # TODO: 保存导出路径配置
+    def save_export_path(self, path):
+        """保存导出路径到Burp扩展设置中"""
+        try:
+            if path:
+                self._callbacks.saveExtensionSetting("export_path", path)
+                self._callbacks.printOutput(u"导出路径已保存: {}".format(path).encode('utf-8'))
+            else:
+                self._callbacks.saveExtensionSetting("export_path", None)
+                self._callbacks.printOutput(u"导出路径配置已清除".encode('utf-8'))
+        except Exception as e:
+            self._callbacks.printError(u"保存配置错误: {}".format(self.safe_unicode(str(e))).encode('utf-8'))
 
     # TODO: 添加到右键使用扩展
     def createMenuItems(self, invocation):
@@ -149,10 +183,22 @@ class BurpExtender(IBurpExtender, IContextMenuFactory, IMessageEditorTabFactory)
         export_item.addActionListener(ExportPythonAction(self, invocation))
         menu_items.append(export_item)
         
-        # TODO: 配置导出路径菜单项
-        config_item = JMenuItem(u"配置导出路径")
-        config_item.addActionListener(ConfigPathAction(self, invocation))
-        menu_items.append(config_item)
+        # TODO: 路径相关菜单项
+        if self._export_path:
+            # TODO: 重新配置路径
+            config_item = JMenuItem(u"重新配置导出路径")
+            config_item.addActionListener(ConfigPathAction(self, invocation))
+            menu_items.append(config_item)
+            
+            # TODO: 清除路径配置
+            clear_item = JMenuItem(u"清除导出路径配置")
+            clear_item.addActionListener(ClearPathAction(self, invocation))
+            menu_items.append(clear_item)
+        else:
+            # TODO: 首次配置路径
+            config_item = JMenuItem(u"配置导出路径")
+            config_item.addActionListener(ConfigPathAction(self, invocation))
+            menu_items.append(config_item)
         
         return menu_items
 
@@ -503,9 +549,17 @@ class BurpExtender(IBurpExtender, IContextMenuFactory, IMessageEditorTabFactory)
 
         if chooser.showOpenDialog(None) == JFileChooser.APPROVE_OPTION:
             self._export_path = chooser.getSelectedFile().getPath()
-            self._callbacks.printOutput(u"导出路径已配置: {}".format(self._export_path).encode('utf-8'))
+            # TODO: 持久化保存路径配置
+            self.save_export_path(self._export_path)
             return True
         return False
+
+    # TODO: 清除导出路径配置
+    def clear_export_path(self):
+        """清除导出路径配置"""
+        self._export_path = None
+        self.save_export_path(None)
+        return True
 
 
 # TODO: Python代码预览标签页类
@@ -601,9 +655,24 @@ class PythonTab(IMessageEditorTab):
         popup_menu.addSeparator()
         
         # TODO: 配置导出路径菜单项
-        config_path_item = JMenuItemCopy(u"配置导出路径")
-        config_path_item.addActionListener(ConfigPathTabAction(self.extender, self))
-        popup_menu.add(config_path_item)
+        if self.extender._export_path:
+            config_path_item = JMenuItemCopy(u"重新配置导出路径")
+            config_path_item.addActionListener(ConfigPathTabAction(self.extender, self))
+            popup_menu.add(config_path_item)
+            
+            # TODO: 显示当前路径菜单项
+            current_path_item = JMenuItemCopy(u"当前路径: {}".format(self.extender._export_path[:30] + "..." if len(self.extender._export_path) > 30 else self.extender._export_path))
+            current_path_item.setEnabled(False)  # TODO: 仅用于显示，不可点击
+            popup_menu.add(current_path_item)
+            
+            # TODO: 清除路径配置菜单项
+            clear_path_item = JMenuItemCopy(u"清除导出路径配置")
+            clear_path_item.addActionListener(ClearPathTabAction(self.extender, self))
+            popup_menu.add(clear_path_item)
+        else:
+            config_path_item = JMenuItemCopy(u"配置导出路径")
+            config_path_item.addActionListener(ConfigPathTabAction(self.extender, self))
+            popup_menu.add(config_path_item)
         
         # TODO: 刷新代码菜单项
         refresh_item = JMenuItemCopy(u"刷新代码")
@@ -829,6 +898,18 @@ class ConfigPathTabAction(ActionListener):
             self.python_tab.create_popup_menu()
 
 
+# TODO: 标签页清除路径配置操作
+class ClearPathTabAction(ActionListener):
+    def __init__(self, extender, python_tab):
+        self.extender = extender
+        self.python_tab = python_tab
+    
+    def actionPerformed(self, event):
+        if self.extender.clear_export_path():
+            # TODO: 清除成功后重新创建右键菜单以隐藏快速保存选项
+            self.python_tab.create_popup_menu()
+
+
 # TODO: 菜单点击处理 - 普通导出（弹出文件选择对话框）
 class ExportPythonAction(ActionListener):
     def __init__(self, extender, invocation):
@@ -897,6 +978,16 @@ class ConfigPathAction(ActionListener):
 
     def actionPerformed(self, event):
         self.extender.configure_export_path()
+
+
+# TODO: 清除导出路径配置处理
+class ClearPathAction(ActionListener):
+    def __init__(self, extender, invocation):
+        self.extender = extender
+        self.invocation = invocation
+
+    def actionPerformed(self, event):
+        self.extender.clear_export_path()
 
 
 # TODO: 避免重复创建对象
