@@ -184,6 +184,49 @@ decrypt_data = requests.get(url).json()['data']
 print(decrypt_data)
 ```
 
+```py
+# -*- encoding: utf-8 -*-
+# TODO:@ModuleName: test
+# TODO:@Author: tomato
+# TODO:@Version: Python3.12.0
+# TODO:@Time: 2025/6/13 10:29
+import requests
+from urllib.parse import quote
+
+headers = {
+    'Accept': 'application/json, text/plain, */*',
+    'Accept-Language': 'zh-CN,zh;q=0.9',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Content-Type': 'application/x-www-form-urlencoded',
+    'Origin': 'https://wx.qmpsee.com',
+    'Platform': 'web',
+    'Pragma': 'no-cache',
+    'Sec-Fetch-Dest': 'empty',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Site': 'same-site',
+    'Source': 'see',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36',
+    'appflag': 'see-h5-1.0.0',
+    'sec-ch-ua': '"Google Chrome";v="137", "Chromium";v="137", "Not/A)Brand";v="24"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"Windows"',
+}
+data = {
+    'page': '1',
+    'num': '20',
+    'ca_uuid': 'feef62bfdac45a94b9cd89aed5c235be',
+    'appflag': 'see-h5-1.0.0',
+}
+response = requests.post('https://wyiosapi.qmpsee.com/Web/getCaDetail', headers=headers, data=data).json()
+encrypt_data = response['encrypt_data']
+
+safe_param = quote(encrypt_data, safe='')
+url = f'http://127.0.0.1:12080/go?group=zzz&action=kc_debug&param={safe_param}'
+decrypt_data = requests.get(url).json()['data']
+print(decrypt_data)
+```
+
 ![image-20250613145741595](./assets/image-20250613145741595.png)
 
 - 效果如图
