@@ -14,7 +14,7 @@ window.kc_debug = function(data) {
 
 ******
 
-### 第二部:放掉断点注入环境
+### 第二步:放掉断点注入环境
 
 ```js
 var rpc_client_id, Hlclient = function (wsURL) {
