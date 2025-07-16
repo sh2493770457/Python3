@@ -1,0 +1,10 @@
+version: '3.8'
+services:
+  curlconverter:
+    build: .
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    container_name: curlconverter-app
+    environment:
+      - NODE_ENV=production 

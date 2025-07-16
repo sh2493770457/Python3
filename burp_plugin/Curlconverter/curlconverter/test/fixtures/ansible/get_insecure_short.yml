@@ -1,0 +1,7 @@
+-
+  name: 'http://localhost:28139/'
+  uri:
+    url: 'http://localhost:28139/'
+    method: GET
+    validate_certs: false
+  register: result

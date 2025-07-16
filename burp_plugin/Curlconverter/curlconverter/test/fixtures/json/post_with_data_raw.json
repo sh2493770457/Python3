@@ -1,0 +1,9 @@
+{
+    "url": "http://localhost:28139/post",
+    "raw_url": "http://localhost:28139/post",
+    "method": "post",
+    "headers": {
+        "Content-Type": "application/x-www-form-urlencoded"
+    },
+    "data": "msg1=wow&msg2=such&msg3=@rawmsg"
+}

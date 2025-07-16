@@ -1,0 +1,11 @@
+-
+  name: 'http://localhost:28139/test/_security'
+  uri:
+    url: 'http://localhost:28139/test/_security'
+    method: PUT
+    body: '{"admins":{"names":[], "roles":[]}, "readers":{"names":["joe"],"roles":[]}}'
+    headers:
+      Content-Type: application/x-www-form-urlencoded
+    url_username: admin
+    url_password: '123'
+  register: result

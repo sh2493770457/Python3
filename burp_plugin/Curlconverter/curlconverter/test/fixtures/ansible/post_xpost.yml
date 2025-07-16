@@ -1,0 +1,9 @@
+-
+  name: 'http://localhost:28139/api/xxxxxxxxxxxxxxxx'
+  uri:
+    url: 'http://localhost:28139/api/xxxxxxxxxxxxxxxx'
+    method: POST
+    body: '{"keywords":"php","page":1,"searchMode":1}'
+    headers:
+      Content-Type: application/x-www-form-urlencoded
+  register: result

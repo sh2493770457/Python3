@@ -1,0 +1,8 @@
+{
+    "url": "http://localhost:28139/patch",
+    "raw_url": "http://localhost:28139/patch",
+    "method": "patch",
+    "files": {
+        "file1": "./test/fixtures/curl_commands/delete.sh"
+    }
+}

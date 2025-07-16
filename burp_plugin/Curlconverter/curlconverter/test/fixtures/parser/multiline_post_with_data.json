@@ -1,0 +1,47 @@
+[
+  {
+    "urls": [
+      {
+        "originalUrl": "http://localhost:28139/echo/html/",
+        "urlWithoutQueryList": "http://localhost:28139/echo/html/",
+        "url": "http://localhost:28139/echo/html/",
+        "urlObj": {
+          "scheme": "http",
+          "host": "localhost:28139",
+          "port": "",
+          "path": "/echo/html/",
+          "query": "",
+          "fragment": ""
+        },
+        "urlWithOriginalQuery": "http://localhost:28139/echo/html/",
+        "urlWithoutQueryArray": "http://localhost:28139/echo/html/",
+        "method": "GET"
+      }
+    ],
+    "authType": "basic",
+    "proxyAuthType": "basic",
+    "headers": {
+      "lowercase": false,
+      "headers": [
+        [
+          "Origin",
+          "http://fiddle.jshell.net"
+        ],
+        [
+          "Content-Type",
+          "application/x-www-form-urlencoded"
+        ]
+      ]
+    },
+    "proxyHeaders": {
+      "lowercase": false,
+      "headers": []
+    },
+    "data": "msg1=value1&msg2=value2",
+    "dataArray": [
+      "msg1=value1&msg2=value2"
+    ],
+    "isDataRaw": false,
+    "isDataBinary": false
+  }
+]

@@ -1,8 +1,8 @@
-import requests
-import random
-import json
 import hashlib
+import random
 import textwrap
+
+import requests
 from colorama import Fore, Style, init
 
 # 初始化 colorama
@@ -14,6 +14,7 @@ SECRET_KEY = "xxxx"
 
 # 百度翻译 API 限制：单次最多 6000 个字符
 MAX_LEN = 6000
+
 
 def translate(q, from_lang="auto", to_lang="auto"):
     """ 翻译文本，支持自动拆分 """
@@ -46,6 +47,7 @@ def translate(q, from_lang="auto", to_lang="auto"):
             return f"{Fore.RED}翻译失败: {result} (╥﹏╥) {Style.RESET_ALL}"
 
     return "\n".join(translations)
+
 
 if __name__ == "__main__":
     print(Fore.CYAN + "🌍 欢迎使用炫酷翻译工具！输入 'exit' 退出" + Style.RESET_ALL)

@@ -1,0 +1,15 @@
+-
+  name: 'http://localhost:28139/rest/login-sessions'
+  uri:
+    url: 'http://localhost:28139/rest/login-sessions'
+    method: POST
+    body:
+      userName: username123
+      password: password123
+      authLoginDomain: local
+    body_format: json
+    headers:
+      Content-Type: application/json
+      X-API-Version: '200'
+    validate_certs: false
+  register: result

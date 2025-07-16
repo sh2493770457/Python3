@@ -1,0 +1,35 @@
+[
+  {
+    "urls": [
+      {
+        "originalUrl": "http://localhost:28139/",
+        "urlWithoutQueryList": "http://localhost:28139/",
+        "url": "http://localhost:28139/",
+        "urlObj": {
+          "scheme": "http",
+          "host": "localhost:28139",
+          "port": "",
+          "path": "/",
+          "query": "",
+          "fragment": ""
+        },
+        "urlWithOriginalQuery": "http://localhost:28139/",
+        "urlWithoutQueryArray": "http://localhost:28139/",
+        "method": "GET"
+      }
+    ],
+    "authType": "basic",
+    "proxyAuthType": "basic",
+    "headers": {
+      "lowercase": false,
+      "headers": []
+    },
+    "proxyHeaders": {
+      "lowercase": false,
+      "headers": []
+    },
+    "cookieFiles": [
+      "cookie.txt"
+    ]
+  }
+]

@@ -1,0 +1,9 @@
+-
+  name: 'http://localhost:28139/post'
+  uri:
+    url: 'http://localhost:28139/post'
+    method: POST
+    body: 'msg1=wow&msg2=such&msg3=@rawmsg'
+    headers:
+      Content-Type: application/x-www-form-urlencoded
+  register: result

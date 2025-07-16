@@ -1,0 +1,9 @@
+-
+  name: 'http://localhost:28139'
+  uri:
+    url: 'http://localhost:28139'
+    method: POST
+    body: '123'
+    headers:
+      Content-Type: application/x-www-form-urlencoded
+  register: result
