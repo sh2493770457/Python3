@@ -3,13 +3,11 @@
 # TODO:@Author: tomato
 # TODO:@Version: Python3.12.0
 # TODO:@Time: 2025/7/16 13:20
-
 import json
 import os
 import pickle
 import sys
 import time
-
 import urllib2
 from burp import IBurpExtender, IMessageEditorTabFactory, IMessageEditorTab, ITab, IExtensionStateListener
 from java.awt import (BorderLayout, FlowLayout, Dimension, Color, Font,
@@ -27,12 +25,11 @@ from javax.swing import (JPanel, JLabel, JComboBox, JTextField, JButton,
                          JPopupMenu, JMenuItem, JFileChooser)
 from javax.swing.border import EmptyBorder
 
-# 设置默认编码为UTF-8
+# TODO:设置默认编码为UTF-8
 if hasattr(sys, "setdefaultencoding"):
     reload(sys)
     sys.setdefaultencoding("utf-8")
 
-# 常量定义
 FILE_EXTENSIONS = {
     "python": ".py", "javascript": ".js", "node": ".js", "java": ".java",
     "go": ".go", "php": ".php", "ruby": ".rb", "rust": ".rs",
@@ -640,13 +637,13 @@ class BurpExtender(IBurpExtender, IMessageEditorTabFactory, ITab):
         panel.setBorder(BorderFactory.createTitledBorder(u"本地API管理"))
 
         pathPanel = JPanel(FlowLayout(FlowLayout.LEFT))
-        pathPanel.add(JLabel(u"API项目路径: "))
+        pathPanel.add(JLabel(u"程序路径: "))
 
         self._localApiPathField = JTextField(self._config.get("local_api_project_path", ""), 30)
         self._localApiPathField.setEditable(False)
         pathPanel.add(self._localApiPathField)
 
-        browseApiBtn = JButton(u"选择项目")
+        browseApiBtn = JButton(u"选择目录")
         browseApiBtn.addActionListener(BrowseLocalApiPathListener(self))
         pathPanel.add(browseApiBtn)
 
@@ -661,7 +658,7 @@ class BurpExtender(IBurpExtender, IMessageEditorTabFactory, ITab):
         gbc.anchor = GridBagConstraints.WEST
         gbc.fill = GridBagConstraints.NONE
         gbc.weightx = 0.0
-        self._startApiBtn = JButton(u"启动API (npm run api)")
+        self._startApiBtn = JButton(u"启动API (start.vbs)")
         self._startApiBtn.addActionListener(StartLocalApiListener(self))
         self._startApiBtn.setEnabled(bool(self._config.get("local_api_project_path", "")))
         button_size = Dimension(160, 25)
@@ -746,7 +743,7 @@ class BurpExtender(IBurpExtender, IMessageEditorTabFactory, ITab):
         status += u"语言: " + self._config["current_language"] + u"\n"
         status += u"API地址: " + self._config["current_api"] + u"\n"
         status += u"代码模板: " + (u"启用" if self._config.get("enable_templates", True) else u"禁用") + u"\n"
-        status += u"缓存大小: " + str(len(self._conversion_cache)) + u" 项\n"
+        status += u"缓存大小: " + safe_unicode(str(len(self._conversion_cache))) + u" 项\n"
 
         project_edit_path = self._config.get("project_edit_path", "")
         if project_edit_path:
@@ -757,12 +754,12 @@ class BurpExtender(IBurpExtender, IMessageEditorTabFactory, ITab):
         local_api_path = self._config.get("local_api_project_path", "")
         local_api_status = self._config.get("local_api_status", "stopped")
         if local_api_path:
-            status += u"本地API项目: " + os.path.basename(local_api_path) + u"\n"
-            status += u"本地API状态: " + local_api_status + u"\n"
+            status += u"本地程序目录: " + os.path.basename(local_api_path) + u"\n"
+            status += u"API状态: " + local_api_status + u"\n"
         else:
-            status += u"本地API项目: 未配置\n"
+            status += u"本地程序目录: 未配置\n"
 
-        status += u"\n支持的语言 (" + str(len(self._config["supported_languages"])) + u"种):\n"
+        status += u"\n支持的语言 (" + safe_unicode(str(len(self._config["supported_languages"]))) + u"种):\n"
 
         languages = self._config["supported_languages"]
         for i in range(0, len(languages), 6):
@@ -921,17 +918,17 @@ class BurpExtender(IBurpExtender, IMessageEditorTabFactory, ITab):
                 self._statusArea.setText(status_text)
                 JOptionPane.showMessageDialog(None, u"API连接成功!", u"测试结果", JOptionPane.INFORMATION_MESSAGE)
             else:
-                error_msg = u"API返回错误: " + str(result)
+                error_msg = u"API返回错误: " + safe_unicode(str(result))
                 status_text = self._statusArea.getText()
-                status_text += u"\n[" + time.strftime("%H:%M:%S") + u"] API测试: 失败 - " + str(
-                    result.get('error', u'未知错误'))
+                status_text += u"\n[" + time.strftime("%H:%M:%S") + u"] API测试: 失败 - " + safe_unicode(str(
+                    result.get('error', u'未知错误')))
                 self._statusArea.setText(status_text)
                 JOptionPane.showMessageDialog(None, error_msg, u"测试失败", JOptionPane.ERROR_MESSAGE)
 
         except Exception as e:
-            error_msg = u"API连接失败: " + str(e)
+            error_msg = u"API连接失败: " + safe_unicode(e)
             status_text = self._statusArea.getText()
-            status_text += u"\n[" + time.strftime("%H:%M:%S") + u"] API测试: 错误 - " + str(e)
+            status_text += u"\n[" + time.strftime("%H:%M:%S") + u"] API测试: 错误 - " + safe_unicode(e)
             self._statusArea.setText(status_text)
             JOptionPane.showMessageDialog(None, error_msg, u"连接错误", JOptionPane.ERROR_MESSAGE)
 
@@ -1146,7 +1143,7 @@ class ForceCleanPortListener(ActionListener):
                 remaining_pids = self._extender._checkPortOccupied()
 
                 if remaining_pids:
-                    error_msg = u"清理未完全成功，仍有进程占用端口: " + str(remaining_pids)
+                    error_msg = u"清理未完全成功，仍有进程占用端口: " + safe_unicode(str(remaining_pids))
                     JOptionPane.showMessageDialog(None, error_msg, u"清理失败", JOptionPane.ERROR_MESSAGE)
                 else:
                     JOptionPane.showMessageDialog(None, u"端口3000已成功清理！")
@@ -1159,7 +1156,7 @@ class ForceCleanPortListener(ActionListener):
                     self._extender._updateStatusText()
 
         except Exception as e:
-            error_msg = u"强制清理端口时出错: " + str(e)
+            error_msg = u"强制清理端口时出错: " + safe_unicode(e)
             JOptionPane.showMessageDialog(None, error_msg, u"清理错误", JOptionPane.ERROR_MESSAGE)
 
 
@@ -1214,7 +1211,7 @@ class BrowseLocalApiPathListener(ActionListener):
         import java.io
         chooser = JFileChooser()
         chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY)
-        chooser.setDialogTitle(u"选择API项目文件夹")
+        chooser.setDialogTitle(u"选择包含 start.vbs 的文件夹")
 
         current_path = self._extender._config.get("local_api_project_path", "")
         if current_path and os.path.exists(current_path):
@@ -1223,17 +1220,17 @@ class BrowseLocalApiPathListener(ActionListener):
         if chooser.showOpenDialog(None) == JFileChooser.APPROVE_OPTION:
             selected_path = chooser.getSelectedFile().getAbsolutePath()
 
-            package_json_path = os.path.join(selected_path, "package.json")
-            if os.path.exists(package_json_path):
+            start_vbs_path = os.path.join(selected_path, "start.vbs")
+            if os.path.exists(start_vbs_path):
                 self._extender._config["local_api_project_path"] = selected_path
                 self._extender._localApiPathField.setText(selected_path)
                 self._extender._startApiBtn.setEnabled(True)
                 self._extender._saveConfig()
                 self._extender._updateStatusText()
-                JOptionPane.showMessageDialog(None, u"API项目路径已设置！")
+                JOptionPane.showMessageDialog(None, u"程序路径已设置！")
             else:
                 JOptionPane.showMessageDialog(None,
-                                              u"选择的文件夹不包含 package.json 文件！\n请选择正确的 Node.js 项目文件夹。",
+                                              u"选择的文件夹不包含 start.vbs 文件！\n请选择包含 start.vbs 的文件夹。",
                                               u"路径错误", JOptionPane.WARNING_MESSAGE)
 
 
@@ -1244,7 +1241,13 @@ class StartLocalApiListener(ActionListener):
     def actionPerformed(self, event):
         project_path = self._extender._config.get("local_api_project_path", "")
         if not project_path or not os.path.exists(project_path):
-            JOptionPane.showMessageDialog(None, u"请先选择有效的API项目路径！")
+            JOptionPane.showMessageDialog(None, u"请先选择有效的程序路径！")
+            return
+
+        # 检查 start.vbs 文件是否存在
+        start_vbs_path = os.path.join(project_path, "start.vbs")
+        if not os.path.exists(start_vbs_path):
+            JOptionPane.showMessageDialog(None, u"选择的目录中未找到 start.vbs 文件！")
             return
 
         try:
@@ -1284,35 +1287,32 @@ class StartLocalApiListener(ActionListener):
             import subprocess
             import platform
 
+            # 构建 start.vbs 的完整路径
+            start_vbs_path = os.path.join(project_path, "start.vbs")
+
             system_name = platform.system()
-            if system_name == "Windows":
+            if system_name.lower().startswith("win") or system_name.lower() == "java":
                 try:
-                    powershell_cmd = 'powershell.exe -Command "cd \\"' + project_path + '\\"; npm run api"'
+                    # 在 Windows 上执行 start.vbs
+                    vbs_cmd = 'cscript.exe "' + start_vbs_path + '"'
                     self._extender._api_process = subprocess.Popen(
-                        powershell_cmd,
+                        vbs_cmd,
                         shell=True,
                         stdout=subprocess.PIPE,
                         stderr=subprocess.STDOUT,
                         cwd=project_path
                     )
                 except:
-                    cmd_command = 'cmd /c "cd /d \\"' + project_path + '\\" && npm run api"'
+                    # 备用方法：直接执行 vbs 文件
                     self._extender._api_process = subprocess.Popen(
-                        cmd_command,
+                        [start_vbs_path],
                         shell=True,
                         stdout=subprocess.PIPE,
                         stderr=subprocess.STDOUT,
                         cwd=project_path
                     )
             else:
-                bash_cmd = 'bash -c "cd \\"' + project_path + '\\" && npm run api"'
-                self._extender._api_process = subprocess.Popen(
-                    bash_cmd,
-                    shell=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    cwd=project_path
-                )
+                raise Exception(u"VBS 文件只能在 Windows 系统上执行, 当前 platform.system() = %s" % system_name)
 
             import time
             time.sleep(3)
@@ -1329,10 +1329,10 @@ class StartLocalApiListener(ActionListener):
             self._extender._updateStatusText()
 
             JOptionPane.showMessageDialog(None,
-                                          u"API服务启动成功！\n服务地址: http://localhost:3000/convert")
+                                          u"start.vbs 程序启动成功！\nAPI服务地址为: http://localhost:3000/convert")
 
         except Exception as e:
-            error_msg = u"启动API服务失败: " + str(e)
+            error_msg = u"启动 start.vbs 程序失败: " + safe_unicode(e)
             JOptionPane.showMessageDialog(None, error_msg, u"启动失败", JOptionPane.ERROR_MESSAGE)
 
 
@@ -1379,10 +1379,10 @@ class StopLocalApiListener(ActionListener):
             self._extender._updateApiStatusDisplay()
             self._extender._updateStatusText()
 
-            JOptionPane.showMessageDialog(None, u"API服务停止操作完成！")
+            JOptionPane.showMessageDialog(None, u"API停止操作完成！")
 
         except Exception as e:
-            error_msg = u"停止API服务时出错: " + str(e)
+            error_msg = u"停止程序时出错: " + safe_unicode(e)
             JOptionPane.showMessageDialog(None, error_msg, u"停止失败", JOptionPane.ERROR_MESSAGE)
 
 
@@ -1450,7 +1450,7 @@ class CopyAllListener(ActionListener):
                 clipboard.setContents(string_selection, None)
                 JOptionPane.showMessageDialog(None, u"代码已复制到剪贴板！")
             except Exception as e:
-                error_msg = u"复制失败: " + safe_unicode(str(e))
+                error_msg = u"复制失败: " + safe_unicode(e)
                 JOptionPane.showMessageDialog(None, error_msg)
         else:
             JOptionPane.showMessageDialog(None, u"没有可复制的内容！")
@@ -1482,7 +1482,7 @@ class BaseExportListener(ActionListener):
             export_text_to_file(text_content, full_path)
             JOptionPane.showMessageDialog(None, u"文件已导出到" + path_type + u": " + full_path)
         except Exception as e:
-            error_msg = u"导出到" + path_type + u"失败: " + safe_unicode(str(e))
+            error_msg = u"导出到" + path_type + u"失败: " + safe_unicode(e)
             JOptionPane.showMessageDialog(None, error_msg)
 
 
@@ -1705,7 +1705,7 @@ class CodeConverterTab(IMessageEditorTab):
                 self._retryBtn.setText(u"重新尝试")
 
         except Exception as e:
-            error_msg = u"处理请求时出错: " + safe_unicode(str(e))
+            error_msg = u"处理请求时出错: " + safe_unicode(e)
             display_error_msg = self._safeDisplayText(error_msg)
             self._txtInput.setText(safe_encode_utf8(display_error_msg))
             self._lastConversionFailed = True
@@ -1760,7 +1760,7 @@ class CodeConverterTab(IMessageEditorTab):
                                 chinese_chars.append((i, char))
 
                     if chinese_chars:
-                        return True, u"请求体包含中文字符，数量: " + str(len(chinese_chars)) + u"个"
+                        return True, u"请求体包含中文字符，数量: " + safe_unicode(str(len(chinese_chars))) + u"个"
 
             return False, ""
         except Exception:
@@ -1908,54 +1908,182 @@ class CodeConverterTab(IMessageEditorTab):
         return "curlonvert_code_" + timestamp + extension
 
     def _buildCurlCommand(self, content, requestInfo, headers):
-        """构建curl命令，完全按照官方awscurl实现保持headers原始顺序"""
+        """构建curl命令，优化中文字符处理"""
         try:
-            # 获取请求方法
-            method = requestInfo.getMethod()
-            if not method:
-                method = "GET"
+            # 安全地获取请求方法
+            try:
+                method = safe_unicode(requestInfo.getMethod())
+            except Exception:
+                method = u"GET"  # 默认方法
 
-            # 获取URL
-            url = str(requestInfo.getUrl())
-            if not url:
+            try:
+                original_url = safe_unicode(str(requestInfo.getUrl()))
+                if not original_url:
+                    return None
+
+                from java.net import URL
+                url_obj = URL(original_url)
+                protocol = url_obj.getProtocol()
+                host = url_obj.getHost()
+                port = url_obj.getPort()
+                path = url_obj.getPath()
+                query = url_obj.getQuery()
+
+                url_without_default_port = protocol + "://" + host
+                if port != -1 and not ((protocol == "http" and port == 80) or (protocol == "https" and port == 443)):
+                    url_without_default_port += ":" + str(port)
+                url_without_default_port += path
+                if query:
+                    url_without_default_port += "?" + query
+
+            except Exception:
                 return None
 
-            # 按照官方实现的顺序构建curl命令部分
-            parts = ['curl "{}"'.format(url), '-X {}'.format(method)]
+            curl_parts = ["curl", "--path-as-is", "-i", "-s", "-k", "-X", "$'" + method.upper() + "'"]
 
-            # 按原始顺序处理headers，跳过第一行（请求行）
-            # 这里完全按照官方 awscurl 的方式：for h in headers[1:]
-            for h in headers[1:]:
-                if not h:  # 跳过空header
+            cookie_values = []
+            other_headers = []
+            host_header = None
+
+            for header in headers[1:]:
+                try:
+                    # 安全地处理每个header
+                    safe_header_str = safe_unicode(header) if header else u""
+                    if safe_header_str and ":" in safe_header_str:
+                        header_parts = safe_header_str.split(":", 1)
+                        if len(header_parts) == 2:
+                            header_name = safe_unicode(header_parts[0].strip().lower())
+                            header_value = safe_unicode(header_parts[1].strip())
+
+                            if header_name == u"cookie":
+                                cookie_values.append(header_value)
+                            elif header_name == u"host":
+                                host_header = header_value
+                            elif header_name not in EXCLUDED_HEADERS:
+                                # 检测header值中是否有中文字符，使用安全的字符检查
+                                header_has_chinese = False
+                                try:
+                                    header_has_chinese = any(ord(char) > 127 for char in header_value if
+                                                             isinstance(char, unicode) and 0x4e00 <= ord(
+                                                                 char) <= 0x9fff)
+                                except (TypeError, ValueError):
+                                    header_has_chinese = False
+
+                                if header_has_chinese:
+                                    safe_value = header_value
+                                    safe_value = safe_value.replace("\\", "\\\\")
+                                    safe_value = safe_value.replace('"', '\\"')
+                                    safe_value = safe_value.replace("$", "\\$")
+                                    escaped_header = header_name.title() + ": " + safe_value
+                                    other_headers.append('-H "' + escaped_header + '"')
+                                else:
+                                    escaped_value = header_value.replace("\\", "\\\\").replace("'", "\\'").replace("\"",
+                                                                                                                   "\\\"")
+                                    escaped_header = header_name.title() + ": " + escaped_value
+                                    other_headers.append("-H $'" + escaped_header + "'")
+                except Exception as header_error:
+                    # 如果某个header处理失败，跳过它，继续处理其他headers
                     continue
 
-                # 检查是否是需要跳过的header
-                # 参考官方实现，跳过自动生成或不需要的headers
-                header_lower = h.lower()
-                if header_lower.startswith(("host:", "content-length:", "connection:", "proxy-connection:")):
-                    continue
+            if host_header:
+                curl_parts.append("-H $'Host: " + host_header + "'")
 
-                # 完全按照官方方式转义：h.replace("'", "'\\''")
-                escaped_header = h.replace("'", "'\\''")
-                parts.append("-H '{}'".format(escaped_header))
+            curl_parts.extend(other_headers)
 
-            # 处理请求体（按照官方顺序，在headers之后）
-            body_offset = requestInfo.getBodyOffset()
-            if body_offset < len(content):
-                body_bytes = content[body_offset:]
-                if body_bytes and len(body_bytes) > 0:
-                    body_str = self._extender._helpers.bytesToString(body_bytes)
-                    if body_str and body_str.strip():
-                        # 完全按照官方方式转义
-                        escaped_body = body_str.replace("'", "'\\''")
-                        parts.append("-d '{}'".format(escaped_body))
+            if cookie_values:
+                try:
+                    # 安全地处理cookie值
+                    safe_cookie_values = [safe_unicode(cookie) for cookie in cookie_values]
+                    cookie_string = "; ".join(safe_cookie_values)
 
-            # 使用官方的格式化方式：" \\\n".join(parts)
-            cmd = " \\\n".join(parts)
-            return cmd
+                    # 安全地检测中文字符
+                    cookie_has_chinese = False
+                    try:
+                        cookie_has_chinese = any(ord(char) > 127 for char in cookie_string if
+                                                 isinstance(char, unicode) and 0x4e00 <= ord(char) <= 0x9fff)
+                    except (TypeError, ValueError):
+                        cookie_has_chinese = False
 
-        except Exception as e:
-            # 发生错误时返回None
+                    if cookie_has_chinese:
+                        safe_cookie = cookie_string
+                        safe_cookie = safe_cookie.replace("\\", "\\\\")
+                        safe_cookie = safe_cookie.replace('"', '\\"')
+                        safe_cookie = safe_cookie.replace("$", "\\$")
+                        curl_parts.append('-b "' + safe_cookie + '"')
+                    else:
+                        escaped_cookie = cookie_string.replace("\\", "\\\\").replace("'", "\\'")
+                        curl_parts.append("-b $'" + escaped_cookie + "'")
+                except Exception as cookie_error:
+                    # Cookie处理失败，跳过cookie（不影响主要功能）
+                    pass
+
+            if requestInfo.getBodyOffset() < len(content):
+                try:
+                    body = content[requestInfo.getBodyOffset():]
+                    if body and len(body) > 0:
+                        # 使用安全的字节解码方法
+                        body_str = self._bytesToUtf8String(body)
+                        if body_str and body_str.strip():
+
+                            # 安全地检测中文字符
+                            has_chinese = False
+                            try:
+                                has_chinese = any(ord(char) > 127 for char in body_str if
+                                                  isinstance(char, unicode) and 0x4e00 <= ord(char) <= 0x9fff)
+                            except (TypeError, ValueError):
+                                has_chinese = False
+
+                            if has_chinese:
+                                safe_body = body_str
+                                safe_body = safe_body.replace("\\", "\\\\")
+                                safe_body = safe_body.replace('"', '\\"')
+                                safe_body = safe_body.replace("$", "\\$")
+
+                                curl_parts.append('--data-binary "' + safe_body + '"')
+                            else:
+                                escaped_body = body_str.replace("\\", "\\\\").replace("'", "\\'")
+                                curl_parts.append("--data-binary $'" + escaped_body + "'")
+                except Exception as body_error:
+                    # 请求体处理失败，跳过（GET请求等不需要body）
+                    pass
+
+            # 安全地处理URL中的中文字符
+            try:
+                url_has_chinese = False
+                try:
+                    url_has_chinese = any(ord(char) > 127 for char in url_without_default_port if
+                                          isinstance(char, unicode) and 0x4e00 <= ord(char) <= 0x9fff)
+                except (TypeError, ValueError):
+                    url_has_chinese = False
+
+                if url_has_chinese:
+                    safe_url = url_without_default_port
+                    safe_url = safe_url.replace("\\", "\\\\")
+                    safe_url = safe_url.replace('"', '\\"')
+                    safe_url = safe_url.replace("$", "\\$")
+                    curl_parts.append('"' + safe_url + '"')
+                else:
+                    escaped_url = url_without_default_port.replace("\\", "\\\\").replace("'", "\\'")
+                    curl_parts.append("$'" + escaped_url + "'")
+            except Exception as url_error:
+                # URL处理失败，使用基本格式
+                try:
+                    escaped_url = url_without_default_port.replace("\\", "\\\\").replace("'", "\\'")
+                    curl_parts.append("$'" + escaped_url + "'")
+                except Exception:
+                    # 最后兜底：使用最简单的URL格式
+                    curl_parts.append('"' + str(url_without_default_port) + '"')
+
+            # 安全地组合最终的curl命令
+            try:
+                final_curl = " \\\n    ".join(curl_parts)
+                # 确保返回的是Unicode字符串
+                return safe_unicode(final_curl)
+            except Exception as join_error:
+                # curl命令组合失败，返回None
+                return None
+
+        except Exception:
             return None
 
     def _convertToLanguage(self, curl_command, target_language):
@@ -2146,7 +2274,7 @@ class CodeConverterTab(IMessageEditorTab):
             error_msg = u"网络错误: " + safe_unicode(str(e.reason))
             return self._generateFallbackCode(curl_command, error_msg, target_language)
         except Exception as e:
-            error_msg = u"意外错误: " + safe_unicode(str(e))
+            error_msg = u"意外错误: " + safe_unicode(e)
             return self._generateFallbackCode(curl_command, error_msg, target_language)
 
     def _generateFallbackCode(self, curl_command, error_msg, target_language):

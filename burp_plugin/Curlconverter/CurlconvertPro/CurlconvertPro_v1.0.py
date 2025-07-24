@@ -3,13 +3,11 @@
 # TODO:@Author: tomato
 # TODO:@Version: Python3.12.0
 # TODO:@Time: 2025/7/16 13:20
-
 import json
 import os
 import pickle
 import sys
 import time
-
 import urllib2
 from burp import IBurpExtender, IMessageEditorTabFactory, IMessageEditorTab, ITab, IExtensionStateListener
 from java.awt import (BorderLayout, FlowLayout, Dimension, Color, Font,
