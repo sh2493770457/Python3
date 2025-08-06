@@ -76,9 +76,10 @@ IContextMenuFactory {
     private JTextField customPhoneField;
     private JButton modifyPhoneButton;
     private String customPhoneNumber = "18888888888";
-    private JTextField customSmsContentField;
-    private JButton modifySmsContentButton;
-    private String customSmsContentParam = "";
+    private JPanel smsParamsPanel;
+    private JButton addSmsParamButton;
+    private JButton removeSmsParamButton;
+    private List<SmsParamEntry> smsParamEntries = new ArrayList<>();
     private boolean smsContentTestEnabled = false;
     private JButton smsInterfaceTestButton;
     private JButton combineTestButton;
@@ -95,19 +96,21 @@ IContextMenuFactory {
     private Map<Integer, AtomicBoolean> cancelFlags = new ConcurrentHashMap<Integer, AtomicBoolean>();
     private static final String[] PAYLOAD_PATTERNS = new String[]{"xxxxxxxxxxx", "xxxxxxxxxxx,", "xxxxxxxxxxx,,", "xxxxxxxxxxx,,,", "xxxxxxxxxxx,,,,", "xxxxxxxxxxx,,,,,", ",,,,,xxxxxxxxxxx", ",,,,xxxxxxxxxxx", ",,,xxxxxxxxxxx", ",,xxxxxxxxxxx", ",xxxxxxxxxxx", " xxxxxxxxxxx", "  xxxxxxxxxxx", "   xxxxxxxxxxx", "%20xxxxxxxxxxx", "%20%20xxxxxxxxxxx", "%20%20%20xxxxxxxxxxx", "xxxxxxxxxxx ", "xxxxxxxxxxx  ", "xxxxxxxxxxx   ", "xxxxxxxxxxx%20", "xxxxxxxxxxx%20%20", "xxxxxxxxxxx%20%20%20", "@xxxxxxxxxxx", "@@xxxxxxxxxxx", "@@@xxxxxxxxxxx", "xxxxxxxxxxx@", "xxxxxxxxxxx@@", "xxxxxxxxxxx@@@", "xxxxxxxxxxx#", "xxxxxxxxxxx##", "xxxxxxxxxxx###", "xxxxxxxxxxx####", "#xxxxxxxxxxx", "##xxxxxxxxxxx", "###xxxxxxxxxxx", "####xxxxxxxxxxx", "xxxxxxxxxxx?", "xxxxxxxxxxx??", "xxxxxxxxxxx???", "xxxxxxxxxxx????", "?xxxxxxxxxxx", "??xxxxxxxxxxx", "???xxxxxxxxxxx", "????xxxxxxxxxxx", "xxxxxxxxxxx!", "xxxxxxxxxxx!!", "xxxxxxxxxxx!!!", "xxxxxxxxxxx!!!!", "!xxxxxxxxxxx", "!!xxxxxxxxxxx", "!!!xxxxxxxxxxx", "!!!!xxxxxxxxxxx", "xxxxxxxxxxx.", "xxxxxxxxxxx..", "xxxxxxxxxxx...", "xxxxxxxxxxx....", ".xxxxxxxxxxx", "..xxxxxxxxxxx", "...xxxxxxxxxxx", "....xxxxxxxxxxx", "%00xxxxxxxxxxx", "%00%00xxxxxxxxxxx", "%00%00%00xxxxxxxxxxx", "xxxxxxxxxxx%00", "xxxxxxxxxxx%00%00", "xxxxxxxxxxx%00%00%00", "xxxxxxxxxxx\\n", "xxxxxxxxxxx\\n\\n", "xxxxxxxxxxx\\n\\n\\n", "xxxxxxxxxxx\\n\\n\\n\\n", "\\nxxxxxxxxxxx", "\\n\\nxxxxxxxxxxx", "\\n\\n\\nxxxxxxxxxxx", "\\n\\n\\n\\nxxxxxxxxxxx", "xxxxxxxxxxx\\r", "xxxxxxxxxxx\\r\\r", "xxxxxxxxxxx\\r\\r\\r", "xxxxxxxxxxx\\r\\r\\r\\r", "\\rxxxxxxxxxxx", "\\r\\rxxxxxxxxxxx", "\\r\\r\\rxxxxxxxxxxx", "\\r\\r\\r\\rxxxxxxxxxxx", "xxxxxxxxxxx+", "xxxxxxxxxxx++", "xxxxxxxxxxx+++", "xxxxxxxxxxx++++", "+xxxxxxxxxxx", "++xxxxxxxxxxx", "+++xxxxxxxxxxx", "++++xxxxxxxxxxx", "xxxxxxxxxxx-", "xxxxxxxxxxx--", "xxxxxxxxxxx---", "xxxxxxxxxxx----", "-xxxxxxxxxxx", "--xxxxxxxxxxx", "---xxxxxxxxxxx", "----xxxxxxxxxxx", "xxxxxxxxxxx*", "xxxxxxxxxxx**", "xxxxxxxxxxx***", "xxxxxxxxxxx****", "*xxxxxxxxxxx", "**xxxxxxxxxxx", "***xxxxxxxxxxx", "****xxxxxxxxxxx", "xxxxxxxxxxx/", "xxxxxxxxxxx//", "xxxxxxxxxxx///", "xxxxxxxxxxx////", "/xxxxxxxxxxx", "//xxxxxxxxxxx", "///xxxxxxxxxxx", "////xxxxxxxxxxx", "+86xxxxxxxxxxx", "+86 xxxxxxxxxxx", "+86%20xxxxxxxxxxx", "+12xxxxxxxxxxx", "+12 xxxxxxxxxxx", "+12%20xxxxxxxxxxx", "+852xxxxxxxxxxx", "+852 xxxxxxxxxxx", "+852%20xxxxxxxxxxx", "+853xxxxxxxxxxx", "+853 xxxxxxxxxxx", "+853%20xxxxxxxxxxx", "0086xxxxxxxxxxx", "0086 xxxxxxxxxxx", "0086%20xxxxxxxxxxx", "0012xxxxxxxxxxx", "0012 xxxxxxxxxxx", "0012%20xxxxxxxxxxx", "00852xxxxxxxxxxx", "00852 xxxxxxxxxxx", "00852%20xxxxxxxxxxx", "00853xxxxxxxxxxx", "00853 xxxxxxxxxxx", "00853%20xxxxxxxxxxx", "9986xxxxxxxxxxx", "9986 xxxxxxxxxxx", "9986%20xxxxxxxxxxx", "9912xxxxxxxxxxx", "9912 xxxxxxxxxxx", "9912%20xxxxxxxxxxx", "99852xxxxxxxxxxx", "99852 xxxxxxxxxxx", "99852%20xxxxxxxxxxx", "99853xxxxxxxxxxx", "99853 xxxxxxxxxxx", "99853%20xxxxxxxxxxx", "86xxxxxxxxxxx", "86 xxxxxxxxxxx", "86%20xxxxxxxxxxx", "12xxxxxxxxxxx", "12 xxxxxxxxxxx", "12%20xxxxxxxxxxx", "852xxxxxxxxxxx", "852 xxxxxxxxxxx", "852%20xxxxxxxxxxx", "853xxxxxxxxxxx", "853 xxxxxxxxxxx", "853%20xxxxxxxxxxx", "086xxxxxxxxxxx", "086 xxxxxxxxxxx", "086%20xxxxxxxxxxx", "012xxxxxxxxxxx", "012 xxxxxxxxxxx", "012%20xxxxxxxxxxx", "0852xxxxxxxxxxx", "0852 xxxxxxxxxxx", "0852%20xxxxxxxxxxx", "0853xxxxxxxxxxx", "0853 xxxxxxxxxxx", "0853%20xxxxxxxxxxx", "%86xxxxxxxxxxx", "%86 xxxxxxxxxxx", "%86%2%xxxxxxxxxxx", "%12xxxxxxxxxxx", "%12 xxxxxxxxxxx", "%12%2%xxxxxxxxxxx", "%852xxxxxxxxxxx", "%852 xxxxxxxxxxx", "%852%2%xxxxxxxxxxx", "%853xxxxxxxxxxx", "%853 xxxxxxxxxxx", "%853%2%xxxxxxxxxxx", " 0xxxxxxxxxxx", "%200xxxxxxxxxxx", "0xxxxxxxxxxx", "00xxxxxxxxxxx", "000xxxxxxxxxxx", "0000xxxxxxxxxxx", "00000xxxxxxxxxxx", "+)WAFXR#!Txxxxxxxxxxx", "xxxxxxxxxxx+)WAFXR#!T", "xxxxxxxxxxx.js", "xxxxxxxxxxx.json", "xxxxxxxxxxx.html", "xxxxxxxxxxx.css", "xxxxxxxxxxx.jpg", "xxxxxxxxxxx.png", "xxxxxxxxxxx.icon", "xxxxxxxxxxx.txt", "xxxxxxxxxxx.mp3", "xxxxxxxxxxx.mp4", "xxxxxxxxxxx.0", "xxxxxxxxxxx.1", "xxxxxxxxxxx.2", "xxxxxxxxxxx.3", "xxxxxxxxxxx,18888888888", "xxxxxxxxxxx,,18888888888", "xxxxxxxxxxx,,,18888888888", "xxxxxxxxxxx&18888888888", "xxxxxxxxxxx&&18888888888", "xxxxxxxxxxx&&&18888888888", "xxxxxxxxxxx&&&&18888888888"};
 
+
+
     @Override
     public void registerExtenderCallbacks(final IBurpExtenderCallbacks callbacks) {
         this.stdout = new PrintWriter(callbacks.getStdout(), true);
         this.stdout.println("[+] ####################################");
-        this.stdout.println("[+] SMS Tomato Fuzzer!");
-        this.stdout.println("[+] Version:4.1");
+        this.stdout.println("[+] TomatoFuzziness!");
+        this.stdout.println("[+] Version:4.2");
         this.stdout.println("[+] Author:Tomato");
         this.stdout.println("[+] Github:https://github.com/sh2493770457/Python3");
         this.stdout.println("[+] ####################################");
         this.stdout.println("[+] Smile Tomato!");
         this.callbacks = callbacks;
         this.helpers = callbacks.getHelpers();
-        callbacks.setExtensionName("SMS Tomato Fuzzer");
+        callbacks.setExtensionName("TomatoFuzziness");
         SwingUtilities.invokeLater(new Runnable(){
 
             @Override
@@ -147,10 +150,10 @@ IContextMenuFactory {
                     }
                 });
                 JPanel headerPanel = new JPanel(new GridLayout(4, 1));
-                headerPanel.add(new JLabel("\u540d\u79f0\uff1aSMS Tomato Fuzzer"));
+                headerPanel.add(new JLabel("\u540d\u79f0\uff1aTomatoFuzziness"));
                 headerPanel.add(new JLabel("\u4f5c\u8005\uff1aTomato"));
                 headerPanel.add(new JLabel("Github\uff1ahttps://github.com/sh2493770457/Python3"));
-                headerPanel.add(new JLabel("\u7248\u672c\uff1aV4.1"));
+                headerPanel.add(new JLabel("\u7248\u672c\uff1aV4.2"));
                 BurpExtender.this.clearListButton = new JButton("\u6e05\u7a7a\u5217\u8868");
                 BurpExtender.this.clearListButton.addActionListener(new ActionListener(){
 
@@ -199,25 +202,8 @@ IContextMenuFactory {
                         callbacks.printOutput("\u81ea\u5b9a\u4e49\u6d4b\u8bd5\u53f7\u7801\u66f4\u65b0\u4e3a\uff1a" + BurpExtender.this.customPhoneNumber);
                     }
                 });
-                BurpExtender.this.customSmsContentField = new JTextField("code", 20);
-                BurpExtender.this.modifySmsContentButton = new JButton("\u8bbe\u7f6e\u77ed\u4fe1\u5185\u5bb9\u53c2\u6570");
-                BurpExtender.this.modifySmsContentButton.addActionListener(new ActionListener(){
-
-                    @Override
-                    public void actionPerformed(ActionEvent e) {
-                        String input = BurpExtender.this.customSmsContentField.getText().trim();
-                        if (!input.isEmpty()) {
-                            BurpExtender.this.customSmsContentParam = input;
-                            BurpExtender.this.smsContentTestEnabled = true;
-                            BurpExtender.this.modifySmsContentButton.setText("\u5173\u95ed\u77ed\u4fe1\u5185\u5bb9\u6d4b\u8bd5");
-                        } else {
-                            BurpExtender.this.customSmsContentParam = "";
-                            BurpExtender.this.smsContentTestEnabled = false;
-                            BurpExtender.this.modifySmsContentButton.setText("\u8bbe\u7f6e\u77ed\u4fe1\u5185\u5bb9\u53c2\u6570");
-                        }
-                        callbacks.printOutput("\u77ed\u4fe1\u5185\u5bb9\u53c2\u6570\u8bbe\u7f6e\u4e3a\uff1a" + BurpExtender.this.customSmsContentParam + " (\u72b6\u6001: " + (BurpExtender.this.smsContentTestEnabled ? "\u542f\u7528" : "\u5173\u95ed") + ")");
-                    }
-                });
+                // 初始化短信参数管理面板
+                BurpExtender.this.initializeSmsParamsPanel();
                 BurpExtender.this.smsInterfaceTestButton = new JButton("\u6d4b\u8bd5\u77ed\u4fe1\u63a5\u53e3");
                 BurpExtender.this.smsInterfaceTestButton.addActionListener(new ActionListener(){
 
@@ -248,9 +234,10 @@ IContextMenuFactory {
                 firstRow.add(BurpExtender.this.modifyPhoneButton);
                 controlPanel.add(firstRow);
                 JPanel secondRow = new JPanel(new FlowLayout(0));
-                secondRow.add(BurpExtender.this.customSmsContentField);
-                secondRow.add(BurpExtender.this.modifySmsContentButton);
+                secondRow.add(new JLabel("短信参数:"));
+                secondRow.add(BurpExtender.this.addSmsParamButton);
                 controlPanel.add(secondRow);
+                controlPanel.add(BurpExtender.this.smsParamsPanel);
                 JPanel thirdRow = new JPanel(new FlowLayout(1));
                 thirdRow.add(BurpExtender.this.smsInterfaceTestButton);
                 thirdRow.add(BurpExtender.this.combineTestButton);
@@ -334,7 +321,7 @@ IContextMenuFactory {
 
     @Override
     public String getTabCaption() {
-        return "SMS Tomato Fuzzer";
+        return "TomatoFuzziness";
     }
 
     @Override
@@ -362,7 +349,7 @@ IContextMenuFactory {
         ArrayList<JMenuItem> menuItems = new ArrayList<JMenuItem>();
         final IHttpRequestResponse[] selectedMessages = invocation.getSelectedMessages();
         if (selectedMessages != null && selectedMessages.length > 0) {
-            JMenuItem menuItem = new JMenuItem("Send to SMS Tomato Fuzzer");
+            JMenuItem menuItem = new JMenuItem("Send to TomatoFuzziness");
             menuItem.addActionListener(new ActionListener(){
 
                 @Override
@@ -506,7 +493,6 @@ IContextMenuFactory {
             if (this.isPhoneTestCandidate(value) && this.selectedNumbers.contains(value)) {
                 byte[] newRequest;
                 testExecuted = true;
-                int payloadIndex = 1;
                 for (String pattern : PAYLOAD_PATTERNS) {
                     if (this.cancelFlags.get(origEntry.id).get()) break;
                     byte[] reqBuf = baseRequestResponse.getRequest();
@@ -519,9 +505,12 @@ IContextMenuFactory {
                         reqBuf = this.helpers.updateParameter(reqBuf, np);
                     }
 
-                    // 添加短信内容参数的序号标记
-                    if (this.smsContentTestEnabled && !this.customSmsContentParam.isEmpty()) {
-                        reqBuf = this.addSmsContentParameter(reqBuf, String.valueOf(payloadIndex));
+                    // 添加短信内容参数，传入当前测试的payload内容
+                    if (this.smsContentTestEnabled) {
+                        String currentPayload = this.selectedNumbers.stream()
+                            .map(n -> pattern.replace("xxxxxxxxxxx", n))
+                            .collect(Collectors.joining(";"));
+                        reqBuf = this.addSmsContentParameters(reqBuf, currentPayload);
                     }
 
                     IHttpRequestResponse rr = this.callbacks.makeHttpRequest(baseRequestResponse.getHttpService(), reqBuf);
@@ -541,7 +530,6 @@ IContextMenuFactory {
                             }
                         }
                     });
-                    payloadIndex++;
                 }
                 for (int i2 = 1; i2 <= value.length(); ++i2) {
                     String prefix = value.substring(0, i2);
@@ -883,7 +871,6 @@ IContextMenuFactory {
                         if (this.isPhoneTestCandidate(str) && this.selectedNumbers.contains(str)) {
                             String payload;
                             executed = true;
-                            int payloadIndex = 1;
                             for (String pattern : PAYLOAD_PATTERNS) {
                                 if (this.cancelFlags.get(origEntry.id).get()) break;
                                 payload = pattern.replace("xxxxxxxxxxx", str);
@@ -893,14 +880,13 @@ IContextMenuFactory {
                                 newObj = new JSONObject(obj.toString());
                                 newObj.put(key, payload);
 
-                                // 添加短信内容参数的序号标记
-                                if (this.smsContentTestEnabled && !this.customSmsContentParam.isEmpty()) {
-                                    newObj.put(this.customSmsContentParam, String.valueOf(payloadIndex));
+                                // 添加短信内容参数，传入当前测试的payload内容
+                                if (this.smsContentTestEnabled) {
+                                    this.addSmsContentParametersToJson(newObj, payload);
                                 }
 
                                 bodyBytes = newObj.toString().getBytes(StandardCharsets.UTF_8);
                                 newRequest = this.helpers.buildHttpMessage(headers, bodyBytes);
-                                payloadIndex++;
                                 testResponse = this.callbacks.makeHttpRequest(baseRequestResponse.getHttpService(), newRequest);
                                 responseLength = testResponse.getResponse() != null ? testResponse.getResponse().length : 0;
                                 responseCode = testResponse.getResponse() != null ? this.helpers.analyzeResponse(testResponse.getResponse()).getStatusCode() : (short)0;
@@ -1020,7 +1006,6 @@ IContextMenuFactory {
                     String str = element.toString();
                     if (this.isPhoneTestCandidate(str) && this.selectedNumbers.contains(str)) {
                         executed = true;
-                        int payloadIndex = 1;
                         for (String pattern : PAYLOAD_PATTERNS) {
                             if (this.cancelFlags.get(origEntry.id).get()) break;
                             String payload = pattern.replace("xxxxxxxxxxx", str);
@@ -1032,12 +1017,11 @@ IContextMenuFactory {
                             byte[] bodyBytes = newArr.toString().getBytes(StandardCharsets.UTF_8);
 
                             // 对于JSON数组，如果需要添加短信内容参数，需要修改整个请求体
-                            if (this.smsContentTestEnabled && !this.customSmsContentParam.isEmpty()) {
-                                bodyBytes = this.addSmsContentToJsonArray(bodyBytes, String.valueOf(payloadIndex), headers);
+                            if (this.smsContentTestEnabled) {
+                                bodyBytes = this.addSmsContentParametersToJsonArray(bodyBytes, payload, headers);
                             }
 
                             byte[] newRequest = this.helpers.buildHttpMessage(headers, bodyBytes);
-                            payloadIndex++;
                             testResponse = this.callbacks.makeHttpRequest(baseRequestResponse.getHttpService(), newRequest);
                             int responseLength = testResponse.getResponse() != null ? testResponse.getResponse().length : 0;
                             responseCode = testResponse.getResponse() != null ? this.helpers.analyzeResponse(testResponse.getResponse()).getStatusCode() : (short)0;
@@ -1319,36 +1303,139 @@ IContextMenuFactory {
         java.awt.Toolkit.getDefaultToolkit().getSystemClipboard().setContents(stringSelection, null);
     }
 
-    private byte[] addSmsContentParameter(byte[] request, String sequenceNumber) {
+    // 初始化短信参数管理面板
+    private void initializeSmsParamsPanel() {
+        this.smsParamsPanel = new JPanel();
+        this.smsParamsPanel.setLayout(new BoxLayout(this.smsParamsPanel, BoxLayout.Y_AXIS));
+
+        this.addSmsParamButton = new JButton("添加短信参数");
+        this.addSmsParamButton.addActionListener(e -> addSmsParam());
+
+        // 添加默认的短信参数
+        addSmsParam("code");
+    }
+
+    // 添加新的短信参数条目
+    private void addSmsParam() {
+        addSmsParam("");
+    }
+
+    private void addSmsParam(String name) {
+        SmsParamEntry entry = new SmsParamEntry(name);
+
+        // 设置按钮事件
+        entry.toggleButton.addActionListener(e -> {
+            entry.enabled = !entry.enabled;
+            entry.toggleButton.setText(entry.enabled ? "禁用" : "启用");
+            entry.nameField.setEditable(!entry.enabled);
+            entry.nameField.setForeground(entry.enabled ? Color.GRAY : Color.BLACK);
+            updateSmsContentTestStatus();
+            this.callbacks.printOutput("短信参数 '" + entry.nameField.getText() + "' " +
+                (entry.enabled ? "已启用" : "已禁用"));
+        });
+
+        entry.removeButton.addActionListener(e -> {
+            removeSmsParam(entry);
+        });
+
+        // 创建参数行面板
+        JPanel paramRow = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        paramRow.add(new JLabel("参数名:"));
+        paramRow.add(entry.nameField);
+        paramRow.add(new JLabel("(值=当前payload)"));
+        paramRow.add(entry.toggleButton);
+        paramRow.add(entry.removeButton);
+
+        entry.paramPanel = paramRow;
+        this.smsParamEntries.add(entry);
+        this.smsParamsPanel.add(paramRow);
+        this.smsParamsPanel.revalidate();
+        this.smsParamsPanel.repaint();
+    }
+
+    // 删除短信参数条目
+    private void removeSmsParam(SmsParamEntry entry) {
+        this.smsParamEntries.remove(entry);
+        this.smsParamsPanel.remove(entry.paramPanel);
+        this.smsParamsPanel.revalidate();
+        this.smsParamsPanel.repaint();
+        updateSmsContentTestStatus();
+        this.callbacks.printOutput("已删除短信参数: " + entry.nameField.getText());
+    }
+
+    // 更新短信内容测试状态
+    private void updateSmsContentTestStatus() {
+        boolean hasEnabledParams = this.smsParamEntries.stream()
+            .anyMatch(entry -> entry.enabled && !entry.nameField.getText().trim().isEmpty());
+        this.smsContentTestEnabled = hasEnabledParams;
+    }
+
+    // 获取启用的短信参数
+    private List<SmsParamEntry> getEnabledSmsParams() {
+        return this.smsParamEntries.stream()
+            .filter(entry -> entry.enabled && !entry.nameField.getText().trim().isEmpty())
+            .collect(Collectors.toList());
+    }
+
+
+
+
+
+
+    // 添加多个短信内容参数到请求
+    private byte[] addSmsContentParameters(byte[] request, String payloadContent) {
+        try {
+            List<SmsParamEntry> enabledParams = getEnabledSmsParams();
+            if (enabledParams.isEmpty()) {
+                return request;
+            }
+
+            byte[] modifiedRequest = request;
+            for (SmsParamEntry param : enabledParams) {
+                String paramName = param.nameField.getText().trim();
+                // 参数值固定使用payload内容
+                modifiedRequest = this.addSingleSmsContentParameter(modifiedRequest, paramName, payloadContent);
+            }
+
+            return modifiedRequest;
+        } catch (Exception e) {
+            this.callbacks.printError("添加多个短信内容参数时出错: " + e.getMessage());
+            return request;
+        }
+    }
+
+    // 添加单个短信内容参数到请求
+    private byte[] addSingleSmsContentParameter(byte[] request, String paramName, String paramValue) {
         try {
             IRequestInfo requestInfo = this.helpers.analyzeRequest(request);
             List<IParameter> parameters = requestInfo.getParameters();
 
-            // 检查是否已存在短信内容参数
+            // 检查是否已存在该参数
             for (IParameter param : parameters) {
-                if (param.getName().equals(this.customSmsContentParam)) {
+                if (param.getName().equals(paramName)) {
                     // 更新现有参数
-                    IParameter newParam = this.helpers.buildParameter(this.customSmsContentParam, sequenceNumber, param.getType());
+                    IParameter newParam = this.helpers.buildParameter(paramName, paramValue, param.getType());
                     return this.helpers.updateParameter(request, newParam);
                 }
             }
 
             // 如果参数不存在，尝试添加到请求体（JSON格式）
             if (requestInfo.getContentType() == IRequestInfo.CONTENT_TYPE_JSON) {
-                return this.addSmsContentToJson(request, sequenceNumber);
+                return this.addSingleSmsContentToJson(request, paramName, paramValue);
             }
 
             // 如果是表单数据，添加为POST参数
-            IParameter newParam = this.helpers.buildParameter(this.customSmsContentParam, sequenceNumber, IParameter.PARAM_BODY);
+            IParameter newParam = this.helpers.buildParameter(paramName, paramValue, IParameter.PARAM_BODY);
             return this.helpers.addParameter(request, newParam);
 
         } catch (Exception e) {
-            this.callbacks.printError("添加短信内容参数时出错: " + e.getMessage());
+            this.callbacks.printError("添加单个短信内容参数时出错: " + e.getMessage());
             return request;
         }
     }
 
-    private byte[] addSmsContentToJson(byte[] request, String sequenceNumber) {
+    // 添加单个短信内容参数到JSON
+    private byte[] addSingleSmsContentToJson(byte[] request, String paramName, String paramValue) {
         try {
             IRequestInfo requestInfo = this.helpers.analyzeRequest(request);
             int bodyOffset = requestInfo.getBodyOffset();
@@ -1362,7 +1449,7 @@ IContextMenuFactory {
 
             if (jsonObj instanceof JSONObject) {
                 JSONObject obj = (JSONObject) jsonObj;
-                obj.put(this.customSmsContentParam, sequenceNumber);
+                obj.put(paramName, paramValue);
 
                 List<String> headers = new ArrayList<>(requestInfo.getHeaders());
                 byte[] newBody = obj.toString().getBytes(StandardCharsets.UTF_8);
@@ -1370,25 +1457,49 @@ IContextMenuFactory {
             }
 
         } catch (Exception e) {
-            this.callbacks.printError("添加短信内容到JSON时出错: " + e.getMessage());
+            this.callbacks.printError("添加单个短信内容到JSON时出错: " + e.getMessage());
         }
-
         return request;
     }
 
-    private byte[] addSmsContentToJsonArray(byte[] arrayBodyBytes, String sequenceNumber, List<String> headers) {
+    // 添加多个短信内容参数到JSON对象
+    private void addSmsContentParametersToJson(JSONObject jsonObj, String payloadContent) {
         try {
+            List<SmsParamEntry> enabledParams = getEnabledSmsParams();
+            for (SmsParamEntry param : enabledParams) {
+                String paramName = param.nameField.getText().trim();
+                // 参数值固定使用payload内容
+                jsonObj.put(paramName, payloadContent);
+            }
+        } catch (Exception e) {
+            this.callbacks.printError("添加多个短信内容参数到JSON对象时出错: " + e.getMessage());
+        }
+    }
+
+    // 添加多个短信内容参数到JSON数组
+    private byte[] addSmsContentParametersToJsonArray(byte[] arrayBodyBytes, String payloadContent, List<String> headers) {
+        try {
+            List<SmsParamEntry> enabledParams = getEnabledSmsParams();
+            if (enabledParams.isEmpty()) {
+                return arrayBodyBytes;
+            }
+
             // 对于JSON数组，我们需要将其包装在一个对象中，或者添加到现有的父对象中
             // 这里我们尝试创建一个包含数组和短信内容参数的新对象
             String arrayBody = new String(arrayBodyBytes, StandardCharsets.UTF_8);
             JSONObject wrapper = new JSONObject();
             wrapper.put("data", new JSONArray(arrayBody));
-            wrapper.put(this.customSmsContentParam, sequenceNumber);
+
+            for (SmsParamEntry param : enabledParams) {
+                String paramName = param.nameField.getText().trim();
+                // 参数值固定使用payload内容
+                wrapper.put(paramName, payloadContent);
+            }
 
             return wrapper.toString().getBytes(StandardCharsets.UTF_8);
 
         } catch (Exception e) {
-            this.callbacks.printError("添加短信内容到JSON数组时出错: " + e.getMessage());
+            this.callbacks.printError("添加多个短信内容参数到JSON数组时出错: " + e.getMessage());
             return arrayBodyBytes;
         }
     }
@@ -1538,6 +1649,22 @@ IContextMenuFactory {
             this.responseTime = responseTime;
             this.responseCode = responseCode;
             this.requestResponse = reqResp;
+        }
+    }
+
+    // 短信参数条目类
+    private static class SmsParamEntry {
+        JTextField nameField;
+        JButton toggleButton;
+        JButton removeButton;
+        JPanel paramPanel;
+        boolean enabled;
+
+        SmsParamEntry(String name) {
+            this.nameField = new JTextField(name, 15);
+            this.toggleButton = new JButton("启用");
+            this.removeButton = new JButton("删除");
+            this.enabled = false;
         }
     }
 
