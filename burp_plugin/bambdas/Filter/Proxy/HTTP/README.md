@@ -1,0 +1,1221 @@
+<!--
+*** 自动生成文件 ***
+此文件由BambdaChecker自动生成。
+请勿手动编辑此文件，或在拉取请求中包含对此文件的任何更改。
+-->
+# 代理HTTP过滤器
+文档：[使用Bambdas过滤HTTP历史记录](https://portswigger.net/burp/documentation/desktop/tools/proxy/http-history/bambdas)
+## [AnnotateSoapRequests.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/AnnotateSoapRequests.bambda)
+### 此脚本在Burp代理历史记录的"备注"列中填充SOAP请求的元素。您可以通过编辑正则表达式模式来扩展捕获组。
+#### 作者：Nick Coblentz (https://github.com/ncoblentz)
+```java
+// Only applies to in-scope requests, feel free to remove this part of the if statement if you want it to apply to all requests
+if(requestResponse.request().isInScope()
+  && !requestResponse.annotations().hasNotes() //don't apply it if notes are already present
+  && requestResponse.request().hasHeader("Content-Type")
+  && requestResponse.request().headerValue("Content-Type").contains("soap+xml")) //look for soap requests
+{
+    StringBuilder builder = new StringBuilder();
+  if(requestResponse.request().bodyToString().contains("<s:Body"))
+    {
+        //Currently looks for the tag just after body and for any usernames in the ws-security header. You can add more of your own here.
+        Matcher m = Pattern.compile("<(?:[a-zA-Z0-9]+:)?Username>([^<]+)</(?:[a-zA-Z0-9]+:)*Username>|<(?:[a-zA-Z0-9]+:)*Body[^>]*><([^ ]+)",Pattern.CASE_INSENSITIVE).matcher(requestResponse.request().bodyToString());
+
+        while(m.find() && m.groupCount()>0) {
+            for(int i=1;i<=m.groupCount();i++) {
+                if(m.group(i)!=null)
+                  builder.append(m.group(i)+" ");
+            }
+        }
+        requestResponse.annotations().setNotes(builder.toString());
+    }
+}
+
+// Put your typical filters here, this one doesn't actually filter anything
+return true;
+
+```
+## [Detect101SwitchingProtocols.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/Detect101SwitchingProtocols.bambda)
+### 检测HTTP响应中"101协议切换"的Bambda脚本
+#### 作者：Tur24Tur / BugBountyzip (https://github.com/BugBountyzip)
+```java
+// Ensure there is a response and check if the status code is 101
+return requestResponse.hasResponse() && requestResponse.response().statusCode() == 101;
+
+```
+## [Detect403Forbidden.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/Detect403Forbidden.bambda)
+### 检测HTTP响应中"403禁止访问"的Bambda脚本
+#### 作者：ctflearner
+```java
+
+return requestResponse.hasResponse() && requestResponse.response().statusCode() == 403;
+
+```
+## [DetectCSPReportOnlyHeader.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/DetectCSPReportOnlyHeader.bambda)
+### 检测HTTP响应中"内容安全策略仅报告(CSP-RO)"头的Bambda脚本
+#### 作者：ctflearner
+```java
+
+boolean checkValue = true; // Change this to false if you only want to check for the presence of the header.
+
+return requestResponse.hasResponse() && (
+    requestResponse.response().hasHeader("Content-Security-Policy-Report-Only") &&
+    (!checkValue || 
+        requestResponse.response().header("Content-Security-Policy-Report-Only").value().toLowerCase(Locale.US).contains("report-uri")
+    )
+);
+
+```
+## [DetectSafeHttpMethods.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/DetectSafeHttpMethods.bambda)
+### 检测请求中"安全或典型HTTP方法"的Bambda脚本
+#### 作者：ctflearner
+```java
+
+
+return !requestResponse.request().method().equals("PUT") && 
+                    !requestResponse.request().method().equals("PATCH") && 
+                    !requestResponse.request().method().equals("DELETE") && 
+                    !requestResponse.request().method().equals("HEAD") && 
+                    !requestResponse.request().method().equals("OPTIONS") && 
+                    !requestResponse.request().method().equals("TRACE") && 
+                    !requestResponse.request().method().equals("CONNECT");
+
+```
+## [DetectServerNames.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/DetectServerNames.bambda)
+### 检测HTTP响应中特定服务器名称的Bambda脚本
+#### 作者：Tur24Tur / BugBountyzip (https://github.com/BugBountyzip)
+```java
+// Configuration setting for manual annotations
+boolean enableManualAnnotations = true;
+
+Set<String> serverNames = Set.of(
+    "awselb", "Kestrel", "Apache", "Nginx", "Microsoft-IIS", "LiteSpeed", "Google Frontend",
+    "GWS", "openresty", "IBM_HTTP_Server", "AmazonS3", "CloudFront", "AkamaiGHost", "Jetty",
+    "Tengine", "lighttpd", "AOLserver", "ATS", "Boa", "Caddy", "Cherokee", "Caudium", "Hiawatha",
+    "GlassFish", "H2O", "httpd", "Jigsaw", "Mongrel", "NCSA HTTPd", "Netscape Enterprise",
+    "Oracle iPlanet", "Pound", "Resin", "thttpd", "Tornado", "Varnish", "WebObjects", "Xitami",
+    "Zope", "Werkzeug", "WebSTAR", "WebSEAL", "WebServerX", "WebtoB", "Squid", "Sun Java System Web Server",
+    "Sun ONE Web Server", "Stronghold", "Zeus Web Server", "Roxen", "RapidLogic", "Pramati",
+    "Phusion Passenger", "Oracle Containers for J2EE", "Oracle-Application-Server-10g", "Oracle-Application-Server-11g",
+    "Nostromo", "Novell-HTTP-Server", "NaviServer", "MochiWeb", "Microsoft-HTTPAPI", "Mbedthis-Appweb",
+    "Lotus-Domino", "Kangle", "Joost", "Jino", "IceWarp", "GoAhead",
+    "Flywheel", "EdgePrism", "DMS", "Cowboy", "CommuniGatePro", "CompaqHTTPServer", "CERN", "CauchoResin",
+    "BarracudaHTTP", "BaseHTTP", "AllegroServe", "Abyss", "4D_WebSTAR_S", "4D_WebSTAR_D",
+    "Yaws", "WDaemon", "Virtuoso", "UserLand", "TUX", "TwistedWeb", "Thin",
+    "Thttpd", "Swiki", "SurgeLDAP", "Sun-ONE-Web-Server", "Sun-ONE-Application-Server",
+    "Sucuri/Cloudproxy", "SSWS", "SWS", "SW", "srv", "squid", "Spamfire", "SOMA",
+    "Snap", "SmugMug", "SME Server", "Smart-4-Hosting", "Sioux", "SilverStream", "Silk", "Siemens Gigaset WLAN Camera"
+);
+
+// Ensure there is a response
+if (!requestResponse.hasResponse()) {
+    return false;
+}
+
+// Get the 'Server' header from the response
+String serverHeader = requestResponse.response().headerValue("Server");
+
+// Check if the 'Server' header value is in the set of server names
+boolean foundServerName = serverHeader != null && serverNames.contains(serverHeader);
+if (foundServerName && enableManualAnnotations) {
+    requestResponse.annotations().setHighlightColor(HighlightColor.RED);
+    requestResponse.annotations().setNotes("Detected '" + serverHeader + "' in 'Server' header");
+}
+
+return foundServerName;
+
+```
+## [DetectSuspiciousJSFunctions.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/DetectSuspiciousJSFunctions.bambda)
+### 检测并高亮显示可疑JavaScript函数的Bambda脚本
+#### 作者：Tur24Tur / BugBountyzip (https://github.com/BugBountyzip)
+```java
+boolean enableManualAnnotations = true;
+
+// Ensure there is a response
+if (!requestResponse.hasResponse()) {
+    return false;
+}
+
+// Check the Content-Type header for JavaScript
+String contentType = requestResponse.response().headerValue("Content-Type");
+if (contentType == null || !contentType.toLowerCase().contains("application/javascript")) {
+    return false;
+}
+
+String responseBody = requestResponse.response().bodyToString();
+boolean foundSuspiciousFunction = false;
+StringBuilder notesBuilder = new StringBuilder();
+
+// Expanded list of suspicious JavaScript functions
+String[] suspiciousFunctions = {
+    "eval\\(",                 // Executes a string as code
+    "setTimeout\\(",           // Can execute strings as code if used improperly
+    "setInterval\\(",          // Similar to setTimeout, can execute strings as code
+    "document\\.write\\(",     // Can overwrite entire document
+    "innerHTML",               // Can introduce XSS vulnerabilities if used with untrusted content
+    "document\\.createElement\\(",  // Safe, but part of dynamic content generation which can be risky
+    "document\\.execCommand\\(",   // Deprecated, was used to execute certain commands
+    "document\\.domain",       // Altering the document.domain can be risky
+    "window\\.location\\.href",    // Can be used for redirects which might be used in phishing
+    "document\\.cookie",       // Accessing cookies can be sensitive
+    "document\\.URL",          // Can be used to extract URL information
+    "document\\.referrer",     // Can be used to check where the request came from
+    "window\\.open\\(",        // Opening a new window or tab, potential for misuse
+    "document\\.body\\.innerHTML", // Specific case of innerHTML, also risky
+    "element\\.setAttribute\\(",   // If used improperly, can set risky attributes like 'onclick'
+    "element\\.outerHTML",         // Similar risks to innerHTML
+    "XMLHttpRequest\\(",           // Can be used for sending/receiving data, potential for misuse
+    "fetch\\(",                    // Modern way to make network requests, potential for misuse
+    "navigator\\.sendBeacon\\("    // Used to send analytics and tracking data
+};
+
+for (String function : suspiciousFunctions) {
+    Pattern pattern = Pattern.compile(function);
+    Matcher matcher = pattern.matcher(responseBody);
+    if (matcher.find()) {
+        foundSuspiciousFunction = true;
+        if (enableManualAnnotations) {
+            if (notesBuilder.length() > 0) {
+                notesBuilder.append(", ");
+            }
+            notesBuilder.append(function); // Append the complete function signature
+        }
+    }
+}
+
+if (foundSuspiciousFunction && enableManualAnnotations) {
+    requestResponse.annotations().setHighlightColor(HighlightColor.RED);
+    if (notesBuilder.length() > 0) {
+        requestResponse.annotations().setNotes("Suspicious JS functions detected: " + notesBuilder.toString());
+    }
+}
+
+return foundSuspiciousFunction;
+
+```
+## [DetectWeakReferrerPolicy.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/DetectWeakReferrerPolicy.bambda)
+### 检测HTTP响应中"弱引用策略或缺失引用策略"头的Bambda脚本
+#### 作者：ctflearner
+```java
+
+if (!requestResponse.hasResponse()) {
+    return false;
+}
+
+Optional<HttpHeader> referrerPolicyHeader = Optional.ofNullable(
+    requestResponse.response().header("Referrer-Policy")
+);
+
+if (referrerPolicyHeader.isEmpty()) {
+    return true;
+}
+
+String headerValue = referrerPolicyHeader.get().value().toLowerCase(Locale.US).trim();
+
+// Check for weak referrer policies using a stream
+boolean hasWeakPolicy = requestResponse.response().headers().stream()
+    .filter(header -> header.name().equalsIgnoreCase("Referrer-Policy"))
+    .anyMatch(header -> {
+        String value = header.value().toLowerCase(Locale.US).trim(); // Include Locale for toLowerCase()
+        return value.equals("no-referrer-when-downgrade") || value.equals("unsafe-url");
+    });
+
+return headerValue.equals("no-referrer-when-downgrade") || headerValue.equals("unsafe-url") || hasWeakPolicy;
+
+```
+## [DetectWeakXSSProtectionHeader.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/DetectWeakXSSProtectionHeader.bambda)
+### 检测HTTP响应中"弱XSS保护或配置错误的X-XSS-Protection"头的Bambda脚本
+#### 作者：ctflearner
+```java
+
+return requestResponse.hasResponse() &&
+      requestResponse.response().headers().stream()
+          .filter(header -> header.name().equalsIgnoreCase("X-XSS-Protection"))
+          .anyMatch(header -> {
+              String value = header.value().trim();
+              return value.equals("0") || 
+                      value.equals("1") || 
+                      value.toLowerCase(Locale.US).contains("report=");
+          });
+
+```
+## [EmailHighlighter.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/EmailHighlighter.bambda)
+### 过滤响应中的电子邮件地址并在发现时高亮显示的脚本
+#### 作者：Tur24Tur / BugBountyzip (https://github.com/BugBountyzip)
+```java
+boolean manualColorHighlightEnabled = true;
+
+// Set of file extensions to ignore
+Set<String> ignoredExtensions = Set.of("mp4", "mp3", "png", "gif", "jpg", "jpeg", "css", "pdf");
+
+if (!requestResponse.hasResponse()) {
+    return false;
+}
+
+// Retrieve the URL from the request part of the requestResponse object
+String requestUrl = requestResponse.request().url().toString();
+
+
+for (String ext : ignoredExtensions) {
+    // Check if the URL ends with any of the ignored file extensions
+    if (requestUrl.toLowerCase().endsWith("." + ext)) {
+        return false;
+    }
+}
+
+// Extract the response body as a string and remove any leading and trailing whitespace
+var body = requestResponse.response().bodyToString().trim();
+
+
+String emailRegexPattern = "\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.(?!jpeg|png|jpg|gif|webp)[A-Z|a-z]{2,7}\\b";
+Pattern emailPattern = Pattern.compile(emailRegexPattern);
+
+// Create a matcher to find email addresses in the response body
+Matcher emailMatcher = emailPattern.matcher(body);
+if (emailMatcher.find()) {
+    if (manualColorHighlightEnabled) {
+
+        requestResponse.annotations().setHighlightColor(HighlightColor.GREEN);
+        // Add a note indicating that an email was found
+        requestResponse.annotations().setNotes("Email Found!: " + emailMatcher.group());
+    }
+    return true;
+}
+
+
+return false;
+
+```
+## [ExcludeCommonDomains.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/ExcludeCommonDomains.bambda)
+### 在抓包过程中移除一些不需要的数据包，您可以根据自己的需求屏蔽相应的域名。例如，如果您不想看到任何google请求，使用正则表达式".*google.*"，百度也是同样的操作！如果您只是不想看到来自firefox.com的请求，那么使用".*firefox.com"。易于理解，易于修改
+#### 作者：y1shin
+```java
+var host = requestResponse.request().httpService().host();
+
+String[] excludeDomain = {
+  ".*google.*",
+  ".*freebuf.com",
+  ".*googleapis.com",
+  ".*firefox.com",
+  ".*mozilla.*",
+  ".*baidu.com",
+  ".*gtimg.com",
+  ".*github.com",
+  ".*csdn.net",
+  ".*aliyun.com",
+  ".*adtidy.org",
+  ".*qianxin.com",
+  ".*immersivetranslate.com",
+  ".*mozilla.com",
+  ".*openjfx.cn",
+  ".*feishu.cn",
+  ".*grok.com",
+  ".*map.qq.com",
+  ".*mozilla.net",
+  ".*qpic.cn",
+  ".*amazonaws.com",
+  ".*gstatic.com",
+  ".*aliapp.org",
+  ".*alicdn.com",
+  ".*greasyfork.org",
+  ".*sohu.com",
+  ".*youtube.com",
+  ".*piwik.pro",
+  ".*googletagmanager.com",
+  ".*doubleclick.net",
+  ".*portswigger.net",
+  ".*geetest.com",
+  ".*licdn.com",
+  ".*csdnimg.cn",
+  ".*intercom.io",
+  ".*tampermonkey.net",
+  ".*chatgpt.com",
+  ".*aliyun.com",
+  ".*52pojie.cn",
+  ".*bing.com",
+  ".*darkreader.org",
+};
+boolean isExcluded = Arrays.stream(excludeDomain)
+    .map(Pattern::compile)
+    .anyMatch(pattern -> pattern.matcher(host).find());
+if (isExcluded) {
+    return false;
+}
+return true;
+
+```
+## [FilterAuthenticated.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/FilterAuthenticated.bambda)
+### 在代理HTTP历史记录中过滤已认证的200 OK请求。请参阅下面的四个配置值。
+#### 作者：joe-ds (https://github.com/joe-ds)
+```java
+var configNoFilter = true;        // If set to false, won't show JS, GIF, JPG, PNG, CSS.
+var configNotInScopeOnly = true;  // If set to false, won't show out-of-scope items.
+var sessionCookieName = "";       // If given, will look for a cookie with that name.
+var sessionCookieValue = "";      // If given, will check if cookie with sessionCookieName has this value.
+
+if (!requestResponse.hasResponse()) {
+    return false;
+}
+
+var request = requestResponse.request();
+var response = requestResponse.response();
+
+if (!response.isStatusCodeClass(StatusCodeClass.CLASS_2XX_SUCCESS)) {
+    return false;
+}
+
+var authHeader = request.hasHeader("Authorization");
+
+boolean sessionCookie = request.headerValue("Cookie") != null
+                            && !sessionCookieName.isEmpty()
+                            && request.hasParameter(sessionCookieName, HttpParameterType.COOKIE)
+                      && (sessionCookieValue.isEmpty() || sessionCookieValue.equals(request.parameter(sessionCookieName, HttpParameterType.COOKIE).value()));
+
+var path = request.pathWithoutQuery().toLowerCase();
+var mimeType = requestResponse.mimeType();
+var filterDenyList = mimeType != MimeType.CSS
+ && mimeType != MimeType.IMAGE_UNKNOWN
+ && mimeType != MimeType.IMAGE_JPEG
+ && mimeType != MimeType.IMAGE_GIF
+ && mimeType != MimeType.IMAGE_PNG
+ && mimeType != MimeType.IMAGE_BMP
+ && mimeType != MimeType.IMAGE_TIFF
+ && mimeType != MimeType.UNRECOGNIZED
+ && mimeType != MimeType.SOUND
+ && mimeType != MimeType.VIDEO
+ && mimeType != MimeType.FONT_WOFF
+ && mimeType != MimeType.FONT_WOFF2
+ && mimeType != MimeType.APPLICATION_UNKNOWN
+ && !path.endsWith(".js")
+ && !path.endsWith(".gif")
+ && !path.endsWith(".jpg")
+ && !path.endsWith(".png")
+ && !path.endsWith(".css");
+
+return (authHeader || sessionCookie) && (configNoFilter || filterDenyList) && (configNotInScopeOnly || request.isInScope());
+
+```
+## [FilterAuthenticatedNonBearerTokens.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/FilterAuthenticatedNonBearerTokens.bambda)
+### 当存在Authorization头、非空且不包含传统bearer令牌（以"ey"开头）时进行过滤
+#### 作者：GangGreenTemperTatum (https://github.com/GangGreenTemperTatum)
+```java
+var configInScopeOnly = true; // If set to true, won't show out-of-scope items
+var sessionCookieName = ""; // If given, will look for a cookie with that name.
+var sessionCookieValue = ""; // If given, will check if cookie with sessionCookieName has this value.
+
+var request = requestResponse.request();
+var response = requestResponse.response();
+
+if (configInScopeOnly && !request.isInScope()) {
+    return false;
+}
+
+if (!requestResponse.hasResponse() || !response.isStatusCodeClass(StatusCodeClass.CLASS_2XX_SUCCESS)) {
+    return false;
+}
+
+var hasAuthHeader = request.hasHeader("Authorization");
+var authHeaderValue = hasAuthHeader ? String.valueOf(request.headerValue("Authorization")).toLowerCase() : null;
+
+if (!hasAuthHeader || (authHeaderValue == null || authHeaderValue.isEmpty())) {
+    return false;
+}
+
+var excludeAuthorization =
+    authHeaderValue.contains("bearer") &&
+    authHeaderValue.contains("ey");
+
+var sessionCookie = request.headerValue("Cookie") != null &&
+    !sessionCookieName.isEmpty() &&
+    request.hasParameter(sessionCookieName, HttpParameterType.COOKIE) &&
+    (sessionCookieValue.isEmpty() || sessionCookieValue.equals(String.valueOf(request.parameter(sessionCookieName, HttpParameterType.COOKIE).value())));
+
+return !excludeAuthorization || sessionCookie;
+
+```
+## [FilterHighlightAnnotateOWASP.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/FilterHighlightAnnotateOWASP.bambda)
+### 基于OWASP Top 25过滤代理HTTP历史记录中包含易受攻击参数的请求，使用由Tur24Tur / BugBountyzip编写的参数数组。
+#### 作者：Shain Lakin (https://github.com/flamebarke/SkittlesBambda)
+```java
+// Define vulnerable parameter group record
+record VulnParamGroup(String title, HighlightColor color, String... parameterNames) {}
+
+// Vulnerable Parameter Groups
+VulnParamGroup ssrf = new VulnParamGroup("SSRF", HighlightColor.GREEN, "dest", "redirect", "uri", "path", "continue", "url", "window", "next", "data", "reference", "site", "html", "val", "validate", "domain", "callback", "return", "page", "feed", "host", "port", "to", "out", "view", "dir");
+VulnParamGroup sql = new VulnParamGroup("SQL", HighlightColor.BLUE, "id", "page", "report", "dir", "search", "category", "file", "class", "url", "news", "item", "menu", "lang", "name", "ref", "title", "view", "topic", "thread", "type", "date", "form", "main", "nav", "region");
+VulnParamGroup xss = new VulnParamGroup("XSS", HighlightColor.ORANGE, "q", "s", "search", "id", "lang", "keyword", "query", "page", "keywords", "year", "view", "email", "type", "name", "p", "month", "image", "list_type", "url", "terms", "categoryid", "key", "l", "begindate", "enddate");
+VulnParamGroup lfi = new VulnParamGroup("LFI", HighlightColor.YELLOW, "cat", "dir", "action", "board", "date", "detail", "file", "download", "path", "folder", "prefix", "include", "page", "inc", "locate", "show", "doc", "site", "type", "view", "content", "document", "layout", "mod", "conf");
+VulnParamGroup or = new VulnParamGroup("OR", HighlightColor.PINK, "next", "url", "target", "rurl", "dest", "destination", "redir", "redirect_uri", "redirect_url", "redirect", "out", "view", "to", "image_url", "go", "return", "returnTo", "return_to", "checkout_url", "continue", "return_path");
+VulnParamGroup rce = new VulnParamGroup("RCE", HighlightColor.RED, "cmd", "exec", "command", "execute", "ping", "query", "jump", "code", "reg", "do", "func", "arg", "option", "load", "process", "step", "read", "feature", "exe", "module", "payload", "run", "print");
+
+// Toggle for highlighting
+boolean highlightEnabled = true;
+
+// Set multi vulnerable parameter group colour
+HighlightColor multipleVulnColor = HighlightColor.MAGENTA;
+VulnParamGroup[] groups = {ssrf, sql, xss, lfi, or, rce};
+Set<String> foundParams = new HashSet<>();
+Map<HighlightColor, Integer> colorCounts = new HashMap<>();
+String combinedNotes = "";
+
+// Get the request object
+var request = requestResponse.request();
+
+// Main loop to check for matches
+for (VulnParamGroup group : groups) {
+    for (String paramName : group.parameterNames()) {
+        if (request.hasParameter(paramName, HttpParameterType.URL) ||
+            request.hasParameter(paramName, HttpParameterType.BODY)) {
+            if (highlightEnabled) {
+                foundParams.add(group.title() + ": " + paramName);
+                colorCounts.put(group.color(), colorCounts.getOrDefault(group.color(), 0) + 1);
+            }
+            // Return if only one vulnerability class applies
+            if (!highlightEnabled) {
+                requestResponse.annotations().setHighlightColor(group.color());
+                return true;
+            }
+        }
+    }
+}
+
+// If more than one vulnerability class applies set the multi vulnerable parameter colour
+if (!foundParams.isEmpty()) {
+    HighlightColor highlightColor = multipleVulnColor;
+    if (colorCounts.size() == 1) {
+        highlightColor = colorCounts.keySet().iterator().next();
+    }
+
+    requestResponse.annotations().setHighlightColor(highlightColor);
+    combinedNotes = String.join(", ", foundParams);
+    requestResponse.annotations().setNotes(combinedNotes);
+    return true;
+}
+
+return false;
+
+```
+## [FilterOnCookieValue.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/FilterOnCookieValue.bambda)
+### Filters Proxy HTTP history for requests with a specific Cookie value.
+#### Author: LostCoder
+```java
+if (requestResponse.request().hasParameter("foo", HttpParameterType.COOKIE)) {
+  var cookieValue = requestResponse
+    .request()
+    .parameter("foo", HttpParameterType.COOKIE)
+    .value();
+
+  return cookieValue.contains("1337");
+}
+
+return false;
+
+```
+## [FilterOnSpecificHighlightColor.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/FilterOnSpecificHighlightColor.bambda)
+### Filters requests/responses for specific highlight colors
+#### Author: Nick Coblentz (https://github.com/ncoblentz)
+```java
+return requestResponse.annotations().highlightColor().equals(HighlightColor.CYAN);
+
+```
+## [FilterOutOptionsRequests.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/FilterOutOptionsRequests.bambda)
+### Filter out OPTIONS requests.
+#### Author: Trikster
+```java
+return !requestResponse.request().method().equals("OPTIONS");
+
+```
+## [FindJSONresponsesWithIncorrectContentType.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/FindJSONresponsesWithIncorrectContentType.bambda)
+### Filter out OPTIONS requests.
+#### Author: albinowax
+```java
+return !requestResponse.request().method().equals("OPTIONS");
+
+
+var contentType = requestResponse.hasResponse() ? requestResponse.response().headerValue("Content-Type") : null;
+
+if (contentType != null && !contentType.contains("application/json")) {
+ String body = requestResponse.response().bodyToString().trim();
+
+ return body.startsWith( "{" ) || body.startsWith( "[" );
+}
+
+return false;
+
+```
+## [GraphQlEndpoints.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/GraphQlEndpoints.bambda)
+### Finds GraphQL endpoints with a 'query' parameter containing a newline.
+#### Author: Gareth Hayes
+```java
+var req = requestResponse.request();
+
+if (!req.hasParameters()) {
+  return false;
+}
+
+var types = new HttpParameterType[] {
+    HttpParameterType.JSON, HttpParameterType.BODY, HttpParameterType.URL
+};
+
+for (HttpParameterType type : types) {
+    if (req.hasParameter("query", type)) {
+        var value = req.parameterValue("query", type);
+        if (type == HttpParameterType.JSON) {
+          if (value.contains("\\n")) {
+                return true;
+            }
+        } else {
+            if (value.toLowerCase().contains("%0a")) {
+                return true;
+            }
+        }
+    }
+}
+
+return false;
+
+```
+## [HighlightDeprecatedHTTPMethods.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/HighlightDeprecatedHTTPMethods.bambda)
+### Filters and highlights requests using less common or deprecated HTTP methods like TRACE or CONNECT.
+#### Author: Tur24Tur / BugBountyzip (https://github.com/BugBountyzip)
+```java
+boolean manualColorHighlightEnabled = true;
+
+// Define the set of deprecated or less common HTTP methods
+Set<String> deprecatedMethods = Set.of("TRACE", "CONNECT");
+
+String requestMethod = requestResponse.request().method();
+
+// Check if the request method is in the set of deprecated methods
+if (deprecatedMethods.contains(requestMethod)) {
+    if (manualColorHighlightEnabled) {
+        // Set the highlight color to RED
+        requestResponse.annotations().setHighlightColor(HighlightColor.RED);
+
+        // Optionally, add a note to the request/response
+        requestResponse.annotations().setNotes("Deprecated method used: " + requestMethod);
+    }
+    return true;
+}
+
+return false;
+
+```
+## [HighlightGraphQLMutations.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/HighlightGraphQLMutations.bambda)
+### Bambda to highlight GraphQL Requests.
+#### Author: drwetter (https://github.com/drwetter/)
+```java
+
+// trim some chars just to be sure. For parsing more e.g. JsonNode is better
+var body = requestResponse.request().bodyToString().trim();
+
+// written as regex so that it can be extended if needed
+String graphqlRegexPattern = "query\":\"mutation";
+Pattern graphqlPattern = Pattern.compile(graphqlRegexPattern);
+
+Matcher graphqlMatcher = graphqlPattern.matcher(body);
+if (graphqlMatcher.find()) {
+    requestResponse.annotations().setHighlightColor(HighlightColor.CYAN);
+    requestResponse.annotations().setNotes("mutation");
+}
+
+return true;
+
+```
+## [HighlightHashes.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/HighlightHashes.bambda)
+### This script highlights and annotates the proxy history if any responses contain a common password hash variant.
+#### Author: Daniel Roberts (https://github.com/ErebusC)
+```java
+if (!requestResponse.hasResponse()){
+	return false;
+}
+
+var response_body = requestResponse.response().bodyToString();
+
+boolean manualColorHighlightEnabled = true;
+boolean found_hash = false;
+
+// Regex for all common password hashes one may find during a web application test  
+String regex = "['\"]?\\s*(?:"
+    + "\\$argon2(?:id|i|d)?\\$v=\\d+\\$m=\\d+,t=\\d+,p=\\d+\\$[A-Za-z0-9+/=]+\\$[A-Za-z0-9+/=]+"
+    + "|\\$2[abxyz]?\\$\\d{1,2}\\$[./A-Za-z0-9]{53}"
+    + "|(?i)pbkdf2_[a-z0-9]+\\$\\d+\\$[A-Za-z0-9+/=]+\\$[A-Za-z0-9+/=]+"
+    + "|\\$(1|5|6)\\$[./A-Za-z0-9]{1,16}\\$[./A-Za-z0-9]{22,}"
+    + "|\\$P\\$[./A-Za-z0-9]{31}"
+    + "|\\b[a-fA-F0-9]{128}\\b"
+    + "|\\b[a-fA-F0-9]{96}\\b"
+    + "|\\b[a-fA-F0-9]{64}\\b"
+    + "|\\b[a-fA-F0-9]{40}\\b"
+    + "|\\b[a-fA-F0-9]{32}\\b"
+    + ")\\s*['\"]?";
+
+Pattern hash_patterns = Pattern.compile(regex);
+
+Matcher hash_matcher = hash_patterns.matcher(response_body);
+
+var annotate = requestResponse.annotations();
+String hashes = "Potential hash identified: ";
+
+while(hash_matcher.find()){
+    found_hash = true;
+    hashes += hash_matcher.group()+"\n";
+}
+
+if (found_hash){
+    annotate.setHighlightColor(HighlightColor.BLUE);
+
+    if(!annotate.hasNotes()){
+    	annotate.setNotes(hashes);
+    }
+    else if(annotate.hasNotes() && !annotate.notes().contains(hashes)){
+        annotate.setNotes(annotate.notes() + hashes);
+    }
+}
+return true;
+
+```
+## [HighlightListenerPort.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/HighlightListenerPort.bambda)
+### Highlight different listener port
+#### Author: Bogo-6 (https://github.com/Bogo-6)
+```java
+boolean manualColorHighlightEnabled = true;
+
+var colorMap = Map.of(
+    8080, HighlightColor.BLUE,
+    8082, HighlightColor.YELLOW
+);
+var notesMap = Map.of(
+    8080, "User 1",
+    8082, "User 2"
+);
+
+
+var listenerPort = requestResponse.listenerPort();
+var color = colorMap.get(listenerPort);
+var notes = notesMap.get(listenerPort);
+
+if (manualColorHighlightEnabled && color != null) {
+    requestResponse.annotations().setHighlightColor(color);
+}
+
+if (manualColorHighlightEnabled && notes != null) {
+    requestResponse.annotations().setNotes(notes);
+}
+
+return color != null || notes != null;
+
+```
+## [HighlightParamMinerTargets.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/HighlightParamMinerTargets.bambda)
+### Filters non-empty 200 json-based response classes which can be used to find easy routes to attack with the paramminer guess json params and a custom wordlist, ie:     // $ cat your-oas-api-spec-doc.json | jq -r '.components.schemas.[].properties? | keys? | .[]' | sort -u > json-wordlist.txt
+#### Author: GangGreenTemperTatum (https://github.com/GangGreenTemperTatum)
+```java
+ var configNoFilter = false;        // if set to false, won't show JS, GIF, JPG, PNG, CSS.
+ var configInScopeOnly = true;      // if set to true, won't show out-of-scope items
+
+ if (!requestResponse.hasResponse() || (configInScopeOnly && !requestResponse.request().isInScope()) || !requestResponse.response().isStatusCodeClass(StatusCodeClass.CLASS_2XX_SUCCESS))
+{
+    return false;
+}
+
+var request = requestResponse.request();
+var response = requestResponse.response();
+
+ // Process path and mimeType for filtering
+ var path = request.pathWithoutQuery().toLowerCase();
+ var mimeType = requestResponse.mimeType();
+ var filterDenyList = mimeType != MimeType.CSS
+  && mimeType != MimeType.IMAGE_UNKNOWN
+  && mimeType != MimeType.IMAGE_JPEG
+  && mimeType != MimeType.IMAGE_GIF
+  && mimeType != MimeType.IMAGE_PNG
+  && mimeType != MimeType.IMAGE_BMP
+  && mimeType != MimeType.IMAGE_TIFF
+  && mimeType != MimeType.UNRECOGNIZED
+  && mimeType != MimeType.SOUND
+  && mimeType != MimeType.VIDEO
+  && mimeType != MimeType.FONT_WOFF
+  && mimeType != MimeType.FONT_WOFF2
+  && mimeType != MimeType.APPLICATION_UNKNOWN
+  && !path.endsWith(".js")
+  && !path.endsWith(".gif")
+  && !path.endsWith(".jpg")
+  && !path.endsWith(".png")
+  && !path.endsWith(".css");
+
+ // If filtering is not applied or the deny list conditions are met, proceed to check content type
+ if (configNoFilter || filterDenyList) {
+     // verify that the request is a POST, PUT, or PATCH and that the response is json
+     if (request.method().equals("POST") || request.method().equals("PATCH") || request.method().equals("PUT")) {
+         var contentType = response.headerValue("Content-Type");
+         // verify the content-type is json
+         if (contentType != null && contentType.contains("application/json")) {
+             return true;
+         }
+     }
+ }
+
+ return false; // Ensure method returns a boolean in all cases
+
+```
+## [HighlightPast48hrs.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/HighlightPast48hrs.bambda)
+### Filter the past 48 hours worth of in-scope proxy history
+#### Author: GangGreenTemperTatum (https://github.com/GangGreenTemperTatum)
+```java
+boolean configInScopeOnly = true; // Flag to filter only in-scope items
+
+// Get current time and calculate 48 hours ago
+ZonedDateTime now = ZonedDateTime.now();
+ZonedDateTime fortyEightHoursAgo = now.minusHours(48);
+
+// Check if the request time is within the last 48 hours
+boolean afterCheck = requestResponse.time().isAfter(fortyEightHoursAgo);
+
+// Check if the request is in scope
+boolean inScopeCheck = !configInScopeOnly || requestResponse.request().isInScope();
+
+// Return true only if both conditions are met
+return afterCheck && inScopeCheck;
+
+```
+## [HighlightPwnFox.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/HighlightPwnFox.bambda)
+### Filter requests in scope and containing the "X-Pwnfox-Color" header.
+#### Author: GangGreenTemperTatum (https://github.com/GangGreenTemperTatum)
+```java
+var request = requestResponse.request();
+return request.isInScope() && request.hasHeader("X-Pwnfox-Color");
+
+```
+## [HighlightResponsesWithDeveloperNotes.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/HighlightResponsesWithDeveloperNotes.bambda)
+### Bambda Script to Highlight Responses with Developer Notes This script identifies and highlights HTTP responses containing developer notes in HTML and JavaScript files. It highlights HTML responses in green and JavaScript responses in yellow.
+#### Author: Tur24Tur / BugBountyzip (https://github.com/BugBountyzip)
+```java
+boolean manualColorHighlightEnabled = true;
+
+// Ensure there is a response and it is not null
+if (!requestResponse.hasResponse()) {
+    return false;
+}
+
+// Use mimeType() for content type detection
+MimeType responseType = requestResponse.response().mimeType();
+boolean isHtml = responseType == MimeType.HTML;
+boolean isJavaScript = responseType == MimeType.SCRIPT;
+
+// Process only HTML and JavaScript responses
+if (!isHtml && !isJavaScript) {
+    return false;
+}
+
+boolean foundDeveloperNotes = false;
+StringBuilder notesBuilder = new StringBuilder();
+HighlightColor highlightColor = isHtml ? HighlightColor.GREEN : HighlightColor.YELLOW;
+
+String responseBody = requestResponse.response().bodyToString();
+String[] commentPatterns = isHtml ? new String[]{"<!--(?!\\[if).*?(?<!\\])-->"} : new String[]{"/\\*\\*(.*?)\\*\\*/"};
+
+
+for (String pattern : commentPatterns) {
+    Pattern regexPattern = Pattern.compile(pattern, Pattern.DOTALL);
+    Matcher matcher = regexPattern.matcher(responseBody);
+
+    while (matcher.find()) {
+        foundDeveloperNotes = true;
+        if (manualColorHighlightEnabled) {
+            String note = matcher.group();
+            // Limit the note length to 250 characters
+            if (note.length() > 250) {
+                note = note.substring(0, 250) + "...";
+            }
+
+            if (notesBuilder.length() > 0) {
+                notesBuilder.append("; ");
+            }
+            notesBuilder.append("Developer note found: ").append(note);
+        }
+    }
+}
+
+if (foundDeveloperNotes) {
+    requestResponse.annotations().setHighlightColor(highlightColor);
+    if (manualColorHighlightEnabled && notesBuilder.length() > 0) {
+        requestResponse.annotations().setNotes(notesBuilder.toString());
+    }
+}
+
+return foundDeveloperNotes;
+
+```
+## [HighlightTrackerServices.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/HighlightTrackerServices.bambda)
+### HighlightTrackerServices: Burp Suite Bambda for Identifying Tracking Services FilterOut Burp Suite history to detect and analyze tracking services from web requests
+#### Author: Tur24Tur / BugBountyzip (https://github.com/BugBountyzip)
+```java
+// Define hash sets for hosts, paths, and parameters
+Set<String> trackedHosts = new HashSet<>(Arrays.asList("www.gstatic.com", "events.statsigapi.net", "ingesteer.services-prod.nsvcs.net", "js-eu1.hs-analytics.net", "static.hotjar.com", "forms-eu1.hscollectedforms.net", "www.google-analytics.com", "www.googletagmanager.com", "static.xx.fbcdn.net", "stats.g.doubleclick.net", "collector.github.com"));
+Set<String> trackedPaths = new HashSet<>(Arrays.asList("/logging/v1", "/track"));
+Set<String> trackedParameters = new HashSet<>(Arrays.asList("logs", "log"));
+
+// Main logic of the Bambda
+var request = requestResponse.request();
+String requestUrl = request.url().toLowerCase();
+
+// Extract host and path from URL
+String[] urlParts = requestUrl.split("/", 4);
+String host = urlParts.length > 2 ? urlParts[2] : "";
+String path = urlParts.length > 3 ? "/" + urlParts[3].split("\\?")[0] : "";
+
+// Check for tracked host
+if (trackedHosts.contains(host)) {
+    requestResponse.annotations().setHighlightColor(HighlightColor.RED);
+    return true;
+}
+
+// Check for tracked path
+if (trackedPaths.contains(path)) {
+    requestResponse.annotations().setHighlightColor(HighlightColor.RED);
+    return true;
+}
+
+// Check for tracked parameters
+var parameters = request.parameters();
+for (HttpParameter param : parameters) {
+    if (trackedParameters.contains(param.name().toLowerCase()) || trackedParameters.contains(param.value().toLowerCase())) {
+        requestResponse.annotations().setHighlightColor(HighlightColor.RED);
+        return true;
+    }
+}
+
+return false;
+
+```
+## [HighlightUnencryptedHTTP.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/HighlightUnencryptedHTTP.bambda)
+### Bambda Script to Highlight Unencrypted HTTP Traffic Filters Proxy HTTP history for unencrypted (non-HTTPS) requests.
+#### Author: Tur24Tur / BugBountyzip (https://github.com/BugBountyzip)
+```java
+// Get the request object from the requestResponse
+var request = requestResponse.request();
+
+// Extract the URL from the request
+var requestUrl = request.url();
+
+// Check if the request URL starts with "http://"
+if (requestUrl.startsWith("http://")) {
+    // URL is unencrypted, return true to highlight this request
+    return true;
+}
+
+// URL is encrypted or does not match the criteria, return false
+return false;
+
+```
+## [HostnameInResponse.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/HostnameInResponse.bambda)
+### Finds responses which contain the hostname.  Useful to identify possible attack surface for host header injection and web cache poisioning attacks.
+#### Author: emanuelduss
+```java
+var hostname = requestResponse.request().headerValue("Host");
+
+return requestResponse.hasResponse() && requestResponse.response().contains(hostname, false);
+
+```
+## [IncorrectContentLength.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/IncorrectContentLength.bambda)
+### Finds responses whose body length do not match their stated Content-Length header.
+#### Author: albinowax
+```java
+if (!requestResponse.hasResponse() || requestResponse.request().method().equals("HEAD")) {
+    return false;
+}
+
+int realContentLength = requestResponse.response().body().length();
+int declaredContentLength = Integer.parseInt(requestResponse.response().headerValue("Content-Length"));
+
+return declaredContentLength != realContentLength;
+
+```
+## [JSONPForCSPBypass.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/JSONPForCSPBypass.bambda)
+### JSONP for CSP bypass.
+#### Author: Gareth Hayes
+```java
+var req = requestResponse.request();
+var res = requestResponse.response();
+var paramRegex = Pattern.compile("^[a-zA-Z][.\\w]{4,}$");
+
+if (res == null || res.body().length() == 0) return false;
+
+if (!req.hasParameters()) return false;
+
+var body = res.bodyToString().trim();
+var params = req.parameters();
+
+for (var param : params) {
+    var value = param.value();
+    if (param.type() != HttpParameterType.URL) continue;
+    if (paramRegex.matcher(value).find()) {
+        var start = "(?:^|[^\\w'\".])";
+        var end = "\\s*[(]";
+        var callbackRegex = Pattern.compile(start + Pattern.quote(value) + end);
+
+      if (callbackRegex.matcher(body).find()) return true;
+    }
+}
+
+return false;
+
+```
+## [LargeRedirectResponses.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/LargeRedirectResponses.bambda)
+### Flags redirect responses with a body over 1000 bytes.
+#### Author: albinowax
+```java
+return requestResponse.hasResponse() &&
+       requestResponse.response().statusCode() <= 399 &&
+       requestResponse.response().statusCode() >= 300 &&
+       requestResponse.response().body().length() > 1000;
+
+```
+## [MalformedHttpHeader.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/MalformedHttpHeader.bambda)
+### Finds malformed HTTP headers containing spaces within their names.
+#### Author: albinowax
+```java
+return requestResponse.response().headers().stream()
+    .anyMatch(e -> e.name().contains(" "));
+
+```
+## [MultipleHtmlTags.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/MultipleHtmlTags.bambda)
+### Finds responses with multiple HTML closing tags.
+#### Author: albinowax
+```java
+return requestResponse.hasResponse() &&
+       requestResponse.response().statedMimeType() == MimeType.HTML &&
+       utilities().byteUtils().countMatches(
+       requestResponse.response().body().getBytes(), "</html>".getBytes()) > 1;
+
+```
+## [NotesKeywordHighlighter.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/NotesKeywordHighlighter.bambda)
+### Finds entries with notes containing a specified keyword
+#### Author: Tur24Tur / BugBountyzip (https://github.com/BugBountyzip)
+```java
+// User-defined keyword for filtering notes
+String keyword = "High"; // Replace "High" with your desired keyword
+boolean caseSensitive = true; // Set to true for case-sensitive search false for case-insensitive PortSwiggerWiener  <3
+
+// Check if there's a response and the response has notes
+if (requestResponse.annotations().hasNotes()) {
+    // Retrieve the notes
+    String notes = requestResponse.annotations().notes();
+
+    // Adjust for case sensitivity
+    String processedNotes = caseSensitive ? notes : notes.toLowerCase();
+    String processedKeyword = caseSensitive ? keyword : keyword.toLowerCase();
+
+    // Check if the notes contain the specified keyword
+    if (processedNotes.contains(processedKeyword)) {
+        // If keyword is found, set highlight color and return true
+        requestResponse.annotations().setHighlightColor(HighlightColor.YELLOW);
+        return true;
+    }
+}
+
+// If the keyword is not found or there are no notes, return false
+return false;
+
+```
+## [OWASPTop25VulnerableParameters.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/OWASPTop25VulnerableParameters.bambda)
+### Filters Proxy HTTP history for requests with vulnerable parameters based on the OWASP Top 25
+#### Author: Tur24Tur / BugBountyzip (https://github.com/BugBountyzip)
+```java
+// Define the vulnerable parameters as a Set based on OWASP Top 25
+Set<String> parameterNames = Set.of(
+    // SSRF parameters
+    "dest", "redirect", "uri", "continue", "url", "window", "data",
+    "reference", "site", "html", "val", "validate", "domain", "callback", "return",
+    "page", "feed", "host", "port", "to", "out", "dir",
+    // SQL injection parameters
+    "id", "select", "report", "search", "category", "file", "class", "news",
+    "item", "menu", "ref", "title", "topic", "thread",
+    "form", "main", "nav", "region",
+    // XSS parameters
+    "q", "s", "lang", "keyword", "keywords", "year", "email",
+    "type", "name", "p", "month", "image", "list_type", "terms", "categoryid", "key",
+    "l", "begindate", "enddate",
+    // LFI parameters
+    "cat", "action", "board", "date", "detail", "download", "path", "folder",
+    "prefix", "include", "inc", "locate", "show", "doc", "view",
+    "content", "document", "layout", "mod", "conf",
+    // Open Redirect parameters
+    "next", "target", "rurl", "destination", "redir", "redirect_uri",
+    "redirect_url", "image_url", "go",
+    "returnTo", "return_to", "checkout_url", "return_path",
+    // RCE parameters
+    "cmd", "exec", "command", "execute", "ping", "query", "jump", "code", "reg", "do",
+    "func", "arg", "option", "load", "process", "step", "read", "feature", "exe",
+    "module", "payload", "run", "print"
+);
+
+// Get the request object
+var request = requestResponse.request();
+
+// Iterate through each parameter name and check if it exists in the request URL or body
+for (String param : parameterNames) {
+    if (request.hasParameter(param, HttpParameterType.URL) ||
+        request.hasParameter(param, HttpParameterType.BODY)) {
+        return true;
+    }
+}
+
+return false;
+
+```
+## [RedirectedToParameterValue.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/RedirectedToParameterValue.bambda)
+### Finds responses which redirect to locations provided as GET parameters.  Useful to identify possible attack surface for open redirects. This can be used for phishing, CSP bypasses or OAuth token stealing.
+#### Author: emanuelduss
+```java
+if (!requestResponse.hasResponse()){
+    return false;
+}
+
+HttpRequest request = requestResponse.request();
+HttpResponse response = requestResponse.response();
+
+if (request.hasParameters() && response.isStatusCodeClass(StatusCodeClass.CLASS_3XX_REDIRECTION) && response.hasHeader("Location")){
+    for (ParsedHttpParameter parameter : request.parameters()){
+        String parameterValue = parameter.value();
+        if (response.hasHeader("Location", parameterValue) ||
+            response.hasHeader("Location", utilities().urlUtils().encode(parameterValue)) ||
+            response.hasHeader("Location", utilities().urlUtils().decode(parameterValue))){
+            return true;
+        }
+    }
+}
+
+return false;
+
+```
+## [ReflectedParameters.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/ReflectedParameters.bambda)
+### Finds responses which reflect parameter names and values.  Useful to identify possible attack surface for XSS, SSTI, header injection, open redirects or similar.
+#### Author: emanuelduss
+```java
+// Configure to your needs
+int minimumParameterNameLength = 2;
+int minimumParameterValueLength = 3;
+boolean matchCaseSensitive = true;
+Set<String> excludedStrings = Set.of("true", "false", "null");
+Set<HttpParameterType> excludedParameterTypes = Set.of(HttpParameterType.COOKIE); // e.g. HttpParameterType.COOKIE
+
+if (!requestResponse.hasResponse()){
+    return false;
+}
+
+HttpRequest request = requestResponse.request();
+HttpResponse response = requestResponse.response();
+
+// Check query, b/c parameters without values are not treated as parameters
+String query = request.path().replace(request.pathWithoutQuery() + "?", "");
+if (query.length() >= minimumParameterValueLength && !excludedStrings.contains(query)){
+    if (response.contains(query, matchCaseSensitive) || response.contains(utilities().urlUtils().decode(query), matchCaseSensitive)){
+        return true;
+    }
+}
+
+if (request.hasParameters()){
+    for (ParsedHttpParameter parameter : request.parameters()){
+        HttpParameterType parameterType = parameter.type();
+        if (excludedParameterTypes.contains(parameter.type())){
+            continue;
+        }
+
+        String parameterName = parameter.name();
+        if (parameterName.length() >= minimumParameterNameLength && ! excludedStrings.contains(parameterName) &&
+            (response.contains(parameterName, matchCaseSensitive) || response.contains(utilities().urlUtils().decode(parameterName), matchCaseSensitive))){
+            return true;
+        }
+
+        String parameterValue = parameter.value();
+        if (parameterValue.length() >= minimumParameterValueLength && ! excludedStrings.contains(parameterValue) &&
+            (response.contains(parameterValue, matchCaseSensitive) || response.contains(utilities().urlUtils().decode(parameterValue), matchCaseSensitive))){
+            return true;
+        }
+    }
+}
+
+return false;
+
+```
+## [ShowOnlyCachedResponses.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/ShowOnlyCachedResponses.bambda)
+### Show only cached responses.
+#### Author: PortSwigger
+```java
+if (!requestResponse.hasResponse() || !requestResponse.response().hasHeader("X-Cache")) {
+   	return false;
+}
+
+return requestResponse.response().headerValue("X-Cache").toLowerCase().contains("hit");
+
+```
+## [ShowOnlyDuplicatehtmlTags.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/ShowOnlyDuplicatehtmlTags.bambda)
+### Show only duplicate </html> tags.
+#### Author: PortSwigger
+```java
+return requestResponse.hasResponse()
+    && requestResponse.response().statedMimeType() == MimeType.HTML
+    && utilities.byteUtils().countMatches(
+        requestResponse.response().body().getBytes(),
+        "</html>".getBytes()
+    ) > 1;
+
+```
+## [ShowOnlyLargeRedirectResponses.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/ShowOnlyLargeRedirectResponses.bambda)
+### Show only large redirect responses.
+#### Author: PortSwigger
+```java
+return requestResponse.hasResponse()
+    && requestResponse.response().statusCode() <= 399
+    && requestResponse.response().statusCode() >= 300
+    && requestResponse.response().body().length() > 1000;
+
+```
+## [ShowRequestsBetweenDates.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/ShowRequestsBetweenDates.bambda)
+### Shows Requests/Responses before, after, or between specified dates
+#### Author: Nick Coblentz (https://github.com/ncoblentz)
+```java
+//The current configuration looks for requests/responses between January 19th, 2024 10:00AM US Central Time and January 19th, 2024 10:10AM US Central Time
+//Change the date/time to the values you desire and your local timezone (https://docs.oracle.com/javase/8/docs/api/java/time/ZoneId.html#SHORT_IDS)
+//The script accounts for 'null' values. Replace the before or after variables with null to search just before or just after a certain date/time.
+
+ZonedDateTime requestsAfterThisDate = ZonedDateTime.of(LocalDateTime.of(2024, 1, 19, 10, 0), ZoneId.of("America/Chicago")); // or null
+ZonedDateTime requestsBeforeThisDate = ZonedDateTime.of(LocalDateTime.of(2024, 1, 19, 10, 10), ZoneId.of("America/Chicago")); // or null
+
+boolean afterCheck = true;
+boolean beforeCheck = true;
+
+if (requestsAfterThisDate != null)
+{
+    afterCheck = requestResponse.time().isAfter(requestsAfterThisDate);
+}
+
+if (requestsBeforeThisDate != null)
+{
+    beforeCheck = requestResponse.time().isBefore(requestsBeforeThisDate);
+}
+
+return afterCheck && beforeCheck;
+
+```
+## [UrlInParameter.bambda](https://github.com/PortSwigger/bambdas/blob/main/Filter/Proxy/HTTP/UrlInParameter.bambda)
+### Finds requests containing URLs.  Useful to identify possible attack surface for SSRF.
+#### Author: emanuelduss
+```java
+HttpRequest request = requestResponse.request();
+
+if (request.hasParameters()){
+    for (ParsedHttpParameter parameter : request.parameters()){
+        String parameterValue = parameter.value();
+        if (parameterValue.contains("http://") ||
+            parameterValue.contains(utilities().urlUtils().encode("http://")) ||
+            parameterValue.contains("https://") ||
+            parameterValue.contains(utilities().urlUtils().encode("https://"))){
+            return true;
+        }
+    }
+}
+
+return false;
+
+```

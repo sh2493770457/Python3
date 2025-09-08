@@ -1,0 +1,103 @@
+id: 2def60f1-81e6-45d0-b163-30a4caa6fa2b
+name: 排除常见域名
+function: VIEW_FILTER
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+  * 在抓包过程中移除一些不需要的数据包，
+  * 你可以根据自己的需求屏蔽相应的域名
+  * 
+  * 功能描述：
+  * - 过滤掉常见的第三方服务域名请求
+  * - 减少代理历史中的噪音数据
+  * - 专注于目标应用的核心请求
+  * - 提高安全测试效率
+  * 
+  * 实现逻辑：
+  * 1. 获取请求的主机名
+  * 2. 使用正则表达式匹配排除域名列表
+  * 3. 如果匹配则过滤掉该请求
+  * 4. 返回过滤结果
+  * 
+  * 使用场景：
+  * - Web应用安全测试
+  * - API接口测试
+  * - 减少代理历史噪音
+  * - 专注目标应用分析
+  * 
+  * 排除的域名类型：
+  * - 搜索引擎：google、baidu、bing
+  * - 社交媒体：youtube、linkedin
+  * - 开发工具：github、csdn、mozilla
+  * - 云服务：aliyun、amazonaws、googleapis
+  * - CDN服务：alicdn、gtimg、gstatic
+  * - 广告服务：doubleclick、googletagmanager
+  * - 其他第三方服务
+  * 
+  * 配置说明：
+  * - 使用正则表达式匹配域名
+  * - ".*google.*"：匹配包含google的所有域名
+  * - ".*firefox.com"：精确匹配firefox.com
+  * - 可根据需要添加或删除域名
+  * 
+  * 自定义方法：
+  * 例如，如果你不想看到任何google请求，使用正则".*google.*"，百度也是同样操作！
+  * 如果你只是不想看到来自firefox.com的请求，那么使用".*firefox.com"
+  * 
+  * 易于理解，易于修改
+  * 
+  * @author y1shin
+  **/
+
+  var host = requestResponse.request().httpService().host();
+
+  String[] excludeDomain = {
+    ".*google.*",
+    ".*freebuf.com",
+    ".*googleapis.com",
+    ".*firefox.com",
+    ".*mozilla.*",
+    ".*baidu.com",
+    ".*gtimg.com",
+    ".*github.com",
+    ".*csdn.net",
+    ".*aliyun.com",
+    ".*adtidy.org",
+    ".*qianxin.com",
+    ".*immersivetranslate.com",
+    ".*mozilla.com",
+    ".*openjfx.cn",
+    ".*feishu.cn",
+    ".*grok.com",
+    ".*map.qq.com",
+    ".*mozilla.net",
+    ".*qpic.cn",
+    ".*amazonaws.com",
+    ".*gstatic.com",
+    ".*aliapp.org",
+    ".*alicdn.com",
+    ".*greasyfork.org",
+    ".*sohu.com",
+    ".*youtube.com",
+    ".*piwik.pro",
+    ".*googletagmanager.com",
+    ".*doubleclick.net",
+    ".*portswigger.net",
+    ".*geetest.com",
+    ".*licdn.com",
+    ".*csdnimg.cn",
+    ".*intercom.io",
+    ".*tampermonkey.net",
+    ".*chatgpt.com",
+    ".*aliyun.com",
+    ".*52pojie.cn",
+    ".*bing.com",
+    ".*darkreader.org",
+  };
+  boolean isExcluded = Arrays.stream(excludeDomain)
+      .map(Pattern::compile)
+      .anyMatch(pattern -> pattern.matcher(host).find());
+  if (isExcluded) {
+      return false;
+  }
+  return true;

@@ -1,0 +1,187 @@
+id: 54834302-45dc-5021-375d-8c9a6174f101
+name: 高亮开发者注释响应
+function: VIEW_FILTER
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+   * 开发者注释响应高亮脚本
+   * 
+   * 功能描述：
+   * 识别并高亮包含开发者注释的HTTP响应，主要针对HTML和JavaScript文件。
+   * HTML响应使用绿色高亮，JavaScript响应使用黄色高亮。
+   * 
+   * 实现逻辑：
+   * 1. 检查响应存在性
+   * 2. 识别响应MIME类型（HTML或JavaScript）
+   * 3. 使用正则表达式搜索注释模式
+   * 4. 提取并限制注释长度（最多250字符）
+   * 5. 设置相应的高亮颜色和注释
+   * 6. 返回是否找到开发者注释
+   * 
+   * 支持的注释格式：
+   * - HTML注释：<!-- 注释内容 -->（排除条件注释）
+   * - JavaScript注释：/** 注释内容 **/
+   * 
+   * 高亮颜色策略：
+   * - HTML文件：绿色高亮
+   * - JavaScript文件：黄色高亮
+   * - 自动添加注释摘要
+   * 
+   * 使用场景：
+   * - 源码信息泄露检测
+   * - 开发者调试信息发现
+   * - 敏感注释内容识别
+   * - 代码审计辅助
+   * - 信息收集阶段
+   * 
+   * 安全风险评估：
+   * - 敏感信息泄露
+   * - 系统架构暴露
+   * - 开发者联系方式
+   * - 调试信息残留
+   * - 业务逻辑泄露
+   * 
+   * 注释类型示例：
+   * - 开发者TODO列表
+   * - 调试输出信息
+   * - 临时代码标记
+   * - 版本控制信息
+   * - 联系方式和署名
+   * 
+   * 检测模式：
+   * - HTML条件注释排除
+   * - 多行注释支持
+   * - 嵌套注释处理
+   * - 特殊字符转义
+   * - 长度限制保护
+   * 
+   * 信息提取策略：
+   * - 注释内容截取
+   * - 多个注释合并
+   * - 分隔符添加
+   * - 长度控制
+   * - 可读性优化
+   * 
+   * 性能优化：
+   * - 早期MIME类型过滤
+   * - 正则表达式编译缓存
+   * - 字符串长度限制
+   * - 条件性处理
+   * - 内存使用控制
+   * 
+   * 扩展建议：
+   * - 支持更多注释格式
+   * - 添加关键词过滤
+   * - 集成敏感信息检测
+   * - 支持自定义颜色
+   * - 添加统计功能
+   * 
+   * 正则表达式说明：
+   * - HTML：<!--(?!\[if).*?(?<!\])-->
+   *   排除条件注释，匹配普通HTML注释
+   * - JavaScript：/\*\*(.*?)\*\*/
+   *   匹配JSDoc风格的多行注释
+   * 
+   * 调试提示：
+   * - 验证正则表达式匹配
+   * - 检查MIME类型识别
+   * - 确认高亮颜色设置
+   * - 测试注释长度限制
+   * - 验证多注释合并
+   * 
+   * 相关工具：
+   * - 静态代码分析工具
+   * - 源码泄露检测器
+   * - Web爬虫工具
+   * - 信息收集框架
+   * 
+   * 最佳实践：
+   * - 定期清理开发注释
+   * - 建立注释规范
+   * - 自动化检测流程
+   * - 敏感信息审查
+   * - 生产环境清理
+   * 
+   * 信息安全价值：
+   * - 快速识别信息泄露
+   * - 辅助漏洞发现
+   * - 支持社会工程学
+   * - 提供攻击线索
+   * - 增强安全意识
+   * 
+   * 开发者注意事项：
+   * - 避免敏感信息注释
+   * - 生产环境清理
+   * - 使用代码混淆
+   * - 建立审查流程
+   * - 培训安全意识
+   * 
+   * 配置选项：
+   * - manualColorHighlightEnabled：启用手动颜色高亮
+   * - 注释长度限制：250字符
+   * - 高亮颜色：HTML绿色，JS黄色
+   * 
+   * 输出格式：
+   * - 高亮颜色标记
+   * - 注释内容摘要
+   * - 多注释分隔显示
+   * - 长度截断标识
+   * 
+   * 作者：Tur24Tur / BugBountyzip (https://github.com/BugBountyzip)
+   * 中文注释：bambda脚本中文化项目
+   **/
+
+  boolean manualColorHighlightEnabled = true;
+
+  // 确保存在响应且不为空
+  if (!requestResponse.hasResponse()) {
+      return false;
+  }
+
+  // 使用mimeType()进行内容类型检测
+  MimeType responseType = requestResponse.response().mimeType();
+  boolean isHtml = responseType == MimeType.HTML;
+  boolean isJavaScript = responseType == MimeType.SCRIPT;
+
+  // 仅处理HTML和JavaScript响应
+  if (!isHtml && !isJavaScript) {
+      return false;
+  }
+
+  boolean foundDeveloperNotes = false;
+  StringBuilder notesBuilder = new StringBuilder();
+  HighlightColor highlightColor = isHtml ? HighlightColor.GREEN : HighlightColor.YELLOW;
+
+  String responseBody = requestResponse.response().bodyToString();
+  String[] commentPatterns = isHtml ? new String[]{"<!--(?!\\[if).*?(?<!\\])-->"} : new String[]{"/\\*\\*(.*?)\\*\\*/"};
+
+
+  for (String pattern : commentPatterns) {
+      Pattern regexPattern = Pattern.compile(pattern, Pattern.DOTALL);
+      Matcher matcher = regexPattern.matcher(responseBody);
+
+      while (matcher.find()) {
+          foundDeveloperNotes = true;
+          if (manualColorHighlightEnabled) {
+              String note = matcher.group();
+              // 将注释长度限制为250个字符
+              if (note.length() > 250) {
+                  note = note.substring(0, 250) + "...";
+              }
+
+              if (notesBuilder.length() > 0) {
+                  notesBuilder.append("; ");
+              }
+              notesBuilder.append("发现开发者注释: ").append(note);
+          }
+      }
+  }
+
+  if (foundDeveloperNotes) {
+      requestResponse.annotations().setHighlightColor(highlightColor);
+      if (manualColorHighlightEnabled && notesBuilder.length() > 0) {
+          requestResponse.annotations().setNotes(notesBuilder.toString());
+      }
+  }
+
+  return foundDeveloperNotes;

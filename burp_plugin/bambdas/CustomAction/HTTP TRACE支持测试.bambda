@@ -1,0 +1,35 @@
+id: 5380ba12-ed58-4c05-8646-54e850b6536b
+name: HTTP TRACE支持测试
+function: CUSTOM_ACTION
+location: REPEATER
+source: |+
+  /**
+  * 测试HTTP TRACE方法的支持情况。
+  *
+  * 功能描述：
+  * - 检测目标服务器是否支持HTTP TRACE方法
+  * - 发送TRACE请求并获取响应状态码
+  * - 用于识别潜在的安全风险
+  * 
+  * 实现逻辑：
+  * 1. 获取当前请求对象
+  * 2. 将请求方法修改为TRACE
+  * 3. 发送修改后的请求
+  * 4. 记录响应的HTTP状态码
+  * 
+  * 使用场景：
+  * - Web服务器安全配置检查
+  * - HTTP方法支持情况测试
+  * - 跨站追踪(XST)漏洞检测
+  * - 服务器指纹识别
+  * 
+  * 安全影响：
+  * - TRACE方法可能导致跨站追踪攻击
+  * - 可能泄露敏感的请求头信息
+  * - 建议在生产环境中禁用TRACE方法
+  *
+  * @author righettod (https://github.com/righettod)
+  **/
+  var req = requestResponse.request();
+  var httpCode = api().http().sendRequest(req.withMethod("TRACE")).response().statusCode();
+  logging().logToOutput("返回HTTP " + httpCode + "状态码。");

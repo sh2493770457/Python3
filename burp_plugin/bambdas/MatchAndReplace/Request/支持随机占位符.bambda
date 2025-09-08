@@ -1,0 +1,99 @@
+id: 95829147-82d3-43b2-b4f5-22dcecaae711
+name: 支持随机占位符
+function: MATCH_AND_REPLACE_REQUEST
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+  * 支持"randomplz"占位符
+  * 
+  * 功能描述：
+  * - 在HTTP请求中支持随机字符串占位符
+  * - 将"randomplz"占位符替换为8位随机字符串
+  * - 用于生成动态的测试数据
+  * - 避免缓存和重复请求问题
+  * 
+  * 实现逻辑：
+  * 1. 检查请求是否包含"randomplz"占位符
+  * 2. 如果不包含则直接返回原请求
+  * 3. 生成8位随机字符串
+  * 4. 替换所有"randomplz"为随机字符串
+  * 5. 构造并返回新的HTTP请求
+  * 
+  * 使用场景：
+  * - 动态参数生成
+  * - 避免请求缓存
+  * - 测试数据随机化
+  * - 绕过重复检测
+  * - 负载测试数据变化
+  * 
+  * 占位符特性：
+  * - 占位符名称："randomplz"
+  * - 生成长度：8个字符
+  * - 字符类型：字母和数字组合
+  * - 大小写敏感：区分大小写匹配
+  * 
+  * 随机字符串特点：
+  * - 包含大小写字母和数字
+  * - 长度固定为8位
+  * - 每次请求都不同
+  * - 具有良好的随机性
+  * 
+  * 应用示例：
+  * - URL参数：/api/user?id=randomplz
+  * - 请求体：{"username":"user_randomplz"}
+  * - 头部值：X-Request-ID: req_randomplz
+  * - Cookie值：sessionid=sess_randomplz
+  * 
+  * 测试场景：
+  * - API接口测试：避免重复数据
+  * - 缓存绕过：确保获取最新数据
+  * - 负载测试：模拟不同用户请求
+  * - 安全测试：生成随机测试向量
+  * 
+  * 安全考虑：
+  * - 随机性质量：使用安全的随机数生成器
+  * - 数据泄露：避免在敏感位置使用
+  * - 日志记录：注意随机数据的日志影响
+  * - 可预测性：确保足够的熵值
+  * 
+  * 性能影响：
+  * - 字符串搜索和替换开销
+  * - 随机数生成成本
+  * - HTTP请求重构开销
+  * - 整体影响较小
+  * 
+  * 扩展功能：
+  * - 支持自定义长度：randomplz(12)
+  * - 支持不同字符集：randomplz_alpha
+  * - 支持多种占位符：timestamp、uuid等
+  * - 支持格式化：randomplz_upper
+  * 
+  * 替换规则：
+  * - 全局替换：替换所有匹配的占位符
+  * - 大小写敏感：精确匹配"randomplz"
+  * - 完整单词：避免部分匹配
+  * 
+  * 注意事项：
+  * - 每个占位符都会被替换为相同的随机值
+  * - 如需不同随机值需要使用不同占位符
+  * - 替换发生在整个请求内容中
+  * - 包括URL、头部、请求体等所有部分
+  * 
+  * 调试建议：
+  * - 记录替换前后的请求内容
+  * - 验证随机字符串的质量
+  * - 检查替换是否完整
+  * - 确认请求格式正确性
+  * 
+  * @author PortSwigger
+  **/
+  if (!(requestResponse.request().contains("randomplz", true))) {
+  	return requestResponse.request();
+  }
+  
+  var arr = requestResponse.request().toString().replace(
+      "randomplz",
+      utilities.randomUtils().randomString(8)
+  );
+  
+  return HttpRequest.httpRequest(requestResponse.httpService(), arr);

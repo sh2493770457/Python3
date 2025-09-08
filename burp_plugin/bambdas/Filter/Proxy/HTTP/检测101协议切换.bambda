@@ -1,0 +1,35 @@
+id: ff170e2b-dc47-4bc6-9cad-63f72e6e20c1
+name: 检测101协议切换
+function: VIEW_FILTER
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+   * 用于检测HTTP响应中"101 Switching Protocols"状态码的Bambda脚本
+   * 
+   * 功能描述：
+   * - 识别HTTP响应状态码为101（协议切换）的请求
+   * - 过滤显示协议升级相关的通信
+   * - 帮助分析WebSocket握手和协议切换
+   * 
+   * 实现逻辑：
+   * 1. 确保存在HTTP响应
+   * 2. 检查响应状态码是否为101
+   * 3. 返回匹配结果用于过滤显示
+   * 
+   * 使用场景：
+   * - WebSocket连接分析
+   * - HTTP/2协议升级检测
+   * - 协议切换行为监控
+   * - 网络通信协议研究
+   * 
+   * 状态码说明：
+   * - 101状态码表示服务器同意切换协议
+   * - 常见于WebSocket握手过程
+   * - 也用于HTTP/1.1到HTTP/2的升级
+   * 
+   * @author Tur24Tur / BugBountyzip (https://github.com/BugBountyzip)
+   * 它识别HTTP响应状态码是否为101（协议切换）。
+   **/
+
+  // 确保存在响应并检查状态码是否为101
+  return requestResponse.hasResponse() && requestResponse.response().statusCode() == 101;

@@ -1,0 +1,74 @@
+id: fa65ac11-a7ea-4cdf-8c53-6c14b508ad53
+name: 引用来源
+function: CUSTOM_COLUMN
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+   * 提取Referer请求头
+   * 
+   * 功能描述：
+   * - 在代理历史中添加自定义列显示Referer头信息
+   * - 提取HTTP请求中的引用来源页面
+   * - 识别通过Referer头泄露的敏感数据
+   * - 帮助发现安全漏洞和隐私问题
+   * 
+   * 实现逻辑：
+   * 1. 检查HTTP请求是否包含Referer头
+   * 2. 如果存在则返回完整的Referer值
+   * 3. 如果不存在则返回空字符串
+   * 
+   * 使用场景：
+   * - 敏感数据泄露检测
+   * - OIDC授权码泄露识别
+   * - 用户行为分析
+   * - 隐私保护评估
+   * - CSRF攻击检测
+   * 
+   * 敏感信息泄露风险：
+   * - OAuth授权码：通过Referer泄露authorization_code
+   * - 会话令牌：URL中的session token
+   * - API密钥：查询参数中的API key
+   * - 用户标识：包含用户ID的URL参数
+   * - 内部路径：暴露应用内部结构
+   * 
+   * OIDC安全问题：
+   * - 授权码泄露：authorization_code在Referer中暴露
+   * - 状态参数泄露：state参数可能包含敏感信息
+   * - 重定向URI泄露：可能暴露内部系统信息
+   * - 访问令牌泄露：某些实现可能在URL中传递token
+   * 
+   * 常见泄露场景：
+   * - 第三方资源加载：图片、CSS、JS等外部资源
+   * - 外部链接跳转：用户点击外部链接
+   * - 广告和统计：第三方广告和分析服务
+   * - 社交媒体分享：分享按钮和插件
+   * 
+   * 安全分析要点：
+   * - 检查Referer中的查询参数
+   * - 识别敏感的URL路径
+   * - 发现异常的跳转来源
+   * - 验证授权流程的安全性
+   * 
+   * 防护建议：
+   * - 使用Referrer Policy控制Referer发送
+   * - 避免在URL中传递敏感信息
+   * - 实施CSRF token验证
+   * - 使用POST方法传递敏感数据
+   * - 定期审计Referer泄露风险
+   * 
+   * Referrer Policy选项：
+   * - no-referrer：不发送Referer
+   * - origin：仅发送域名
+   * - strict-origin：HTTPS降级时不发送
+   * - same-origin：仅同源请求发送
+   * 
+   * 注意事项：
+   * - 某些浏览器可能修改或阻止Referer
+   * - HTTPS到HTTP跳转会丢失Referer
+   * - 用户可以通过扩展禁用Referer
+   * - 移动应用行为可能不同
+   * 
+   * @author emanuelduss
+   **/
+
+  return requestResponse.request().hasHeader("Referer") ? requestResponse.request().headerValue("Referer") : "";

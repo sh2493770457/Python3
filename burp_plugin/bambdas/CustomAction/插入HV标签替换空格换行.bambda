@@ -1,0 +1,46 @@
+id: a91eea9c-3f11-4b33-ae77-8fa3961615df
+name: 插入HV标签替换空格换行
+function: CUSTOM_ACTION
+location: REPEATER
+source: |+
+  /**
+  * 使用Hackvertor标签替换空格和换行符脚本
+  * 
+  * 功能描述：
+  * 该脚本将空格和换行符替换为相应的Hackvertor标签。
+  * Hackvertor是一个用于转换和编码数据的工具，通过使用特定的标签格式
+  * 可以在测试过程中绕过某些过滤器或实现特定的编码需求。
+  * 
+  * 实现逻辑：
+  * 1. 检查用户是否在请求中选中了文本
+  * 2. 如果有选中文本，对选中的内容进行处理
+  * 3. 如果没有选中文本，对整个请求体进行处理
+  * 4. 将空格字符替换为<@space/>标签
+  * 5. 将换行符替换为<@newline/>标签
+  * 6. 输出转换后的结果到日志
+  * 
+  * 使用场景：
+  * - 绕过基于空格和换行符的WAF过滤
+  * - 在SQL注入或XSS测试中使用Hackvertor编码
+  * - 测试应用程序对特殊字符的处理
+  * - 与Hackvertor工具集成进行高级编码测试
+  * 
+  * 安全影响：
+  * 可用于绕过安全过滤器，构造更复杂的攻击载荷
+  *
+  * @author Nicolas Grégoire
+  **/
+  
+  var data = "";
+  
+  // 检查是否有选中的请求文本
+  if (selection.hasRequestSelection()) {
+      logging().logToOutput("正在处理选中的文本");
+      data = selection.requestSelection().contents().toString();
+  } else {
+      logging().logToOutput("正在处理整个请求体");
+      data = requestResponse.request().bodyToString();
+  }
+  
+  // 将空格替换为<@space/>标签，换行符替换为<@newline/>标签
+  logging().logToOutput(data.replace(" ", "<@space/>").replace("\n", "<@newline/>"));

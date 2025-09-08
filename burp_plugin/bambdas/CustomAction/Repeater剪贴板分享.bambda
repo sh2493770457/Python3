@@ -1,0 +1,81 @@
+id: 361c963f-346e-427b-a93e-86db21d11a73
+name: Repeater剪贴板分享
+function: CUSTOM_ACTION
+location: REPEATER
+source: |+
+  /**
+  * Repeater剪贴板分享脚本
+  * 
+  * 功能描述：
+  * 该脚本压缩并编码当前Repeater中的请求，将结果复制到剪贴板。
+  * 这个功能允许用户轻松地将HTTP请求分享给其他人或在不同的
+  * Burp Suite实例之间传输请求数据。
+  * 
+  * 实现逻辑：
+  * 1. 获取当前请求的HTTP服务信息（协议、主机、端口）
+  * 2. 提取请求的字节数组数据
+  * 3. 使用GZIP算法压缩请求数据
+  * 4. 将压缩后的数据进行Base64编码
+  * 5. 构造标准化的分享格式字符串
+  * 6. 将格式化的字符串复制到系统剪贴板
+  * 7. 输出成功信息和数据格式说明
+  * 
+  * 数据格式：
+  * REPEATERCLIP/protocol/host/port/base64data
+  * - REPEATERCLIP: 固定前缀标识符
+  * - protocol: http或https协议
+  * - host: 目标主机名或IP地址
+  * - port: 端口号
+  * - base64data: GZIP压缩并Base64编码的请求数据
+  * 
+  * 使用场景：
+  * - 团队协作中分享测试请求
+  * - 在不同Burp Suite实例间传输请求
+  * - 保存复杂请求的便携格式
+  * - 跨平台的请求数据共享
+  * - 创建请求模板库
+  * 
+  * 安全影响：
+  * 提高安全测试团队的协作效率和请求复用能力
+  *
+  * @author 0xd0ug (https://github.com/0xd0ug)
+  **/
+  
+  try {
+      // 获取HTTP服务信息
+      var httpService = requestResponse.httpService();
+      String protocol = httpService.secure() ? "https" : "http";  // 确定协议类型
+      String host = httpService.host();  // 获取主机名
+      int port = httpService.port();     // 获取端口号
+      
+      // 获取请求的字节数组
+      var requestByteArray = requestResponse.request().toByteArray();
+      
+      // 使用GZIP压缩请求数据
+      var compressedRequest = api.utilities().compressionUtils().compress(requestByteArray, burp.api.montoya.utilities.CompressionType.GZIP);
+      
+      // 将压缩后的数据进行Base64编码
+      String base64EncodedRequest = api.utilities().base64Utils().encodeToString(compressedRequest);
+      
+      // 构造标准化的分享格式
+      String result = "REPEATERCLIP/" + protocol + "/" + host + "/" + port + "/" + base64EncodedRequest;
+      
+      // 将结果复制到系统剪贴板
+      java.awt.Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new java.awt.datatransfer.StringSelection(result), null);
+      
+      // 输出成功信息
+      logging.logToOutput("成功将请求数据复制到剪贴板");
+      logging.logToOutput("格式: " + protocol + "/" + host + "/" + port + "/[base64编码的压缩请求]");
+      
+  } catch (Exception e) {
+      // 异常处理：尝试清空剪贴板
+      try {
+          java.awt.Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new java.awt.datatransfer.StringSelection(""), null);
+      } catch (Exception clipboardError) {
+          logging.logToError("清空剪贴板失败: " + clipboardError.getMessage());
+      }
+      
+      // 输出错误信息
+      logging.logToError("处理请求时出错: " + e.getMessage());
+      e.printStackTrace();
+  }

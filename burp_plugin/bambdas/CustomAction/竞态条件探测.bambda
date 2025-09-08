@@ -1,0 +1,53 @@
+id: eb57d5bd-33e2-4a8c-bf51-bc81bd26613a
+name: 竞态条件探测
+function: CUSTOM_ACTION
+location: REPEATER
+source: |+
+  /**
+  * 竞态条件探测脚本
+  * 
+  * 功能描述：
+  * 该脚本重复发送请求10次以触发竞态条件或请求走私攻击。
+  * 对于HTTP/2使用单包攻击技术，对于HTTP/1使用最后字节同步技术。
+  * 竞态条件漏洞通常出现在并发处理中，可能导致业务逻辑绕过、
+  * 权限提升或数据不一致等安全问题。
+  * 
+  * 实现逻辑：
+  * 1. 定义要发送的请求数量（默认10次）
+  * 2. 创建请求列表，将原始请求复制多份
+  * 3. 使用Burp的批量发送功能同时发送所有请求
+  * 4. 收集所有响应的状态码
+  * 5. 将状态码列表输出到日志进行分析
+  * 
+  * 使用场景：
+  * - 测试支付系统的重复扣款问题
+  * - 检测优惠券或折扣码的重复使用漏洞
+  * - 验证库存管理系统的并发处理
+  * - 测试用户注册或登录的竞态条件
+  * - 发现文件上传或删除的并发问题
+  * - 检测投票或评分系统的重复提交
+  * 
+  * 安全影响：
+  * 竞态条件可能导致严重的业务逻辑漏洞和经济损失
+  *
+  * @author James Kettle
+  **/
+  
+  // 定义要发送的请求数量
+  int NUMBER_OF_REQUESTS = 10;
+  
+  // 创建请求列表
+  var reqs = new ArrayList<HttpRequest>();
+  for (int i = 0; i < NUMBER_OF_REQUESTS; i++) {
+      reqs.add(requestResponse.request());
+  }
+  
+  // 批量发送请求（利用Burp的并发发送能力触发竞态条件）
+  var responses = api().http().sendRequests(reqs); 
+  
+  // 提取所有响应的状态码
+  var codes = responses.stream().map(HttpRequestResponse::response).map(HttpResponse::statusCode).toList();
+  
+  // 输出状态码列表用于分析
+  // 不同的状态码可能表明存在竞态条件
+  logging().logToOutput(codes);

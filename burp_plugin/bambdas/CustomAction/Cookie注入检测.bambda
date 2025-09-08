@@ -1,0 +1,132 @@
+id: f7c0fb99-90fc-4fb3-8245-6555cd7887ed
+name: Cookie注入检测
+function: CUSTOM_ACTION
+location: REPEATER
+source: |+
+  /**
+  * Cookie注入检测脚本
+  * 
+  * 功能描述：
+  * 该脚本通过参数操作来探测Cookie注入漏洞。它会检测服务器是否允许用户控制的请求参数
+  * 修改响应Cookie，包括覆盖Cookie值和注入新的Cookie属性。这是一个重要的安全测试工具，
+  * 用于发现应用程序在处理Cookie时的安全缺陷。
+  * 
+  * 实现逻辑：
+  * 1. 获取原始请求的所有参数和响应中的Cookie
+  * 2. 为每个参数生成随机的测试值（金丝雀值）
+  * 3. 构造包含注入值的测试请求
+  * 4. 检查响应中的Set-Cookie头是否反映了注入的值
+  * 5. 进一步测试Cookie属性注入（使用分号分隔符）
+  * 6. 如果检测到漏洞，创建详细的审计问题报告
+  * 
+  * 使用场景：
+  * - 检测Cookie覆盖漏洞
+  * - 发现Cookie属性注入问题
+  * - 验证输入验证和输出编码的有效性
+  * - 自动化安全测试中的Cookie安全评估
+  * 
+  * 安全影响：
+  * Cookie注入可能导致会话劫持、权限提升、跨站脚本攻击等安全问题
+  *
+  * @author d0ge
+  **/
+  
+  // 检查是否有响应，没有响应则直接返回
+  if(!requestResponse.hasResponse()) return;
+  
+  // 获取请求和响应对象
+  var req = requestResponse.request();
+  var res = requestResponse.response();
+  
+  // 获取原始请求中的所有参数
+  var originalParameters = req.parameters();
+  
+  // 提取现有参数名称集合，避免重复测试
+  var existingNames = originalParameters.stream()
+      .map(HttpParameter::name)
+      .collect(java.util.stream.Collectors.toSet());
+  
+  // 从响应Cookie中提取不在现有参数中的Cookie作为测试参数
+  var cookieParameters = res.cookies().stream()
+      .filter(c -> !existingNames.contains(c.name()))
+      .map(c -> HttpParameter.urlParameter(c.name(), c.value()))
+      .toList();
+  
+  // 合并原始参数和Cookie参数作为测试目标
+  var testParameters = new java.util.ArrayList<HttpParameter>();
+  testParameters.addAll(originalParameters);
+  testParameters.addAll(cookieParameters);
+  
+  // 遍历每个参数进行Cookie注入测试
+  for(HttpParameter parameter: testParameters) {
+    // 生成与原参数值长度相同的随机金丝雀值
+    var canary = api().utilities().randomUtils().randomString(parameter.value().length());
+    HttpParameter injectParameter;
+    
+    // 根据请求方法选择参数类型
+    if(req.method().equalsIgnoreCase("GET")){
+        // GET请求使用URL参数
+        injectParameter = HttpParameter.urlParameter(parameter.name(), parameter.value() + canary);
+    } else {
+        // 其他请求使用请求体参数
+    	injectParameter = HttpParameter.bodyParameter(parameter.name(), parameter.value() + canary);
+    }
+    
+    // 构造包含注入参数的测试请求
+    var exploit = req.withRemovedParameters(parameter).withAddedParameters(injectParameter);
+    
+    // 发送测试请求
+    var respRx = api().http().sendRequest(exploit);
+    if (!respRx.hasResponse()) continue;
+    
+    // 检查响应中的Cookie是否包含注入的金丝雀值
+    var foundCookies = respRx.response().cookies()
+    	.stream()
+    	.filter(c -> c.name().equalsIgnoreCase(parameter.name()) && c.value().contains(canary))
+       	.collect(Collectors.toList());
+    
+    // 如果没有发现Cookie注入，继续下一个参数
+    if(foundCookies.isEmpty()) continue;
+    
+    // 记录发现的Cookie覆盖漏洞
+    logging().logToOutput(String.format(
+    "[信息] 检测到Cookie覆盖：服务器在Set-Cookie头中反映了注入值：%s=%s%s",
+    parameter.name(), parameter.value(), canary));
+    
+    // 生成随机属性名用于测试Cookie属性注入
+    var attr = api().utilities().randomUtils().randomString(4);
+    
+    // 构造包含Cookie属性注入的测试请求（使用URL编码的分号）
+    var attributeExploit = req.withRemovedParameters(parameter).withAddedParameters(HttpParameter.parameter(injectParameter.name(), injectParameter.value() + "%3b" + attr, injectParameter.type()));
+    
+    // 发送属性注入测试请求
+    var attrRx = api().http().sendRequest(attributeExploit);
+    if (!attrRx.hasResponse()) continue;
+    
+    // 检查响应头中是否包含注入的属性
+    if(!attrRx.response().headers().stream().filter(t -> t.name().equalsIgnoreCase("Set-Cookie")).anyMatch(t -> t.value().contains(";" + attr))) continue;
+    
+    // 记录发现的Cookie属性注入漏洞
+    logging().logToOutput(String.format(
+    "[信息] 检测到Cookie属性覆盖：服务器接受了注入的属性：%s", attr));
+    
+    // 创建详细的审计问题报告
+    api().siteMap().add(
+    burp.api.montoya.scanner.audit.issues.AuditIssue.auditIssue(
+  	"通过参数操作的Cookie注入",
+  	"服务器允许用户控制的请求参数修改响应Cookie。这包括覆盖Cookie值和使用分号<b>;</b>注入新的Cookie属性。",
+  	String.format(
+  	  "在测试过程中，参数<b>%s</b>被修改为包含注入值：<b>%s%s</b>。" +
+  	  "服务器在<b>Set-Cookie</b>头中反映了此值。进一步测试显示服务器接受了注入的属性：<b>%s</b>，" +
+  	  "表明在构造Cookie头时输入清理不当。",
+  	  parameter.name(), parameter.value(), canary, attr),
+  	req.url(),
+  	burp.api.montoya.scanner.audit.issues.AuditIssueSeverity.LOW,
+  	burp.api.montoya.scanner.audit.issues.AuditIssueConfidence.CERTAIN,
+  	"为防止Cookie注入，避免直接将用户控制的输入嵌入到Set-Cookie头中。清理所有Cookie值并避免使用分号<b>;</b>等分隔符。" +
+  	"更多详情：<a href=\"https://portswigger.net/research/cookie-chaos\">https://portswigger.net/research/cookie-chaos</a>",
+  	"",
+  	burp.api.montoya.scanner.audit.issues.AuditIssueSeverity.LOW,
+  	respRx.withResponseMarkers(Marker.marker(Range.range(respRx.response().toString().indexOf(canary), attrRx.response().toString().indexOf(canary) + canary.length()))), 
+      attrRx.withResponseMarkers(Marker.marker(Range.range(attrRx.response().toString().indexOf(attr), attrRx.response().toString().indexOf(attr) + 4)))));
+  }

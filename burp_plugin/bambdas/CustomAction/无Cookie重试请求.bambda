@@ -1,0 +1,40 @@
+id: 86aac48c-0735-413c-a91d-007a1b9475ec
+name: 无Cookie重试请求
+function: CUSTOM_ACTION
+location: REPEATER
+source: |+
+  /**
+  * 无Cookie重试请求脚本
+  * 
+  * 功能描述：
+  * 该脚本移除请求中的Cookie和Authorization头后重新发送请求。
+  * 这个功能用于测试应用程序在没有身份验证信息时的行为，
+  * 帮助识别访问控制漏洞和未授权访问问题。
+  * 
+  * 实现逻辑：
+  * 1. 获取当前的HTTP请求对象
+  * 2. 移除Authorization头（用于HTTP基本认证等）
+  * 3. 移除Cookie头（包含会话信息和认证令牌）
+  * 4. 发送修改后的请求
+  * 5. 获取响应的状态码并输出到日志
+  * 
+  * 使用场景：
+  * - 测试访问控制机制的有效性
+  * - 检测未授权访问漏洞
+  * - 验证会话管理的安全性
+  * - 识别不需要认证就能访问的敏感资源
+  * - 测试API端点的权限控制
+  * - 发现水平/垂直权限提升漏洞
+  * 
+  * 安全影响：
+  * 可以发现严重的访问控制缺陷，如敏感数据的未授权访问
+  *
+  * @author PortSwigger
+  **/
+  
+  // 获取当前请求对象
+  var req = requestResponse.request();
+  
+  // 移除Authorization和Cookie头后发送请求，并输出响应状态码
+  // 这有助于快速判断是否存在访问控制问题
+  logging().logToOutput(api().http().sendRequest(req.withRemovedHeader("Authorization").withRemovedHeader("Cookie")).response().statusCode());

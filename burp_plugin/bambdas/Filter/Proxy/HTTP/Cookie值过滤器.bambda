@@ -1,0 +1,79 @@
+id: 48d6a6bb-3675-a171-5cb6-1a72355ce71a
+name: Cookie值过滤器
+function: VIEW_FILTER
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+   * Cookie值过滤器脚本
+   * 
+   * 功能描述：
+   * 根据特定的Cookie值过滤代理HTTP历史记录中的请求。
+   * 此脚本检查请求中是否包含指定名称的Cookie，并验证其值是否包含特定内容。
+   * 
+   * 实现逻辑：
+   * 1. 检查请求是否包含名为"foo"的Cookie参数
+   * 2. 获取该Cookie的值
+   * 3. 验证Cookie值是否包含"1337"字符串
+   * 4. 返回匹配结果（true显示，false隐藏）
+   * 
+   * 使用场景：
+   * - 会话管理测试
+   * - 特定用户请求过滤
+   * - Cookie安全分析
+   * - 认证状态检查
+   * - 调试特定会话流程
+   * 
+   * Cookie参数特点：
+   * - 自动包含在HTTP请求头中
+   * - 用于维护会话状态
+   * - 可能包含敏感信息
+   * - 支持域名和路径限制
+   * 
+   * 过滤策略：
+   * - 精确匹配：检查特定Cookie名称
+   * - 内容匹配：验证Cookie值包含指定字符串
+   * - 布尔返回：true显示请求，false隐藏请求
+   * 
+   * 自定义建议：
+   * - 修改Cookie名称（当前为"foo"）
+   * - 调整匹配值（当前为"1337"）
+   * - 添加多个Cookie条件检查
+   * - 支持正则表达式匹配
+   * - 添加Cookie值范围检查
+   * 
+   * 安全测试应用：
+   * - 会话固定攻击测试
+   * - Cookie注入检测
+   * - 权限提升验证
+   * - 会话劫持分析
+   * 
+   * 扩展功能：
+   * - 支持多Cookie联合条件
+   * - 添加Cookie属性检查（HttpOnly、Secure等）
+   * - 实现Cookie值解码功能
+   * - 集成时间戳验证
+   * 
+   * 性能考虑：
+   * - Cookie检查开销较小
+   * - 字符串包含操作高效
+   * - 适合大量请求过滤
+   * 
+   * 调试提示：
+   * - 检查Cookie名称拼写
+   * - 验证匹配字符串准确性
+   * - 注意大小写敏感性
+   * 
+   * 作者：LostCoder
+   * 中文注释：bambda脚本中文化项目
+   **/
+
+  if (requestResponse.request().hasParameter("foo", HttpParameterType.COOKIE)) {
+    var cookieValue = requestResponse
+      .request()
+      .parameter("foo", HttpParameterType.COOKIE)
+      .value();
+
+    return cookieValue.contains("1337");
+  }
+
+  return false;

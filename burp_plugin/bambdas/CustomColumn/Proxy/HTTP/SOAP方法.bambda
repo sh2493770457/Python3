@@ -1,0 +1,93 @@
+id: 7431004d-584f-4830-bf2d-33403fefd6fd
+name: SOAP方法
+function: CUSTOM_COLUMN
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+   * 从SOAP请求中提取方法名和示例值
+   * 
+   * 功能描述：
+   * - 在代理历史中添加自定义列显示SOAP方法信息
+   * - 提取SOAP请求中的方法名称
+   * - 提取WS-Security用户名字段值
+   * - 帮助分析SOAP Web服务调用
+   * 
+   * 实现逻辑：
+   * 1. 检查Content-Type是否包含"soap+xml"
+   * 2. 验证请求体是否包含<s:Body>标签
+   * 3. 使用正则表达式提取Username和Body中的方法名
+   * 4. 组合提取的信息并返回
+   * 
+   * 使用场景：
+   * - SOAP Web服务测试
+   * - Web服务方法识别
+   * - WS-Security认证分析
+   * - SOAP消息审计
+   * 
+   * 提取内容：
+   * - SOAP方法名：从Body标签中提取
+   * - WS-Security用户名：从Username标签提取
+   * - 支持命名空间前缀的标签
+   * - 大小写不敏感匹配
+   * 
+   * SOAP结构说明：
+   * - Envelope：SOAP消息的根元素
+   * - Header：包含元数据和安全信息
+   * - Body：包含实际的方法调用
+   * - 命名空间：通常使用s:或soap:前缀
+   * 
+   * WS-Security特性：
+   * - Username Token：用户名密码认证
+   * - 时间戳：防重放攻击
+   * - 数字签名：消息完整性
+   * - 加密：消息机密性
+   * 
+   * 正则表达式说明：
+   * - Username提取：<(?:[a-zA-Z0-9]+:)?Username>([^<]+)</(?:[a-zA-Z0-9]+:)*Username>
+   * - 方法名提取：<(?:[a-zA-Z0-9]+:)*Body[^>]*><([^ ]+)
+   * - 支持可选的命名空间前缀
+   * - 大小写不敏感匹配
+   * 
+   * 安全分析要点：
+   * - 用户名信息泄露
+   * - 方法名暴露服务结构
+   * - 认证机制识别
+   * - 服务枚举风险
+   * 
+   * 自定义扩展：
+   * - 添加更多正则表达式提取其他字段
+   * - 修改命名空间前缀匹配规则
+   * - 扩展支持其他SOAP安全标准
+   * - 提取更多WS-Security元素
+   * 
+   * 注意事项：
+   * - 假设Body标签的命名空间为"s"
+   * - 需要根据实际SOAP格式调整
+   * - 仅处理soap+xml内容类型
+   * - 正则匹配可能需要优化
+   * 
+   * 当前限制：
+   * - 固定的命名空间假设
+   * - 有限的字段提取
+   * - 依赖特定的XML结构
+   * 
+   * @author Nick Coblentz (https://github.com/ncoblentz)
+   **/
+
+  if(requestResponse.request().hasHeader("Content-Type")
+      && requestResponse.request().headerValue("Content-Type").contains("soap+xml"))
+  {
+      StringBuilder builder = new StringBuilder();
+      if(requestResponse.request().bodyToString().contains("<s:Body"))
+      {
+          Matcher m = Pattern.compile("<(?:[a-zA-Z0-9]+:)?Username>([^<]+)</(?:[a-zA-Z0-9]+:)*Username>|<(?:[a-zA-Z0-9]+:)*Body[^>]*><([^ ]+)",Pattern.CASE_INSENSITIVE).matcher(requestResponse.request().bodyToString());
+          while(m.find() && m.groupCount()>0) {
+              for(int i=1;i<=m.groupCount();i++) {
+                  if(m.group(i)!=null)
+                      builder.append(m.group(i)+" ");
+              }
+          }
+          return builder.toString();
+      }
+  }
+  return "";

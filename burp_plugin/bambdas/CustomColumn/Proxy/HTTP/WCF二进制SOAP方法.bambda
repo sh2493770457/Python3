@@ -1,0 +1,111 @@
+id: 8d0640b2-b8cd-4d83-a327-e753fba17b55
+name: WCF二进制SOAP方法
+function: CUSTOM_COLUMN
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+   * 从请求中提取WCF SOAP二进制方法名
+   * 
+   * 功能描述：
+   * - 在代理历史中添加自定义列显示WCF二进制SOAP方法
+   * - 从WCF二进制SOAP请求中提取方法名称
+   * - 支持Microsoft WCF服务的分析
+   * - 帮助识别.NET Web服务调用
+   * 
+   * 实现逻辑：
+   * 1. 检查Content-Type是否为"application/soap+msbin1"
+   * 2. 获取请求体内容
+   * 3. 查找指定的命名空间前缀
+   * 4. 提取前缀后到"@"符号之间的方法名
+   * 5. 返回提取的方法名称
+   * 
+   * 使用场景：
+   * - WCF服务测试
+   * - .NET Web服务分析
+   * - 二进制SOAP消息解析
+   * - Microsoft技术栈评估
+   * 
+   * WCF技术说明：
+   * - Windows Communication Foundation
+   * - Microsoft的统一通信框架
+   * - 支持多种协议和编码
+   * - 二进制编码提高性能
+   * 
+   * 二进制SOAP特点：
+   * - 更小的消息大小
+   * - 更快的序列化/反序列化
+   * - 仅限.NET平台互操作
+   * - 使用专有的二进制格式
+   * 
+   * Content-Type说明：
+   * - application/soap+msbin1：Microsoft二进制SOAP v1
+   * - 区别于标准的text/xml或application/soap+xml
+   * - 表示使用Microsoft专有的二进制编码
+   * 
+   * 命名空间配置：
+   * - 需要自定义prefix参数
+   * - 匹配目标应用的XML命名空间
+   * - 示例："www.examplewebsite.com/xmlnamespace/"
+   * - 根据实际测试的应用进行调整
+   * 
+   * 提取模式：
+   * - 查找：命名空间前缀
+   * - 提取：前缀后到"@"符号之间的内容
+   * - 返回：WCF服务方法名
+   * 
+   * 安全分析价值：
+   * - 服务方法枚举
+   * - .NET技术栈识别
+   * - WCF配置分析
+   * - 攻击面评估
+   * 
+   * 常见WCF安全问题：
+   * - 方法暴露过多
+   * - 缺乏适当的认证
+   * - 输入验证不足
+   * - 异常信息泄露
+   * 
+   * 自定义配置步骤：
+   * 1. 分析目标WCF服务的WSDL
+   * 2. 识别XML命名空间
+   * 3. 更新prefix变量
+   * 4. 测试方法名提取效果
+   * 
+   * 分析要点：
+   * - 识别可用的服务方法
+   * - 检查方法命名规范
+   * - 评估业务逻辑暴露
+   * - 验证访问控制
+   * 
+   * 注意事项：
+   * - 需要根据目标应用自定义prefix
+   * - 仅适用于Microsoft WCF二进制SOAP
+   * - 依赖特定的消息格式
+   * - 可能需要调整提取逻辑
+   * 
+   * 扩展建议：
+   * - 支持多个命名空间前缀
+   * - 提取更多WCF元数据
+   * - 添加错误处理机制
+   * - 支持不同的WCF绑定
+   * 
+   * @author Nick Coblentz (https://github.com/ncoblentz)
+   *
+   * 需要自定义下面的`prefix`参数以匹配正在测试的应用程序的命名空间
+   **/
+
+  if(requestResponse.request().hasHeader("Content-Type") && requestResponse.request().headerValue("Content-Type").equals("application/soap+msbin1")){
+      String body = requestResponse.request().bodyToString();
+      String prefix = "www.examplewebsite.com/xmlnamespace/";
+      int start = body.indexOf(prefix);
+      if(start>0)
+      {
+          int end = body.indexOf("@",start+prefix.length());
+          if(end>0)
+          {
+              return body.substring(start+prefix.length(), end);
+          }
+
+      }
+  }
+  return "";

@@ -1,0 +1,131 @@
+id: b7594dc1-8277-b289-d0b6-2c70485a7d0d
+name: GraphQL端点检测
+function: VIEW_FILTER
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+   * GraphQL端点检测脚本
+   * 
+   * 功能描述：
+   * 检测包含换行符的'query'参数的GraphQL端点。
+   * GraphQL查询通常包含多行结构，通过检测query参数中的换行符
+   * 可以有效识别GraphQL API调用。
+   * 
+   * 实现逻辑：
+   * 1. 检查请求是否包含参数
+   * 2. 在JSON、BODY、URL三种参数类型中查找'query'参数
+   * 3. 对于JSON类型：检查是否包含"\n"换行符
+   * 4. 对于其他类型：检查是否包含URL编码的换行符"%0a"
+   * 5. 发现匹配条件则返回true
+   * 
+   * GraphQL特点：
+   * - 查询语言和运行时系统
+   * - 单一端点处理所有请求
+   * - 查询结构化且可嵌套
+   * - 支持查询、变更、订阅操作
+   * - 强类型系统
+   * 
+   * 检测策略：
+   * - 参数名称匹配：查找"query"参数
+   * - 内容特征识别：检测换行符存在
+   * - 多参数类型支持：JSON、BODY、URL
+   * - 编码格式适配：原始和URL编码
+   * 
+   * 使用场景：
+   * - GraphQL API发现
+   * - API安全测试
+   * - 接口文档生成
+   * - 流量分析和监控
+   * - 自动化测试目标识别
+   * 
+   * 参数类型说明：
+   * - JSON：application/json请求体中的参数
+   * - BODY：表单数据或其他请求体参数
+   * - URL：查询字符串参数
+   * 
+   * 换行符检测：
+   * - JSON格式：直接检测"\n"字符
+   * - URL编码：检测"%0a"（换行符的URL编码）
+   * - 大小写不敏感：使用toLowerCase()处理
+   * 
+   * GraphQL查询示例：
+   * ```
+   * query {
+   *   user(id: "123") {
+   *     name
+   *     email
+   *   }
+   * }
+   * ```
+   * 
+   * 安全测试价值：
+   * - 识别GraphQL攻击面
+   * - 发现未授权的数据访问
+   * - 检测查询复杂度攻击
+   * - 分析数据泄露风险
+   * 
+   * 扩展检测建议：
+   * - 添加mutation和subscription检测
+   * - 支持GraphQL内省查询识别
+   * - 检测GraphQL错误响应
+   * - 添加schema分析功能
+   * 
+   * 常见GraphQL端点：
+   * - /graphql
+   * - /api/graphql
+   * - /v1/graphql
+   * - /query
+   * 
+   * 误报预防：
+   * - 验证参数值的GraphQL语法
+   * - 检查响应内容类型
+   * - 分析响应结构特征
+   * - 结合端点路径判断
+   * 
+   * 性能优化：
+   * - 参数存在性预检查
+   * - 字符串操作优化
+   * - 避免不必要的类型转换
+   * 
+   * 调试提示：
+   * - 检查参数名称大小写
+   * - 验证URL编码处理
+   * - 注意JSON转义字符
+   * - 确认参数类型正确性
+   * 
+   * 相关工具：
+   * - GraphQL Playground
+   * - GraphiQL
+   * - Apollo Studio
+   * - Insomnia
+   * 
+   * 作者：Gareth Hayes
+   * 中文注释：bambda脚本中文化项目
+   **/
+
+  var req = requestResponse.request();
+
+  if (!req.hasParameters()) {
+    return false;
+  }
+
+  var types = new HttpParameterType[] {
+      HttpParameterType.JSON, HttpParameterType.BODY, HttpParameterType.URL
+  };
+
+  for (HttpParameterType type : types) {
+      if (req.hasParameter("query", type)) {
+          var value = req.parameterValue("query", type);
+          if (type == HttpParameterType.JSON) {
+            if (value.contains("\\n")) {
+                  return true;
+              }
+          } else {
+              if (value.toLowerCase().contains("%0a")) {
+                  return true;
+              }
+          }
+      }
+  }
+
+  return false;

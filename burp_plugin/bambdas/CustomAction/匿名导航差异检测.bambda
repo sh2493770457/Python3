@@ -1,0 +1,50 @@
+id: 42246ca1-d9f5-4824-ad72-d053c27e1c8b
+name: 匿名导航差异检测
+function: CUSTOM_ACTION
+location: REPEATER
+source: |+
+  /**
+  * 匿名导航差异检测脚本
+  * 
+  * 功能描述：
+  * 该脚本以匿名方式导航（无Cookie，无Authorization头）并查找与原始请求的差异。
+  * 通过比较认证请求和匿名请求的响应，可以识别访问控制问题和权限绕过漏洞。
+  * 
+  * 实现逻辑：
+  * 1. 获取原始请求的响应作为基线
+  * 2. 提取原始响应的状态码和Content-Length作为元数据
+  * 3. 创建匿名请求（移除Authorization和Cookie头）
+  * 4. 发送匿名请求并获取响应
+  * 5. 提取匿名响应的状态码和Content-Length作为元数据
+  * 6. 比较两个响应的元数据
+  * 7. 如果相同则输出"相同"，否则输出差异信息
+  * 
+  * 使用场景：
+  * - 检测访问控制绕过漏洞
+  * - 验证身份验证机制的有效性
+  * - 识别未授权访问的敏感资源
+  * - 测试权限控制的完整性
+  * - 发现水平/垂直权限提升漏洞
+  * 
+  * 安全影响：
+  * 可以发现严重的访问控制漏洞，如未授权数据访问
+  *
+  * @author Nicolas Grégoire
+  **/
+  
+  // 获取原始请求的响应作为基线
+  var resp1 = requestResponse.response();
+  // 构造原始响应的元数据（状态码.内容长度）
+  var resp1_metadata = resp1.statusCode() + "." + resp1.headerValue("Content-Length");
+
+  // 发送匿名请求（移除Authorization和Cookie头）
+  var resp2 = api().http().sendRequest(requestResponse.request().withRemovedHeader("Authorization").withRemovedHeader("Cookie")).response();
+  // 构造匿名响应的元数据（状态码.内容长度）
+  var resp2_metadata = resp2.statusCode() + "." + resp2.headerValue("Content-Length");
+
+  // 比较两个响应的元数据
+  if (resp1_metadata.equals(resp2_metadata)) {
+      logging().logToOutput("响应相同");
+  } else {
+      logging().logToOutput("响应差异: " + resp1_metadata + " vs " + resp2_metadata);
+  }

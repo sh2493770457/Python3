@@ -1,0 +1,190 @@
+id: 2cd16426-d1b2-4b14-9afd-4ddb64ffca3a
+name: 提取载荷到注释
+function: VIEW_FILTER
+location: PROXY_WEBSOCKET
+source: |+
+  /**
+   * WebSocket载荷提取到注释脚本
+   * 
+   * 功能描述：
+   * 从WebSocket消息中提取JSON元素，
+   * 并在WebSocket历史记录标签的"注释"列中显示。
+   * 用于快速识别和分析WebSocket通信中的
+   * 关键信息。
+   * 
+   * 实现逻辑：
+   * 1. 定义要搜索的JSON键名列表
+   * 2. 检查消息是否已有注释
+   * 3. 获取WebSocket消息载荷
+   * 4. 使用正则表达式匹配JSON键值对
+   * 5. 提取匹配的值并构建注释
+   * 6. 将提取的信息设置为消息注释
+   * 
+   * 检测目标：
+   * - JSON格式的WebSocket消息
+   * - 特定键名的值提取
+   * - 错误信息识别
+   * - 目标参数分析
+   * - 关键数据字段
+   * 
+   * 配置参数：
+   * - terms: 要搜索的JSON键名列表
+   * - 默认搜索"target"和"error"键
+   * - 支持自定义键名配置
+   * - 大小写不敏感匹配
+   * 
+   * WebSocket应用场景：
+   * - 实时通信分析
+   * - API调用监控
+   * - 错误信息收集
+   * - 数据流分析
+   * - 调试信息提取
+   * 
+   * 安全测试价值：
+   * - 敏感信息泄露检测
+   * - 错误消息分析
+   * - 业务逻辑理解
+   * - 攻击面识别
+   * - 数据流追踪
+   * 
+   * JSON解析特性：
+   * - 正则表达式匹配
+   * - 键值对提取
+   * - 多值处理支持
+   * - 字符串转义处理
+   * - 嵌套结构支持
+   * 
+   * 注释管理：
+   * - 避免重复注释
+   * - 动态内容更新
+   * - 格式化输出
+   * - 多字段合并
+   * - 空值过滤
+   * 
+   * 性能优化：
+   * - 条件检查优化
+   * - 正则编译缓存
+   * - 字符串构建器使用
+   * - 内存使用控制
+   * - 处理速度提升
+   * 
+   * 扩展建议：
+   * - 支持更多数据格式
+   * - 添加值过滤规则
+   * - 实现嵌套提取
+   * - 支持数组处理
+   * - 添加格式化选项
+   * 
+   * 调试技巧：
+   * - 验证正则表达式
+   * - 检查载荷格式
+   * - 确认键名匹配
+   * - 测试边界条件
+   * - 验证注释设置
+   * 
+   * 常见WebSocket消息格式：
+   * - JSON-RPC协议
+   * - 自定义API格式
+   * - 实时数据推送
+   * - 聊天消息协议
+   * - 游戏通信协议
+   * 
+   * 安全考虑：
+   * - 敏感数据识别
+   * - 错误信息泄露
+   * - 用户隐私保护
+   * - 数据完整性
+   * - 通信安全性
+   * 
+   * 测试方法：
+   * - 手动消息发送
+   * - 自动化测试脚本
+   * - 模糊测试技术
+   * - 边界值测试
+   * - 异常情况处理
+   * 
+   * 监控策略：
+   * - 关键字段监控
+   * - 异常模式检测
+   * - 频率分析统计
+   * - 趋势变化追踪
+   * - 实时告警机制
+   * 
+   * 业务价值：
+   * - 快速问题定位
+   * - 数据流理解
+   * - 性能分析支持
+   * - 用户行为分析
+   * - 系统监控辅助
+   * 
+   * 开发者工具：
+   * - 调试信息提取
+   * - API测试辅助
+   * - 错误诊断支持
+   * - 性能分析工具
+   * - 数据验证助手
+   * 
+   * 正则表达式说明：
+   * - \"key\":\"value\" 模式匹配
+   * - 捕获组提取值
+   * - 大小写不敏感
+   * - 贪婪匹配避免
+   * - 特殊字符转义
+   * 
+   * 使用示例：
+   * - 提取错误代码和消息
+   * - 识别目标用户信息
+   * - 收集状态更新
+   * - 分析请求参数
+   * - 监控系统事件
+   * 
+   * 相关协议：
+   * - WebSocket RFC 6455
+   * - JSON-RPC 2.0
+   * - Socket.IO协议
+   * - STOMP协议
+   * - MQTT over WebSocket
+   * 
+   * 工具集成：
+   * - Burp Suite扩展
+   * - 自动化测试框架
+   * - 监控系统集成
+   * - 日志分析工具
+   * - 数据可视化平台
+   * 
+   * 最佳实践：
+   * - 合理配置搜索键
+   * - 定期清理注释
+   * - 优化正则表达式
+   * - 控制输出长度
+   * - 保护敏感信息
+   * 
+   * 故障排除：
+   * - 检查消息格式
+   * - 验证键名配置
+   * - 确认正则匹配
+   * - 测试特殊字符
+   * - 调试输出结果
+   * 
+   * 作者：Nick Coblentz (https://github.com/ncoblentz)
+   * 中文注释：bambda脚本中文化项目
+   **/
+
+  //The bambda will search for json elements with the following keys. The keys below are just examples. Add the keys you want to include here:
+  List<String> terms = List.of("target","error");
+
+  if (!message.annotations().hasNotes()) {
+    StringBuilder builder = new StringBuilder();
+    String payload = utilities().byteUtils().convertToString(message.payload().getBytes());
+    terms.forEach(term -> {
+      Matcher m = Pattern.compile("\"" + term + "\":\"([^\"]+)\"", Pattern.CASE_INSENSITIVE).matcher(payload);
+      while (m.find() && m.groupCount() > 0) {
+        for (int i = 1; i <= m.groupCount(); i++) {
+          if (m.group(i) != null)
+            builder.append(term + ": " + m.group(i) + " ");
+        }
+      }
+    });
+    message.annotations().setNotes(builder.toString());
+  }
+  return true;

@@ -1,0 +1,59 @@
+id: e95cdf2b-c635-4af7-98d8-baa79d8a2348
+name: 添加引用头列
+function: CUSTOM_COLUMN
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+  * 添加Referer头列
+  * 
+  * 功能描述：
+  * - 在代理历史中添加自定义列显示Referer头值
+  * - 提取HTTP请求中的Referer头信息
+  * - 帮助分析请求来源和页面跳转关系
+  * - 识别可能的安全问题和异常行为
+  * 
+  * 实现逻辑：
+  * 1. 从HTTP请求头中提取Referer字段
+  * 2. 返回Referer头的完整值
+  * 3. 如果不存在则返回null或空值
+  * 
+  * 使用场景：
+  * - 页面跳转链分析
+  * - 来源网站识别
+  * - CSRF攻击检测
+  * - 用户行为分析
+  * - SEO和流量分析
+  * 
+  * Referer头作用：
+  * - 标识请求来源页面
+  * - 用于防盗链保护
+  * - 统计分析和用户追踪
+  * - 安全验证和CSRF防护
+  * 
+  * 安全意义：
+  * - CSRF检测：异常的Referer可能表示攻击
+  * - 信息泄露：Referer可能包含敏感URL参数
+  * - 来源验证：某些操作需要验证请求来源
+  * - 隐私保护：Referer可能暴露用户浏览历史
+  * 
+  * 常见安全问题：
+  * - 缺失Referer：可能的直接访问或攻击
+  * - 异常Referer：来自不可信域名的请求
+  * - 敏感信息：Referer中包含token或密码
+  * - 跨域请求：不同域名间的异常跳转
+  * 
+  * 分析要点：
+  * - 空值或缺失的Referer
+  * - 来自外部域名的Referer
+  * - 包含敏感参数的Referer
+  * - 与当前请求不匹配的Referer
+  * 
+  * 注意事项：
+  * - 某些浏览器或扩展可能修改Referer
+  * - HTTPS到HTTP的跳转可能丢失Referer
+  * - 用户可以禁用或伪造Referer头
+  * - 移动应用可能不发送Referer
+  * 
+  * @author PortSwigger
+  **/
+  return requestResponse.request().headerValue("Referer");

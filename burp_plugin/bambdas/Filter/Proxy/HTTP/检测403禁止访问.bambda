@@ -1,0 +1,36 @@
+id: 46134280-efbc-4987-bb5e-ccaff7692b71
+name: 检测403禁止访问
+function: VIEW_FILTER
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+  * 用于检测HTTP响应中"403 Forbidden"状态码的Bambda脚本
+  * 
+  * 功能描述：
+  * - 识别HTTP响应状态码为403（禁止访问）的请求
+  * - 过滤显示访问被拒绝的资源请求
+  * - 帮助分析权限控制和访问限制
+  * 
+  * 实现逻辑：
+  * 1. 确保存在HTTP响应
+  * 2. 检查响应状态码是否为403
+  * 3. 返回匹配结果用于过滤显示
+  * 
+  * 使用场景：
+  * - 权限绕过测试分析
+  * - 访问控制机制研究
+  * - 目录遍历结果筛选
+  * - 安全测试结果分析
+  * 
+  * 状态码说明：
+  * - 403状态码表示服务器理解请求但拒绝执行
+  * - 通常由于权限不足或访问限制
+  * - 与401不同，403表示身份验证不会改变结果
+  * 
+  * @author ctflearner
+  * 此脚本识别HTTP响应状态码是否为403（禁止访问）。
+  * 它确保存在响应并检查状态码是否表示访问被拒绝。
+  **/
+
+
+  return requestResponse.hasResponse() && requestResponse.response().statusCode() == 403;

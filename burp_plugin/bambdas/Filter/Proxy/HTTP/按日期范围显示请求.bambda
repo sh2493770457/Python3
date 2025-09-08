@@ -1,0 +1,175 @@
+id: 6471979c-d447-ab04-0a93-c25ee3383351
+name: 按日期范围显示请求
+function: VIEW_FILTER
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+   * 按日期范围显示请求脚本
+   * 
+   * 功能描述：
+   * 显示在指定日期之前、之后或之间的请求/响应，
+   * 支持灵活的时间范围过滤和时区配置。
+   * 
+   * 实现逻辑：
+   * 1. 定义开始和结束时间（支持null值）
+   * 2. 设置时区信息
+   * 3. 检查请求时间是否在指定范围之后
+   * 4. 检查请求时间是否在指定范围之前
+   * 5. 返回同时满足时间条件的结果
+   * 
+   * 配置参数：
+   * - requestsAfterThisDate: 开始时间（可为null）
+   * - requestsBeforeThisDate: 结束时间（可为null）
+   * - ZoneId: 时区设置
+   * - afterCheck: 开始时间检查结果
+   * - beforeCheck: 结束时间检查结果
+   * 
+   * 时间范围模式：
+   * - 指定开始和结束时间：时间区间过滤
+   * - 只指定开始时间：显示此时间之后的请求
+   * - 只指定结束时间：显示此时间之前的请求
+   * - 都不指定：显示所有请求
+   * 
+   * 使用场景：
+   * - 事件时间线分析
+   * - 特定时间段审计
+   * - 攻击时间窗口分析
+   * - 性能问题调试
+   * - 日志时间过滤
+   * 
+   * 时区支持：
+   * Java支持的所有时区ID，包括：
+   * - America/Chicago（美国中部时间）
+   * - America/New_York（美国东部时间）
+   * - Europe/London（英国时间）
+   * - Asia/Shanghai（中国时间）
+   * - UTC（协调世界时）
+   * 
+   * 检测价值：
+   * - 精确时间范围分析
+   * - 事件关联分析
+   * - 时间模式识别
+   * - 攻击时序分析
+   * - 性能趋势分析
+   * 
+   * 日期时间格式：
+   * 使用LocalDateTime.of()方法：
+   * - 年、月、日、小时、分钟
+   * - 例：2024年1月19日10:00
+   * - LocalDateTime.of(2024, 1, 19, 10, 0)
+   * 
+   * 扩展建议：
+   * - 支持相对时间（如"最近24小时"）
+   * - 添加时间格式验证
+   * - 支持多时区显示
+   * - 集成日历选择器
+   * - 添加时间统计功能
+   * 
+   * 性能优化：
+   * - 时间比较优化
+   * - 条件短路求值
+   * - 内存使用控制
+   * - 索引时间查询
+   * 
+   * 调试提示：
+   * - 验证时区设置正确
+   * - 检查日期时间格式
+   * - 确认null值处理
+   * - 测试边界条件
+   * - 验证过滤效果
+   * 
+   * 时间处理最佳实践：
+   * - 始终考虑时区
+   * - 使用标准时间格式
+   * - 处理夏令时变化
+   * - 验证时间范围合理性
+   * - 记录时间配置
+   * 
+   * 常见时区ID：
+   * - UTC: 协调世界时
+   * - GMT: 格林威治标准时间
+   * - EST: 美国东部标准时间
+   * - PST: 美国太平洋标准时间
+   * - CST: 美国中部标准时间/中国标准时间
+   * 
+   * 监控策略：
+   * - 时间范围使用统计
+   * - 查询性能监控
+   * - 时区配置审计
+   * - 时间精度验证
+   * - 用户行为分析
+   * 
+   * 业务价值：
+   * - 提高分析效率
+   * - 精确问题定位
+   * - 支持合规审计
+   * - 优化调试流程
+   * - 增强数据洞察
+   * 
+   * 开发者注意事项：
+   * - 正确设置时区
+   * - 处理null值情况
+   * - 验证时间范围
+   * - 考虑性能影响
+   * - 文档化配置
+   * 
+   * 技术实现：
+   * - ZonedDateTime时间处理
+   * - LocalDateTime本地时间
+   * - ZoneId时区管理
+   * - 时间比较算法
+   * - 布尔逻辑组合
+   * 
+   * 教育价值：
+   * - 学习Java时间API
+   * - 理解时区概念
+   * - 掌握时间过滤
+   * - 提升调试技能
+   * - 培养时间意识
+   * 
+   * 实际应用：
+   * - 安全事件调查
+   * - 性能问题分析
+   * - 用户行为分析
+   * - 系统监控审计
+   * - 合规性检查
+   * 
+   * 配置示例：
+   * 当前配置查找2024年1月19日美国中部时间
+   * 上午10:00到10:10之间的请求/响应。
+   * 可以根据需要修改日期/时间和时区。
+   * 
+   * null值处理：
+   * 脚本支持null值处理，可以将before或after
+   * 变量替换为null来搜索特定日期/时间之前
+   * 或之后的内容。
+   * 
+   * 时区参考：
+   * 完整的时区ID列表请参考Java文档：
+   * https://docs.oracle.com/javase/8/docs/api/java/time/ZoneId.html#SHORT_IDS
+   * 
+   * 作者：Nick Coblentz (https://github.com/ncoblentz)
+   * 中文注释：bambda脚本中文化项目
+   **/
+
+  // 当前配置查找2024年1月19日美国中部时间上午10:00到10:10之间的请求/响应
+  // 根据需要修改日期/时间和本地时区 (https://docs.oracle.com/javase/8/docs/api/java/time/ZoneId.html#SHORT_IDS)
+  // 脚本支持'null'值处理。将before或after变量替换为null来搜索特定日期/时间之前或之后的内容。
+
+  ZonedDateTime requestsAfterThisDate = ZonedDateTime.of(LocalDateTime.of(2024, 1, 19, 10, 0), ZoneId.of("America/Chicago")); // 或 null
+  ZonedDateTime requestsBeforeThisDate = ZonedDateTime.of(LocalDateTime.of(2024, 1, 19, 10, 10), ZoneId.of("America/Chicago")); // 或 null
+
+  boolean afterCheck = true;
+  boolean beforeCheck = true;
+
+  if (requestsAfterThisDate != null)
+  {
+      afterCheck = requestResponse.time().isAfter(requestsAfterThisDate);
+  }
+
+  if (requestsBeforeThisDate != null)
+  {
+      beforeCheck = requestResponse.time().isBefore(requestsBeforeThisDate);
+  }
+
+  return afterCheck && beforeCheck;

@@ -1,0 +1,154 @@
+id: 4cc735ed-d214-470c-91d3-f7711db31efd
+name: 高亮密码哈希检测
+function: VIEW_FILTER
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+  * 密码哈希检测高亮脚本
+  * 
+  * 功能描述：
+  * 如果响应中包含常见的密码哈希变体，此脚本会高亮显示并注释代理历史记录。
+  * 这对于识别潜在的密码泄露、数据库转储或配置文件暴露非常有用。
+  * 
+  * 实现逻辑：
+  * 1. 检查响应是否存在
+  * 2. 获取响应体内容
+  * 3. 使用正则表达式匹配各种哈希格式
+  * 4. 发现哈希时设置蓝色高亮
+  * 5. 在备注中记录发现的哈希值
+  * 
+  * 支持的哈希类型：
+  * - Argon2：现代密码哈希算法
+  * - bcrypt：广泛使用的密码哈希
+  * - PBKDF2：基于密钥派生的哈希
+  * - Unix crypt：传统Unix系统哈希
+  * - PHPass：WordPress等CMS使用
+  * - SHA-512：128字符十六进制
+  * - SHA-384：96字符十六进制
+  * - SHA-256：64字符十六进制
+  * - SHA-1：40字符十六进制
+  * - MD5：32字符十六进制
+  * 
+  * 使用场景：
+  * - 数据泄露检测
+  * - 配置文件安全审计
+  * - 数据库转储识别
+  * - 密码存储安全评估
+  * - 敏感信息暴露检测
+  * 
+  * 安全风险评估：
+  * - 密码哈希暴露可能导致离线破解攻击
+  * - 弱哈希算法（如MD5、SHA-1）容易被破解
+  * - 无盐哈希容易受到彩虹表攻击
+  * - 批量哈希泄露增加破解成功率
+  * 
+  * 哈希算法安全性：
+  * - Argon2：最安全，抗ASIC攻击
+  * - bcrypt：安全，计算成本可调
+  * - PBKDF2：相对安全，迭代次数重要
+  * - SHA系列：不适合直接存储密码
+  * - MD5：已被破解，不安全
+  * 
+  * 检测模式说明：
+  * - 支持带引号和不带引号的哈希
+  * - 处理前后空白字符
+  * - 使用单词边界确保完整匹配
+  * - 大小写不敏感匹配
+  * 
+  * 高亮和注释策略：
+  * - 蓝色高亮：表示发现密码哈希
+  * - 详细备注：记录具体哈希值
+  * - 避免重复注释：检查现有备注
+  * - 累积显示：支持多个哈希记录
+  * 
+  * 扩展检测建议：
+  * - 添加更多哈希算法支持
+  * - 检测哈希算法强度
+  * - 识别盐值模式
+  * - 统计哈希出现频率
+  * 
+  * 响应处理优化：
+  * - 大文件响应的性能考虑
+  * - 二进制内容的处理
+  * - 编码格式的兼容性
+  * - 内存使用优化
+  * 
+  * 误报预防：
+  * - 验证哈希格式完整性
+  * - 检查上下文相关性
+  * - 过滤非密码相关哈希
+  * - 添加白名单机制
+  * 
+  * 安全测试价值：
+  * - 快速识别密码泄露
+  * - 评估密码存储安全性
+  * - 发现配置错误
+  * - 辅助渗透测试
+  * 
+  * 修复建议：
+  * - 移除响应中的哈希值
+  * - 使用强哈希算法
+  * - 实施适当的访问控制
+  * - 加密敏感配置文件
+  * 
+  * 合规性考虑：
+  * - GDPR数据保护要求
+  * - PCI DSS密码存储标准
+  * - OWASP密码存储指南
+  * - 行业最佳实践
+  * 
+  * 调试提示：
+  * - 验证正则表达式匹配
+  * - 检查响应内容格式
+  * - 确认哈希算法识别准确性
+  * - 测试不同编码格式
+  * 
+  * 作者：Daniel Roberts (https://github.com/ErebusC)
+  * 中文注释：bambda脚本中文化项目
+  **/
+  if (!requestResponse.hasResponse()){
+  	return false;
+  }
+  
+  var response_body = requestResponse.response().bodyToString();
+  
+  boolean manualColorHighlightEnabled = true;
+  boolean found_hash = false;
+  
+  // 用于匹配Web应用测试中可能发现的所有常见密码哈希的正则表达式
+  String regex = "['\"]?\\s*(?:"
+      + "\\$argon2(?:id|i|d)?\\$v=\\d+\\$m=\\d+,t=\\d+,p=\\d+\\$[A-Za-z0-9+/=]+\\$[A-Za-z0-9+/=]+"
+      + "|\\$2[abxyz]?\\$\\d{1,2}\\$[./A-Za-z0-9]{53}"
+      + "|(?i)pbkdf2_[a-z0-9]+\\$\\d+\\$[A-Za-z0-9+/=]+\\$[A-Za-z0-9+/=]+"
+      + "|\\$(1|5|6)\\$[./A-Za-z0-9]{1,16}\\$[./A-Za-z0-9]{22,}"
+      + "|\\$P\\$[./A-Za-z0-9]{31}"
+      + "|\\b[a-fA-F0-9]{128}\\b"
+      + "|\\b[a-fA-F0-9]{96}\\b"
+      + "|\\b[a-fA-F0-9]{64}\\b"
+      + "|\\b[a-fA-F0-9]{40}\\b"
+      + "|\\b[a-fA-F0-9]{32}\\b"
+      + ")\\s*['\"]?";
+  
+  Pattern hash_patterns = Pattern.compile(regex);
+  
+  Matcher hash_matcher = hash_patterns.matcher(response_body);
+  
+  var annotate = requestResponse.annotations();
+  String hashes = "发现潜在哈希值: ";
+  
+  while(hash_matcher.find()){
+      found_hash = true;
+      hashes += hash_matcher.group()+"\n";
+  }
+  
+  if (found_hash){
+      annotate.setHighlightColor(HighlightColor.BLUE);
+  
+      if(!annotate.hasNotes()){
+      	annotate.setNotes(hashes);
+      }
+      else if(annotate.hasNotes() && !annotate.notes().contains(hashes)){
+          annotate.setNotes(annotate.notes() + hashes);
+      }
+  }
+  return true;

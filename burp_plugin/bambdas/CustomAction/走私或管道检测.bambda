@@ -1,0 +1,55 @@
+id: 5896d8e3-39ed-4e40-aa90-b856dc33038f
+name: 走私或管道检测
+function: CUSTOM_ACTION
+location: REPEATER
+source: |+
+  /**
+   * 识别包含两个响应头行的响应是由管道化还是请求走私引起的。准确率98%。
+   * 
+   * 功能描述：
+   * - 分析HTTP响应中的嵌套响应头
+   * - 区分HTTP管道化和请求走私攻击
+   * - 通过发送探测请求来判断具体原因
+   * - 提供高准确率的检测结果
+   * 
+   * 实现逻辑：
+   * 1. 检查响应体是否包含HTTP/1标识
+   * 2. 检查请求是否为HTTP/2协议
+   * 3. 发送修改后的探测请求进行验证
+   * 4. 根据探测结果判断是管道化还是走私
+   * 
+   * 使用场景：
+   * - HTTP请求走私漏洞检测
+   * - HTTP管道化行为分析
+   * - 网络协议异常诊断
+   * - 安全测试和漏洞研究
+   * 
+   * 检测原理：
+   * - 管道化：服务器支持多个请求的并发处理
+   * - 请求走私：前后端服务器对请求边界理解不一致
+   * - 通过超时测试区分两种情况
+   * 
+   * 更多信息：https://portswigger.net/research/smuggling-or-pipelining
+   * @author James Kettle (https://github.com/albinowax)
+   **/
+  
+  if (!requestResponse.response().bodyToString().contains("HTTP/1")) {
+      logging().logToOutput("此脚本应该只在嵌套响应上运行");
+  	return;
+  }
+  
+  var req = requestResponse.request();
+  if (req.contains("HTTP/2 ", true)) {
+      logging().logToOutput("这看起来像走私，因为它在HTTP/2响应中嵌套了HTTP/1响应");
+      return;
+  }
+  
+  HttpRequest probe = HttpRequest.httpRequest(req.httpService(), req.toByteArray().subArray(0, req.toByteArray().length()-1));
+  RequestOptions options = RequestOptions.requestOptions().withResponseTimeout(5000).withHttpMode(HttpMode.HTTP_1);
+  HttpRequestResponse resp = api().http().sendRequest(probe, options);
+  if (resp.hasResponse()) {
+       logging().logToOutput("看起来像管道化");
+  } else {
+       logging().logToOutput("看起来像走私");
+  }
+  logging().logToOutput("更多信息，请参考 https://portswigger.net/research/how-to-distinguish-http-pipelining-from-request-smuggling");

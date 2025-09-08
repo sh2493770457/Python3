@@ -1,0 +1,65 @@
+id: 7f8ddd41-111d-4541-98f1-d091e3e670dd
+name: 检测弱XSS保护头
+function: VIEW_FILTER
+location: PROXY_HTTP_HISTORY
+source: |+  
+  /**
+  * 用于检测HTTP响应中"弱或配置错误的X-XSS-Protection"头的Bambda脚本
+  * 
+  * 功能描述：
+  * - 检测HTTP响应中配置不当的X-XSS-Protection头
+  * - 识别可能存在XSS防护缺陷的配置
+  * - 帮助评估XSS攻击防护强度
+  * - 分析浏览器XSS过滤器配置
+  * 
+  * 实现逻辑：
+  * 1. 确保存在HTTP响应
+  * 2. 扫描所有X-XSS-Protection头
+  * 3. 检查是否存在弱配置模式
+  * 4. 返回匹配结果用于过滤显示
+  * 
+  * 使用场景：
+  * - XSS防护配置审计
+  * - Web安全评估
+  * - 浏览器安全策略分析
+  * - 安全头配置检查
+  * 
+  * 检测的弱配置：
+  * 1. 值为"0"：明确禁用XSS保护
+  * 2. 值为"1"：最小保护（仅检测但不阻止）
+  * 3. 包含"report="：可能表示不充分的缓解措施
+  * 
+  * 安全风险：
+  * - XSS攻击风险：禁用保护增加攻击成功率
+  * - 不完整防护：仅检测不阻止可能无效
+  * - 配置错误：错误配置可能导致保护失效
+  * 
+  * 推荐配置：
+  * - "1; mode=block"：启用保护并阻止攻击
+  * - 使用CSP替代：现代浏览器推荐使用CSP
+  * - 注意：X-XSS-Protection已被大多数现代浏览器弃用
+  * 
+  * 重要说明：
+  * - 此头在现代浏览器中已弃用
+  * - 推荐使用Content-Security-Policy替代
+  * - 某些配置可能引入新的安全问题
+  * 
+  * @author ctflearner
+  * 此脚本检查HTTP响应是否包含弱或配置错误的"X-XSS-Protection"头。
+  * 它识别以下情况：
+  * 1. 头设置为"0"，明确禁用XSS保护。
+  * 2. 头设置为"1"（最小保护）或包含"report="指令，
+  *    这可能表示不充分或部分缓解。
+  * 脚本确保存在响应并扫描头以检查这些条件。
+  **/
+
+
+  return requestResponse.hasResponse() &&
+        requestResponse.response().headers().stream()
+            .filter(header -> header.name().equalsIgnoreCase("X-XSS-Protection"))
+            .anyMatch(header -> {
+                String value = header.value().trim();
+                return value.equals("0") || 
+                        value.equals("1") || 
+                        value.toLowerCase(Locale.US).contains("report=");
+            });

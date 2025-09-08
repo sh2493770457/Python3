@@ -1,0 +1,52 @@
+id: 26259a90-f9ec-4b0c-af26-bb24a58969e9
+name: 检测安全HTTP方法
+function: VIEW_FILTER
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+  * 用于检测请求中"安全或典型HTTP方法"的Bambda脚本
+  * 
+  * 功能描述：
+  * - 识别使用典型或安全HTTP方法的请求
+  * - 过滤显示GET和POST等常见方法
+  * - 排除不常见或潜在不安全的方法
+  * - 帮助分析常规Web应用流量
+  * 
+  * 实现逻辑：
+  * 1. 检查HTTP请求方法
+  * 2. 排除PUT、PATCH、DELETE等方法
+  * 3. 排除HEAD、OPTIONS、TRACE、CONNECT方法
+  * 4. 返回匹配结果用于过滤显示
+  * 
+  * 使用场景：
+  * - 常规Web流量分析
+  * - 排除特殊HTTP方法测试
+  * - 专注于标准业务逻辑请求
+  * - Web应用正常功能测试
+  * 
+  * 方法分类：
+  * - 安全方法：GET、POST（通常）
+  * - 排除方法：PUT、PATCH、DELETE、HEAD、OPTIONS、TRACE、CONNECT
+  * - 安全方法通常不会修改服务器状态
+  * - 排除的方法可能涉及资源修改或特殊操作
+  * 
+  * 注意事项：
+  * - 此脚本通过排除法识别安全方法
+  * - 主要保留GET和POST等常见方法
+  * - 可根据需要调整排除列表
+  * 
+  * @author ctflearner
+  * 此脚本识别使用典型或安全方法（如GET和POST）的HTTP请求，
+  * 排除不常见或潜在不安全的方法，如PUT、PATCH、DELETE、HEAD、OPTIONS、TRACE和CONNECT。
+  * 它确保HTTP方法不是列出的排除方法之一。
+  **/
+
+
+
+  return !requestResponse.request().method().equals("PUT") && 
+                      !requestResponse.request().method().equals("PATCH") && 
+                      !requestResponse.request().method().equals("DELETE") && 
+                      !requestResponse.request().method().equals("HEAD") && 
+                      !requestResponse.request().method().equals("OPTIONS") && 
+                      !requestResponse.request().method().equals("TRACE") && 
+                      !requestResponse.request().method().equals("CONNECT");

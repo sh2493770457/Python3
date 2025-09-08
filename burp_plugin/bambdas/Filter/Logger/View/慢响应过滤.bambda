@@ -1,0 +1,36 @@
+id: 399a70a9-b52e-409b-8ff7-8df74e5a7bd2
+name: 慢响应过滤
+function: VIEW_FILTER
+location: LOGGER
+source: |+
+  /**
+   * 查找响应时间较慢的请求。
+   * 
+   * 功能描述：
+   * - 过滤显示响应时间超过阈值的请求
+   * - 帮助识别性能问题和潜在的延迟攻击
+   * - 提供可配置的时间阈值设置
+   * 
+   * 实现逻辑：
+   * 1. 获取请求发送到响应开始的时间间隔
+   * 2. 设置时间阈值（默认3秒）
+   * 3. 比较实际响应时间与阈值
+   * 4. 返回是否显示该请求的布尔值
+   * 
+   * 使用场景：
+   * - 性能测试和分析
+   * - 识别慢查询或处理延迟
+   * - 检测潜在的DoS攻击
+   * - 优化应用程序响应时间
+   * 
+   * 配置说明：
+   * - 可修改threshold变量调整时间阈值
+   * - 支持毫秒级精度的时间比较
+   * - 自动处理空值情况
+   * 
+   * @author ps-porpoise
+  **/
+  var delta = requestResponse.timingData().timeBetweenRequestSentAndStartOfResponse();
+  var threshold = Duration.ofSeconds(3);
+
+  return delta != null && delta.toMillis() >= threshold.toMillis();

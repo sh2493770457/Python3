@@ -1,0 +1,52 @@
+id: f9bcf1fe-5759-4dd9-a153-9f72e1ecd38e
+name: 检测CSP仅报告头
+function: VIEW_FILTER
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+   * 用于检测HTTP响应中"Content-Security-Policy-Report-Only (CSP-RO)"头的Bambda脚本
+   * 
+   * 功能描述：
+   * - 检测HTTP响应中的CSP仅报告模式头
+   * - 验证是否包含report-uri指令
+   * - 识别CSP违规监控配置
+   * - 分析内容安全策略实施情况
+   * 
+   * 实现逻辑：
+   * 1. 确保存在HTTP响应
+   * 2. 检查是否包含Content-Security-Policy-Report-Only头
+   * 3. 可选验证是否包含report-uri指令
+   * 4. 返回匹配结果用于过滤显示
+   * 
+   * 使用场景：
+   * - CSP策略分析和测试
+   * - 安全头配置审计
+   * - XSS防护机制研究
+   * - Web应用安全评估
+   * 
+   * CSP-RO说明：
+   * - 仅报告模式不强制执行限制
+   * - 用于监控CSP违规而不阻止内容
+   * - report-uri指定违规报告发送地址
+   * - 常用于CSP策略测试阶段
+   * 
+   * 配置说明：
+   * - checkValue=true: 检查report-uri指令
+   * - checkValue=false: 仅检查头是否存在
+   * 
+   * @author ctflearner
+   * 此脚本检查HTTP响应是否包含"Content-Security-Policy-Report-Only"头，
+   * 该头用于监控CSP违规而不强制执行限制。
+   * 此外，它验证头是否指定了"report-uri"指令，
+   * 表明CSP违规报告的发送位置。
+   * 脚本确保存在响应并扫描头以检查这些条件。
+   **/
+  
+  boolean checkValue = true; // 如果您只想检查头是否存在，请将此值更改为false。
+  
+  return requestResponse.hasResponse() && (
+      requestResponse.response().hasHeader("Content-Security-Policy-Report-Only") &&
+      (!checkValue || 
+          requestResponse.response().header("Content-Security-Policy-Report-Only").value().toLowerCase(Locale.US).contains("report-uri")
+      )
+  );

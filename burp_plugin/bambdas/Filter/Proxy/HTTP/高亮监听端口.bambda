@@ -1,0 +1,136 @@
+id: a624919d-c42c-59a4-7d50-e66696164225
+name: 高亮监听端口
+function: VIEW_FILTER
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+   * 监听端口高亮显示脚本
+   * 
+   * 功能描述：
+   * 根据不同的监听端口高亮显示请求，便于区分来自不同端口的流量。
+   * 这在多端口测试、用户会话区分或服务分类场景中非常有用。
+   * 
+   * 实现逻辑：
+   * 1. 定义端口到颜色的映射关系
+   * 2. 定义端口到备注的映射关系
+   * 3. 获取请求的监听端口
+   * 4. 根据端口设置相应的高亮颜色和备注
+   * 5. 返回是否找到匹配的端口配置
+   * 
+   * 默认端口配置：
+   * - 8080端口：蓝色高亮，标记为"用户1"
+   * - 8082端口：黄色高亮，标记为"用户2"
+   * 
+   * 使用场景：
+   * - 多用户会话测试
+   * - 不同服务端口区分
+   * - 负载均衡测试
+   * - 端口扫描结果分析
+   * - 服务发现和分类
+   * 
+   * 端口分类应用：
+   * - 开发环境：8080（蓝色）
+   * - 测试环境：8082（黄色）
+   * - 生产环境：80/443（可自定义）
+   * - API服务：3000（可自定义）
+   * - 管理界面：9090（可自定义）
+   * 
+   * 颜色编码建议：
+   * - 蓝色：主要服务或用户1
+   * - 黄色：次要服务或用户2
+   * - 绿色：安全/HTTPS服务
+   * - 红色：危险/未授权端口
+   * - 橙色：测试/开发端口
+   * - 紫色：管理/控制端口
+   * 
+   * 自定义配置示例：
+   * ```
+   * var colorMap = Map.of(
+   *     80, HighlightColor.GREEN,    // HTTP
+   *     443, HighlightColor.BLUE,   // HTTPS
+   *     8080, HighlightColor.ORANGE, // 开发服务器
+   *     3000, HighlightColor.YELLOW, // Node.js应用
+   *     9090, HighlightColor.RED     // 管理界面
+   * );
+   * ```
+   * 
+   * 备注标识用途：
+   * - 用户会话区分
+   * - 服务类型标识
+   * - 环境标记
+   * - 测试阶段标注
+   * - 权限级别标识
+   * 
+   * 多端口测试场景：
+   * - 权限提升测试：不同权限用户使用不同端口
+   * - 负载均衡测试：多个后端服务端口
+   * - 服务发现：识别开放的服务端口
+   * - 环境隔离：开发、测试、生产环境
+   * 
+   * 安全测试价值：
+   * - 快速识别服务类型
+   * - 区分不同权限级别的请求
+   * - 发现未授权端口访问
+   * - 分析端口扫描结果
+   * 
+   * 扩展功能建议：
+   * - 支持端口范围匹配
+   * - 添加协议类型检测
+   * - 集成服务指纹识别
+   * - 支持动态端口配置
+   * 
+   * 性能优化：
+   * - Map查找操作高效
+   * - 避免不必要的字符串操作
+   * - 适合大量请求处理
+   * 
+   * 配置管理：
+   * - 集中化端口配置
+   * - 支持配置文件加载
+   * - 动态配置更新
+   * - 配置验证机制
+   * 
+   * 调试提示：
+   * - 验证端口号准确性
+   * - 检查映射配置完整性
+   * - 确认高亮效果显示
+   * - 测试不同端口组合
+   * 
+   * 常见端口用途：
+   * - 80：HTTP服务
+   * - 443：HTTPS服务
+   * - 8080：HTTP代理/开发服务器
+   * - 8443：HTTPS代理
+   * - 3000：Node.js应用
+   * - 8000：Python开发服务器
+   * - 9090：管理界面
+   * 
+   * 作者：Bogo-6 (https://github.com/Bogo-6)
+   * 中文注释：bambda脚本中文化项目
+   **/
+
+  boolean manualColorHighlightEnabled = true;
+
+  var colorMap = Map.of(
+      8080, HighlightColor.BLUE,
+      8082, HighlightColor.YELLOW
+  );
+  var notesMap = Map.of(
+      8080, "用户1",
+      8082, "用户2"
+  );
+
+
+  var listenerPort = requestResponse.listenerPort();
+  var color = colorMap.get(listenerPort);
+  var notes = notesMap.get(listenerPort);
+
+  if (manualColorHighlightEnabled && color != null) {
+      requestResponse.annotations().setHighlightColor(color);
+  }
+
+  if (manualColorHighlightEnabled && notes != null) {
+      requestResponse.annotations().setNotes(notes);
+  }
+
+  return color != null || notes != null;

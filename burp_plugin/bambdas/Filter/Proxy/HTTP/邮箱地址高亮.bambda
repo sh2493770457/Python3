@@ -1,0 +1,93 @@
+id: a9a83eaa-17cc-469c-9d05-e3780a073d81
+name: 邮箱地址高亮
+function: VIEW_FILTER
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+   * 用于过滤响应中的邮箱地址并高亮显示的脚本
+   * 
+   * 功能描述：
+   * - 检测HTTP响应中的邮箱地址
+   * - 自动高亮包含邮箱的响应
+   * - 排除多媒体文件和静态资源
+   * - 帮助进行信息收集和数据泄露检测
+   * 
+   * 实现逻辑：
+   * 1. 确保存在HTTP响应
+   * 2. 检查请求URL，排除指定的文件扩展名
+   * 3. 使用正则表达式匹配响应体中的邮箱地址
+   * 4. 找到邮箱时自动高亮并添加注释
+   * 
+   * 使用场景：
+   * - 信息收集和侦察
+   * - 数据泄露检测
+   * - 敏感信息识别
+   * - OSINT（开源情报）收集
+   * 
+   * 排除的文件类型：
+   * - 视频文件：mp4、mp3
+   * - 图片文件：png、gif、jpg、jpeg
+   * - 样式文件：css
+   * - 文档文件：pdf
+   * 
+   * 邮箱匹配规则：
+   * - 标准邮箱格式：用户名@域名.后缀
+   * - 支持常见字符：字母、数字、点、下划线、百分号、加号、连字符
+   * - 域名后缀长度：2-7个字符
+   * - 排除图片扩展名作为域名后缀
+   * 
+   * 安全意义：
+   * - 个人信息泄露：邮箱可能暴露用户身份
+   * - 社会工程学：邮箱可用于钓鱼攻击
+   * - 数据合规：GDPR等法规要求保护邮箱信息
+   * - 攻击面扩大：邮箱可用于进一步攻击
+   * 
+   * 配置说明：
+   * - manualColorHighlightEnabled: 启用自动高亮功能
+   * - 匹配时标记为绿色高亮
+   * - 注释中显示找到的邮箱地址
+   * 
+   * @author Tur24Tur / BugBountyzip (https://github.com/BugBountyzip)
+   **/
+
+  boolean manualColorHighlightEnabled = true;
+
+  // 要忽略的文件扩展名集合
+  Set<String> ignoredExtensions = Set.of("mp4", "mp3", "png", "gif", "jpg", "jpeg", "css", "pdf");
+
+  if (!requestResponse.hasResponse()) {
+      return false;
+  }
+
+  // 从requestResponse对象的请求部分检索URL
+  String requestUrl = requestResponse.request().url().toString();
+
+
+  for (String ext : ignoredExtensions) {
+      // 检查URL是否以任何忽略的文件扩展名结尾
+      if (requestUrl.toLowerCase().endsWith("." + ext)) {
+          return false;
+      }
+  }
+
+  // 提取响应体作为字符串并删除任何前导和尾随空白
+  var body = requestResponse.response().bodyToString().trim();
+
+
+  String emailRegexPattern = "\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.(?!jpeg|png|jpg|gif|webp)[A-Z|a-z]{2,7}\\b";
+  Pattern emailPattern = Pattern.compile(emailRegexPattern);
+
+  // 创建匹配器以在响应体中查找邮箱地址
+  Matcher emailMatcher = emailPattern.matcher(body);
+  if (emailMatcher.find()) {
+      if (manualColorHighlightEnabled) {
+
+          requestResponse.annotations().setHighlightColor(HighlightColor.GREEN);
+          // 添加注释表明找到了邮箱
+          requestResponse.annotations().setNotes("发现邮箱地址!: " + emailMatcher.group());
+      }
+      return true;
+  }
+
+
+  return false;

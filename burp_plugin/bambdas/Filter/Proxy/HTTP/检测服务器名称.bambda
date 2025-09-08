@@ -1,0 +1,80 @@
+id: 66705efd-9034-4d48-929e-16fd4ba8c611
+name: 检测服务器名称
+function: VIEW_FILTER
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+   * 用于检测HTTP响应中特定服务器名称的Bambda脚本
+   * 
+   * 功能描述：
+   * - 识别HTTP响应Server头中的特定服务器名称
+   * - 检测各种Web服务器和应用服务器
+   * - 自动高亮匹配的响应并添加注释
+   * - 帮助进行服务器指纹识别
+   * 
+   * 实现逻辑：
+   * 1. 确保存在HTTP响应
+   * 2. 获取响应中的Server头值
+   * 3. 检查是否匹配预定义的服务器名称列表
+   * 4. 可选择高亮显示并添加注释
+   * 
+   * 使用场景：
+   * - Web服务器指纹识别
+   * - 技术栈分析和侦察
+   * - 安全评估和漏洞研究
+   * - 基础设施信息收集
+   * 
+   * 支持的服务器：
+   * - Web服务器：Apache、Nginx、IIS、LiteSpeed等
+   * - 应用服务器：Tomcat、Jetty、GlassFish等
+   * - 云服务：CloudFront、AmazonS3、Google Frontend等
+   * - 代理服务器：Varnish、Squid、AkamaiGHost等
+   * 
+   * 配置说明：
+   * - enableManualAnnotations: 启用自动注释和高亮
+   * - serverNames: 预定义的服务器名称集合
+   * - 匹配时自动标记为红色高亮
+   * 
+   * @author Tur24Tur / BugBountyzip (https://github.com/BugBountyzip)
+   * 它识别HTTP响应的'Server'头是否包含任何指定的服务器名称。
+   * 检测到时，响应会被高亮为红色并添加注释（如果启用）。
+   **/
+
+  // 手动注释的配置设置
+  boolean enableManualAnnotations = true;
+
+  Set<String> serverNames = Set.of(
+      "awselb", "Kestrel", "Apache", "Nginx", "Microsoft-IIS", "LiteSpeed", "Google Frontend",
+      "GWS", "openresty", "IBM_HTTP_Server", "AmazonS3", "CloudFront", "AkamaiGHost", "Jetty",
+      "Tengine", "lighttpd", "AOLserver", "ATS", "Boa", "Caddy", "Cherokee", "Caudium", "Hiawatha",
+      "GlassFish", "H2O", "httpd", "Jigsaw", "Mongrel", "NCSA HTTPd", "Netscape Enterprise",
+      "Oracle iPlanet", "Pound", "Resin", "thttpd", "Tornado", "Varnish", "WebObjects", "Xitami",
+      "Zope", "Werkzeug", "WebSTAR", "WebSEAL", "WebServerX", "WebtoB", "Squid", "Sun Java System Web Server",
+      "Sun ONE Web Server", "Stronghold", "Zeus Web Server", "Roxen", "RapidLogic", "Pramati",
+      "Phusion Passenger", "Oracle Containers for J2EE", "Oracle-Application-Server-10g", "Oracle-Application-Server-11g",
+      "Nostromo", "Novell-HTTP-Server", "NaviServer", "MochiWeb", "Microsoft-HTTPAPI", "Mbedthis-Appweb",
+      "Lotus-Domino", "Kangle", "Joost", "Jino", "IceWarp", "GoAhead",
+      "Flywheel", "EdgePrism", "DMS", "Cowboy", "CommuniGatePro", "CompaqHTTPServer", "CERN", "CauchoResin",
+      "BarracudaHTTP", "BaseHTTP", "AllegroServe", "Abyss", "4D_WebSTAR_S", "4D_WebSTAR_D",
+      "Yaws", "WDaemon", "Virtuoso", "UserLand", "TUX", "TwistedWeb", "Thin",
+      "Thttpd", "Swiki", "SurgeLDAP", "Sun-ONE-Web-Server", "Sun-ONE-Application-Server",
+      "Sucuri/Cloudproxy", "SSWS", "SWS", "SW", "srv", "squid", "Spamfire", "SOMA",
+      "Snap", "SmugMug", "SME Server", "Smart-4-Hosting", "Sioux", "SilverStream", "Silk", "Siemens Gigaset WLAN Camera"
+  );
+
+  // 确保存在响应
+  if (!requestResponse.hasResponse()) {
+      return false;
+  }
+
+  // 从响应中获取'Server'头
+  String serverHeader = requestResponse.response().headerValue("Server");
+
+  // 检查'Server'头值是否在服务器名称集合中
+  boolean foundServerName = serverHeader != null && serverNames.contains(serverHeader);
+  if (foundServerName && enableManualAnnotations) {
+      requestResponse.annotations().setHighlightColor(HighlightColor.RED);
+      requestResponse.annotations().setNotes("在'Server'头中检测到'" + serverHeader + "'");
+  }
+
+  return foundServerName;

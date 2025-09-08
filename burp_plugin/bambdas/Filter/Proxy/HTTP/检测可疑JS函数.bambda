@@ -1,0 +1,115 @@
+id: 11accf52-56d6-4078-b805-a68031863d71
+name: 检测可疑JS函数
+function: VIEW_FILTER
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+   * 用于检测和高亮可疑JavaScript函数的Bambda脚本
+   * 
+   * 功能描述：
+   * - 识别JavaScript响应中的可疑函数调用
+   * - 检测可能存在安全风险的JS代码模式
+   * - 自动高亮匹配的响应并添加详细注释
+   * - 帮助识别潜在的XSS和代码注入风险
+   * 
+   * 实现逻辑：
+   * 1. 确保存在HTTP响应
+   * 2. 检查Content-Type是否为JavaScript
+   * 3. 使用正则表达式匹配可疑函数模式
+   * 4. 收集所有匹配的函数并生成注释
+   * 
+   * 使用场景：
+   * - JavaScript安全代码审计
+   * - XSS漏洞检测和分析
+   * - 前端安全评估
+   * - 恶意脚本识别
+   * 
+   * 检测的可疑函数：
+   * - eval(): 执行字符串代码，高风险
+   * - setTimeout/setInterval(): 可执行字符串代码
+   * - document.write(): 可重写整个文档
+   * - innerHTML: 可能引入XSS漏洞
+   * - document.createElement(): 动态内容生成
+   * - window.location.href: 可用于恶意重定向
+   * - document.cookie: 敏感cookie访问
+   * - XMLHttpRequest/fetch(): 网络请求，可能滥用
+   * - 其他DOM操作和导航相关函数
+   * 
+   * 安全风险说明：
+   * - 代码执行：eval、setTimeout等可执行任意代码
+   * - XSS攻击：innerHTML、document.write等可注入恶意内容
+   * - 信息泄露：cookie、URL、referrer访问
+   * - 恶意重定向：location操作可用于钓鱼
+   * 
+   * 配置说明：
+   * - enableManualAnnotations: 启用自动注释和高亮
+   * - 匹配时自动标记为红色高亮
+   * - 注释中包含所有检测到的可疑函数
+   * 
+   * @author Tur24Tur / BugBountyzip (https://github.com/BugBountyzip)
+   * 它识别一系列通常与不安全实践或漏洞相关的可疑JavaScript函数。
+   * 检测到时，响应会被高亮为红色并添加注释（如果启用）。
+   **/
+
+  boolean enableManualAnnotations = true;
+
+  // 确保存在响应
+  if (!requestResponse.hasResponse()) {
+      return false;
+  }
+
+  // 检查Content-Type头是否为JavaScript
+  String contentType = requestResponse.response().headerValue("Content-Type");
+  if (contentType == null || !contentType.toLowerCase().contains("application/javascript")) {
+      return false;
+  }
+
+  String responseBody = requestResponse.response().bodyToString();
+  boolean foundSuspiciousFunction = false;
+  StringBuilder notesBuilder = new StringBuilder();
+
+  // 扩展的可疑JavaScript函数列表
+  String[] suspiciousFunctions = {
+      "eval\\(",                 // 执行字符串代码
+      "setTimeout\\(",           // 如果使用不当可以执行字符串代码
+      "setInterval\\(",          // 类似setTimeout，可以执行字符串代码
+      "document\\.write\\(",     // 可以重写整个文档
+      "innerHTML",               // 如果与不受信任的内容一起使用，可能引入XSS漏洞
+      "document\\.createElement\\(",  // 安全，但是动态内容生成的一部分，可能有风险
+      "document\\.execCommand\\(",   // 已弃用，曾用于执行某些命令
+      "document\\.domain",       // 更改document.domain可能有风险
+      "window\\.location\\.href",    // 可用于重定向，可能用于钓鱼
+      "document\\.cookie",       // 访问cookie可能敏感
+      "document\\.URL",          // 可用于提取URL信息
+      "document\\.referrer",     // 可用于检查请求来源
+      "window\\.open\\(",        // 打开新窗口或标签，可能被滥用
+      "document\\.body\\.innerHTML", // innerHTML的特定情况，也有风险
+      "element\\.setAttribute\\(",   // 如果使用不当，可以设置风险属性如'onclick'
+      "element\\.outerHTML",         // 与innerHTML类似的风险
+      "XMLHttpRequest\\(",           // 可用于发送/接收数据，可能被滥用
+      "fetch\\(",                    // 现代网络请求方式，可能被滥用
+      "navigator\\.sendBeacon\\("    // 用于发送分析和跟踪数据
+  };
+
+  for (String function : suspiciousFunctions) {
+      Pattern pattern = Pattern.compile(function);
+      Matcher matcher = pattern.matcher(responseBody);
+      if (matcher.find()) {
+          foundSuspiciousFunction = true;
+          if (enableManualAnnotations) {
+              if (notesBuilder.length() > 0) {
+                  notesBuilder.append(", ");
+              }
+              notesBuilder.append(function); // 添加完整的函数签名
+          }
+      }
+  }
+
+  if (foundSuspiciousFunction && enableManualAnnotations) {
+      requestResponse.annotations().setHighlightColor(HighlightColor.RED);
+      if (notesBuilder.length() > 0) {
+          requestResponse.annotations().setNotes("检测到可疑JS函数: " + notesBuilder.toString());
+      }
+  }
+
+  return foundSuspiciousFunction;

@@ -1,0 +1,35 @@
+id: b044dc63-76f6-4f81-ad24-f90ccc642143
+name: 计算响应元数据
+function: CUSTOM_ACTION
+location: REPEATER
+source: |+
+  /**
+  * 计算响应元数据脚本
+  * 
+  * 功能描述：
+  * 该脚本用于计算HTTP响应的元数据信息，包括响应体的哈希值和行数统计。
+  * 主要用于响应内容的快速分析和比较，帮助安全测试人员识别响应内容的变化。
+  * 
+  * 实现逻辑：
+  * 1. 获取HTTP响应的响应体内容
+  * 2. 计算响应体内容的哈希值（用于内容唯一性标识）
+  * 3. 统计响应体的行数（用于内容大小评估）
+  * 4. 将计算结果输出到Burp Suite的输出面板
+  * 
+  * 使用场景：
+  * - 比较不同请求的响应内容差异
+  * - 快速识别响应内容的变化
+  * - 响应内容的统计分析
+  * - 自动化测试中的响应验证
+  *
+  * @author PortSwigger
+  **/
+  
+  // 获取响应体内容字符串
+  String responseBody = requestResponse.response().bodyToString();
+  
+  // 计算并输出响应体的哈希值，用于内容唯一性标识
+  logging().logToOutput("响应体哈希值: " + responseBody.hashCode());
+  
+  // 计算并输出响应体的行数，用于内容大小评估
+  logging().logToOutput("响应体行数: " + responseBody.split("\n").length);

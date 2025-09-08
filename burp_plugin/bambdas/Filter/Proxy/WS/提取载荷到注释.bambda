@@ -1,0 +1,69 @@
+id: 2cd16426-d1b2-4b14-9afd-4ddb64ffca3a
+name: 提取载荷到注释
+function: VIEW_FILTER
+location: PROXY_WEBSOCKET
+source: |+
+  /**
+   * 从WebSocket消息中提取JSON元素并在WebSocket历史标签的"Notes"列中显示
+   * 
+   * 功能描述：
+   * - 从WebSocket消息载荷中提取指定的JSON字段
+   * - 将提取的内容显示在WebSocket历史的注释列中
+   * - 支持自定义要提取的JSON键名
+   * - 帮助快速识别WebSocket消息中的关键信息
+   * 
+   * 实现逻辑：
+   * 1. 检查消息是否已有注释
+   * 2. 将消息载荷转换为字符串
+   * 3. 使用正则表达式匹配指定的JSON字段
+   * 4. 将匹配结果组合成注释文本
+   * 
+   * 使用场景：
+   * - WebSocket实时通信分析
+   * - 聊天应用消息监控
+   * - 实时数据流分析
+   * - WebSocket API调试
+   * 
+   * 提取字段配置：
+   * - terms列表：定义要提取的JSON键名
+   * - 示例键名："target"、"error"
+   * - 可根据具体应用添加或修改键名
+   * 
+   * JSON匹配模式：
+   * - 匹配格式："键名":"值"
+   * - 支持大小写不敏感匹配
+   * - 提取双引号内的字符串值
+   * 
+   * 安全意义：
+   * - 敏感信息泄露检测
+   * - 错误消息分析
+   * - 用户行为跟踪
+   * - 数据传输监控
+   * 
+   * 注意事项：
+   * - 仅处理JSON格式的WebSocket消息
+   * - 不会覆盖已存在的注释
+   * - 正则表达式可能需要根据具体JSON格式调整
+   * 
+   * @author Nick Coblentz (https://github.com/ncoblentz)
+   *
+   **/
+
+  //bambda将搜索具有以下键的json元素。下面的键只是示例。在此处添加您想要包含的键：
+  List<String> terms = List.of("target","error");
+
+  if (!message.annotations().hasNotes()) {
+    StringBuilder builder = new StringBuilder();
+    String payload = utilities().byteUtils().convertToString(message.payload().getBytes());
+    terms.forEach(term -> {
+      Matcher m = Pattern.compile("\"" + term + "\":\"([^\"]+)\"", Pattern.CASE_INSENSITIVE).matcher(payload);
+      while (m.find() && m.groupCount() > 0) {
+        for (int i = 1; i <= m.groupCount(); i++) {
+          if (m.group(i) != null)
+            builder.append(term + ": " + m.group(i) + " ");
+        }
+      }
+    });
+    message.annotations().setNotes(builder.toString());
+  }
+  return true;

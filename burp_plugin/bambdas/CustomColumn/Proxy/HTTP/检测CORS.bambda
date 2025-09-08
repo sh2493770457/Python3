@@ -1,0 +1,74 @@
+id: 771fd354-1b32-4147-9e22-024ae2c66b10
+name: 检测CORS
+function: CUSTOM_COLUMN
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+   * 检测CORS漏洞
+   * 
+   * 功能描述：
+   * - 在代理历史中添加自定义列检测CORS配置问题
+   * - 比较请求Origin头与响应Access-Control-Allow-Origin头
+   * - 识别可能存在的CORS安全漏洞
+   * - 提供直观的漏洞标识和配置信息
+   * 
+   * 实现逻辑：
+   * 1. 检查请求是否包含Origin头
+   * 2. 验证响应是否包含Access-Control-Allow-Origin头
+   * 3. 比较两个头的值是否完全匹配
+   * 4. 如果匹配则标记为潜在CORS问题
+   * 5. 否则显示实际的Allow-Origin值
+   * 
+   * 使用场景：
+   * - CORS安全漏洞检测
+   * - 跨域配置审计
+   * - Web应用安全评估
+   * - API安全测试
+   * 
+   * CORS漏洞类型：
+   * - 反射型CORS：服务器直接反射Origin头值
+   * - 通配符CORS：使用*允许所有域访问
+   * - 子域名CORS：不当的子域名匹配
+   * - 空Origin CORS：允许null Origin访问
+   * 
+   * 检测逻辑：
+   * - Origin与Allow-Origin完全匹配 → 可能的反射型漏洞
+   * - 显示⚗️CORS?标识提醒注意
+   * - 不匹配时显示实际的Allow-Origin值
+   * - 无相关头时返回空字符串
+   * 
+   * 安全风险：
+   * - 数据泄露：恶意网站可访问敏感数据
+   * - 凭据窃取：结合credentials可获取用户凭据
+   * - CSRF攻击：绕过同源策略保护
+   * - 信息收集：探测内部API和服务
+   * 
+   * 分析要点：
+   * - 标记为CORS?的请求需要重点关注
+   * - 检查是否允许credentials
+   * - 验证业务是否真的需要跨域访问
+   * - 确认Origin验证逻辑是否严格
+   * 
+   * 修复建议：
+   * - 使用白名单而非反射Origin
+   * - 避免使用通配符*
+   * - 严格验证Origin格式和来源
+   * - 敏感操作禁用CORS
+   * 
+   * 注意事项：
+   * - 需要同时存在Origin和Allow-Origin头
+   * - 完全匹配才标记为潜在问题
+   * - 某些合法场景也可能触发检测
+   * 
+   * @author https://github.com/JaveleyQAQ/
+   **/
+
+  if (requestResponse.hasResponse() && requestResponse.request().hasHeader("Origin") && requestResponse.response().hasHeader("Access-Control-Allow-Origin"))
+  {
+      var requestOrigin = requestResponse.request().headerValue("Origin");
+      var responseOrigin = requestResponse.response().headerValue("Access-Control-Allow-Origin");
+      return requestOrigin.equals(responseOrigin) ? Character.toString(0x2757).concat("CORS?") : responseOrigin;
+
+  } else {
+      return "";
+  }

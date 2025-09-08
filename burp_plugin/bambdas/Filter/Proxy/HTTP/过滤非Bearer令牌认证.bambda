@@ -1,0 +1,89 @@
+id: 6184d9b3-5803-a20a-bd05-3caae27f08f5
+name: 过滤非Bearer令牌认证
+function: VIEW_FILTER
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+   * 当存在Authorization头、非空且不包含传统bearer令牌（以"ey"开头）时进行过滤
+   * 
+   * 功能描述：
+   * - 过滤包含非标准Bearer令牌的认证请求
+   * - 识别使用自定义认证方案的请求
+   * - 排除标准JWT Bearer令牌（通常以"ey"开头）
+   * - 可配置会话Cookie检测
+   * 
+   * 实现逻辑：
+   * 1. 检查请求是否在范围内（可配置）
+   * 2. 确保存在响应且状态码为2xx成功
+   * 3. 检查Authorization头是否存在且非空
+   * 4. 排除标准Bearer令牌（包含"bearer"和"ey"）
+   * 5. 可选检查会话Cookie
+   * 
+   * 使用场景：
+   * - 自定义认证方案分析
+   * - 非标准API认证检测
+   * - 传统认证机制识别
+   * - API安全评估
+   * 
+   * 认证类型识别：
+   * - 基本认证：Basic base64编码
+   * - 摘要认证：Digest认证
+   * - 自定义令牌：非JWT格式令牌
+   * - API密钥：自定义API密钥格式
+   * 
+   * JWT令牌特征：
+   * - 标准JWT通常以"ey"开头（base64编码的JSON头）
+   * - Bearer令牌格式："Bearer eyJ..."
+   * - 此脚本排除这类标准令牌
+   * 
+   * 配置参数：
+   * - configInScopeOnly: 是否仅显示范围内请求
+   * - sessionCookieName: 会话Cookie名称
+   * - sessionCookieValue: 会话Cookie值（可选）
+   * 
+   * 安全意义：
+   * - 识别弱认证机制
+   * - 发现自定义认证漏洞
+   * - 分析认证实现多样性
+   * - 评估认证强度
+   * 
+   * 注意事项：
+   * - 不是所有JWT都以"ey"开头
+   * - 某些自定义Bearer令牌可能被误排除
+   * - 需要结合具体应用场景分析
+   * 
+   * @author GangGreenTemperTatum (https://github.com/GangGreenTemperTatum)
+   **/
+
+  var configInScopeOnly = true; // 如果设置为true，将不显示范围外的项目
+  var sessionCookieName = ""; // 如果给定，将查找具有该名称的cookie。
+  var sessionCookieValue = ""; // 如果给定，将检查具有sessionCookieName的cookie是否具有此值。
+
+  var request = requestResponse.request();
+  var response = requestResponse.response();
+
+  if (configInScopeOnly && !request.isInScope()) {
+      return false;
+  }
+
+  if (!requestResponse.hasResponse() || !response.isStatusCodeClass(StatusCodeClass.CLASS_2XX_SUCCESS)) {
+      return false;
+  }
+
+  var hasAuthHeader = request.hasHeader("Authorization");
+  var authHeaderValue = hasAuthHeader ? String.valueOf(request.headerValue("Authorization")).toLowerCase() : null;
+
+  if (!hasAuthHeader || (authHeaderValue == null || authHeaderValue.isEmpty())) {
+      return false;
+  }
+
+  var excludeAuthorization =
+      authHeaderValue.contains("bearer") &&
+      authHeaderValue.contains("ey");
+
+  var sessionCookie = request.headerValue("Cookie") != null &&
+      !sessionCookieName.isEmpty() &&
+      request.hasParameter(sessionCookieName, HttpParameterType.COOKIE) &&
+      (sessionCookieValue.isEmpty() || sessionCookieValue.equals(String.valueOf(request.parameter(sessionCookieName, HttpParameterType.COOKIE).value())));
+
+  return !excludeAuthorization || sessionCookie;

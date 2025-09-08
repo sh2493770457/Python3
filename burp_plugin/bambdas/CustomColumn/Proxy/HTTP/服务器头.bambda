@@ -1,0 +1,84 @@
+id: c46512f3-23a1-408c-beb2-d9f03df04fff
+name: 服务器头
+function: CUSTOM_COLUMN
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+   * 从响应中提取Server头的值
+   * 
+   * 功能描述：
+   * - 在代理历史中添加自定义列显示Server头信息
+   * - 提取HTTP响应中的服务器软件信息
+   * - 帮助识别目标服务器的技术栈
+   * - 用于指纹识别和漏洞评估
+   * 
+   * 实现逻辑：
+   * 1. 检查请求是否有对应的响应
+   * 2. 验证响应是否包含Server头
+   * 3. 提取并返回Server头的完整值
+   * 4. 如果不存在则返回空字符串
+   * 
+   * 使用场景：
+   * - 服务器指纹识别
+   * - 技术栈分析
+   * - 漏洞评估准备
+   * - 安全配置检查
+   * 
+   * 常见Server头值：
+   * - Apache/2.4.41 (Ubuntu)
+   * - nginx/1.18.0
+   * - Microsoft-IIS/10.0
+   * - Apache-Coyote/1.1
+   * - Jetty(9.4.z-SNAPSHOT)
+   * - gunicorn/20.1.0
+   * - Kestrel
+   * 
+   * 信息泄露风险：
+   * - 软件版本暴露：可能存在已知漏洞
+   * - 操作系统信息：帮助攻击者选择攻击向量
+   * - 中间件识别：暴露应用架构
+   * - 配置信息：可能包含敏感的配置细节
+   * 
+   * 安全分析价值：
+   * - 漏洞匹配：根据版本查找CVE
+   * - 攻击面评估：了解可能的攻击点
+   * - 技术栈识别：确定测试策略
+   * - 配置评估：检查安全配置
+   * 
+   * 常见安全问题：
+   * - 版本过旧：存在已知安全漏洞
+   * - 信息过详：暴露过多技术细节
+   * - 默认配置：使用默认的不安全配置
+   * - 调试信息：包含调试或开发信息
+   * 
+   * 防护建议：
+   * - 隐藏或修改Server头
+   * - 移除版本信息
+   * - 使用通用的服务器标识
+   * - 定期更新服务器软件
+   * - 实施安全配置
+   * 
+   * 配置示例：
+   * - Apache：ServerTokens Prod
+   * - Nginx：server_tokens off
+   * - IIS：移除Server头
+   * - 自定义：设置虚假的Server值
+   * 
+   * 分析要点：
+   * - 识别过时的软件版本
+   * - 检查是否暴露敏感信息
+   * - 验证安全配置是否到位
+   * - 评估信息泄露风险
+   * 
+   * 注意事项：
+   * - 某些服务器可能不发送Server头
+   * - 头值可能被代理或CDN修改
+   * - 可能存在伪造的Server头
+   * - 需要结合其他指纹信息验证
+   * 
+   * @author agarri_fr
+   **/
+
+  return requestResponse.hasResponse() && requestResponse.response().hasHeader("Server")
+    ? requestResponse.response().headerValue("Server")
+    : "";

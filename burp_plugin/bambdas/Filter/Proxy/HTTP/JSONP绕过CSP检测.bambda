@@ -1,0 +1,188 @@
+id: d8c4d267-b253-9b47-1566-79adb769fe5
+name: JSONP绕过CSP检测
+function: VIEW_FILTER
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+   * JSONP绕过CSP检测脚本
+   * 
+   * 功能描述：
+   * 查找网站上可以控制的脚本，因为CSP允许"同站点"脚本资源，
+   * 攻击者可以利用JSONP端点绕过内容安全策略(CSP)限制。
+   * 
+   * 实现逻辑：
+   * 1. 获取请求和响应对象
+   * 2. 验证响应存在且有内容
+   * 3. 检查请求是否包含参数
+   * 4. 遍历URL参数寻找回调函数名
+   * 5. 使用正则表达式验证参数格式
+   * 6. 在响应体中搜索回调函数调用
+   * 7. 返回是否找到JSONP模式
+   * 
+   * CSP绕过原理：
+   * 内容安全策略(CSP)通常允许同源或同站点的脚本执行，
+   * 如果网站提供JSONP端点且允许用户控制回调函数名，
+   * 攻击者可以构造恶意JavaScript代码绕过CSP限制。
+   * 
+   * JSONP技术说明：
+   * JSONP(JSON with Padding)是一种跨域数据获取技术，
+   * 通过动态创建script标签加载跨域数据，
+   * 服务器返回包装在回调函数中的JSON数据。
+   * 
+   * 攻击场景：
+   * - XSS攻击绕过CSP
+   * - 跨域数据窃取
+   * - 恶意脚本注入
+   * - 会话劫持攻击
+   * - 敏感信息泄露
+   * 
+   * 检测模式：
+   * - URL参数作为回调函数名
+   * - 响应中包含函数调用
+   * - 参数格式符合JavaScript标识符
+   * - 函数调用语法匹配
+   * 
+   * 参数验证规则：
+   * - 以字母开头
+   * - 包含字母、数字、点号、下划线
+   * - 长度至少5个字符
+   * - 符合JavaScript标识符规范
+   * 
+   * 正则表达式解析：
+   * - paramRegex: ^[a-zA-Z][.\w]{4,}$
+   *   验证参数是否为有效的JavaScript标识符
+   * - callbackRegex: (?:^|[^\w'".])value\s*[(]
+   *   在响应中查找回调函数调用模式
+   * 
+   * 使用场景：
+   * - CSP绕过漏洞发现
+   * - JSONP端点安全评估
+   * - XSS攻击向量识别
+   * - 跨域安全测试
+   * - API安全审计
+   * 
+   * 安全风险评估：
+   * - 高风险：可控回调函数名
+   * - 中风险：部分可控参数
+   * - 低风险：固定回调函数
+   * - 关键：敏感数据暴露
+   * - 重要：权限绕过可能
+   * 
+   * 防护措施：
+   * - 严格的CSP策略
+   * - 回调函数名白名单
+   * - JSONP端点访问控制
+   * - 输入验证和过滤
+   * - 使用CORS替代JSONP
+   * 
+   * 扩展建议：
+   * - 支持更多参数类型
+   * - 添加响应内容类型检查
+   * - 集成CSP策略分析
+   * - 支持嵌套回调检测
+   * - 添加风险评级功能
+   * 
+   * 检测优化：
+   * - 早期响应验证
+   * - 高效正则匹配
+   * - 参数类型过滤
+   * - 内存使用控制
+   * - 处理性能优化
+   * 
+   * 调试提示：
+   * - 验证参数提取正确
+   * - 检查正则表达式匹配
+   * - 确认响应内容解析
+   * - 测试不同回调格式
+   * - 验证函数调用识别
+   * 
+   * 相关漏洞类型：
+   * - CWE-79: 跨站脚本
+   * - CWE-352: CSRF
+   * - CWE-200: 信息泄露
+   * - CWE-346: 源验证错误
+   * - CWE-942: 过度宽松的CORS策略
+   * 
+   * CSP策略示例：
+   * - script-src 'self': 允许同源脚本
+   * - script-src 'unsafe-inline': 允许内联脚本
+   * - script-src 'unsafe-eval': 允许eval函数
+   * - script-src *.example.com: 允许特定域名
+   * 
+   * 测试方法：
+   * - 手动构造JSONP请求
+   * - 自动化扫描工具
+   * - 浏览器开发者工具
+   * - 代理拦截修改
+   * - 脚本化测试
+   * 
+   * 最佳实践：
+   * - 避免使用JSONP
+   * - 实施严格的CSP
+   * - 使用现代CORS机制
+   * - 定期安全审计
+   * - 输入验证加强
+   * 
+   * 修复建议：
+   * - 移除JSONP支持
+   * - 实施回调函数白名单
+   * - 加强CSP策略
+   * - 使用CORS替代
+   * - 添加访问控制
+   * 
+   * 监控策略：
+   * - JSONP端点访问监控
+   * - 异常回调函数检测
+   * - CSP违规报告
+   * - 攻击模式识别
+   * - 实时告警机制
+   * 
+   * 业务影响：
+   * - 数据泄露风险
+   * - 用户账户安全
+   * - 品牌声誉损害
+   * - 法律合规问题
+   * - 经济损失
+   * 
+   * 技术实现：
+   * - 正则表达式匹配
+   * - 字符串搜索算法
+   * - 参数类型检查
+   * - 条件逻辑判断
+   * - 性能优化设计
+   * 
+   * 教育价值：
+   * - 理解CSP机制
+   * - 学习JSONP原理
+   * - 掌握绕过技术
+   * - 提升安全意识
+   * - 培养防护思维
+   * 
+   * 作者：Gareth Hayes
+   * 中文注释：bambda脚本中文化项目
+   **/
+
+  var req = requestResponse.request();
+  var res = requestResponse.response();
+  var paramRegex = Pattern.compile("^[a-zA-Z][.\\w]{4,}$");
+
+  if (res == null || res.body().length() == 0) return false;
+
+  if (!req.hasParameters()) return false;
+
+  var body = res.bodyToString().trim();
+  var params = req.parameters();
+
+  for (var param : params) {
+      var value = param.value();
+      if (param.type() != HttpParameterType.URL) continue;
+      if (paramRegex.matcher(value).find()) {
+          var start = "(?:^|[^\\w'\".])"; 
+          var end = "\\s*[(]";
+          var callbackRegex = Pattern.compile(start + Pattern.quote(value) + end);
+
+        if (callbackRegex.matcher(body).find()) return true;
+      }
+  }
+
+  return false;

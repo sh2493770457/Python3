@@ -1,0 +1,36 @@
+id: e2b7cdbb-d20f-496d-8bce-0c5895172643
+name: Unicode解码选中文本
+function: CUSTOM_ACTION
+location: REPEATER
+source: |+
+  /**
+  * 对选中的文本进行Unicode解码。
+  *
+  * 功能描述：
+  * - 解码选中文本中的Unicode转义序列
+  * - 将\uXXXX格式的Unicode编码转换为可读字符
+  * - 支持处理混合编码的文本内容
+  * 
+  * 实现逻辑：
+  * 1. 定义Unicode转义序列的正则表达式模式
+  * 2. 获取用户在响应中选中的文本内容
+  * 3. 使用正则表达式匹配所有Unicode转义序列
+  * 4. 将每个匹配的序列转换为对应的字符
+  * 5. 输出解码后的完整文本
+  * 
+  * 使用场景：
+  * - 分析包含Unicode编码的响应数据
+  * - 解码JavaScript中的Unicode字符串
+  * - 处理国际化内容的编码问题
+  * - 调试包含特殊字符的应用程序
+  * 
+  * 支持格式：
+  * - \uXXXX格式的Unicode转义序列
+  * - 十六进制字符编码（0-9, a-f, A-F）
+  * - 混合编码文本的批量处理
+  *
+  * @author PortSwigger
+  **/
+  Pattern pattern = Pattern.compile("\\\\u([0-9a-fA-F]{4})");
+  String selectedResponseText = selection.responseSelection().contents().toString();
+  logging().logToOutput(pattern.matcher(selectedResponseText).replaceAll(match -> String.valueOf((char) Integer.parseInt(match.group(1), 16))));

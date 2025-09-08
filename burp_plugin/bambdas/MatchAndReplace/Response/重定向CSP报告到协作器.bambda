@@ -1,0 +1,122 @@
+id: 34619db4-e891-4df4-9257-949b12173732
+name: 重定向CSP报告到协作器
+function: MATCH_AND_REPLACE_RESPONSE
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+  * 修改CSP响应头，将CSP报告重定向到Collaborator服务器
+  * 
+  * 功能描述：
+  * - 拦截并修改Content-Security-Policy响应头
+  * - 将CSP违规报告重定向到Burp Collaborator
+  * - 用于检测和分析CSP绕过尝试
+  * - 帮助发现XSS和其他注入攻击
+  * 
+  * 实现逻辑：
+  * 1. 检查响应是否包含Content-Security-Policy头
+  * 2. 生成Burp Collaborator载荷URL
+  * 3. 替换原有的report-uri和report-to指令
+  * 4. 添加新的Reporting-Endpoints头
+  * 5. 返回修改后的响应
+  * 
+  * 使用场景：
+  * - CSP绕过检测
+  * - XSS攻击监控
+  * - 内容注入分析
+  * - 安全策略评估
+  * 
+  * CSP报告机制：
+  * - report-uri：旧版CSP报告指令
+  * - report-to：新版CSP报告指令
+  * - Reporting-Endpoints：报告端点配置
+  * - 违规时自动发送报告
+  * 
+  * Collaborator集成：
+  * - 自动生成唯一的Collaborator URL
+  * - 接收CSP违规报告
+  * - 提供带外数据通道
+  * - 支持DNS和HTTP交互
+  * 
+  * 修改操作：
+  * 1. 替换现有报告指令为"report-to csp-reports"
+  * 2. 移除原有的Reporting-Endpoints头
+  * 3. 添加指向Collaborator的新端点配置
+  * 4. 保持其他CSP指令不变
+  * 
+  * 安全测试价值：
+  * - 检测CSP绕过尝试
+  * - 监控注入攻击行为
+  * - 分析客户端安全策略
+  * - 发现潜在的安全漏洞
+  * 
+  * 报告内容分析：
+  * - 违规的资源URL
+  * - 被阻止的指令类型
+  * - 违规发生的页面
+  * - 用户代理信息
+  * 
+  * 攻击检测场景：
+  * - XSS载荷注入
+  * - 恶意脚本执行
+  * - 不安全的内联代码
+  * - 外部资源加载
+  * 
+  * CSP指令类型：
+  * - script-src：脚本来源控制
+  * - style-src：样式来源控制
+  * - img-src：图片来源控制
+  * - connect-src：连接来源控制
+  * - frame-src：框架来源控制
+  * 
+  * 正则表达式说明：
+  * - 匹配：(report-uri|report-to)\\s+[^;]+
+  * - 替换：report-to csp-reports
+  * - 目的：统一报告配置格式
+  * 
+  * 配置示例：
+  * - 原始：report-uri /csp-report
+  * - 修改：report-to csp-reports
+  * - 端点：csp-reports="https://collaborator.example.com"
+  * 
+  * 注意事项：
+  * - 仅在存在CSP头时进行修改
+  * - 保持其他安全策略不变
+  * - 可能影响原有的报告收集
+  * - 需要Collaborator服务可用
+  * 
+  * 分析建议：
+  * - 监控Collaborator交互
+  * - 分析报告内容和频率
+  * - 识别异常的违规模式
+  * - 结合其他安全测试结果
+  * 
+  * 扩展功能：
+  * - 支持自定义Collaborator域名
+  * - 添加报告过滤和分类
+  * - 实现报告数据持久化
+  * - 集成告警和通知机制
+  * 
+  * 合规考虑：
+  * - 确保测试授权
+  * - 避免影响生产环境
+  * - 保护敏感数据
+  * - 遵循安全测试规范
+  * 
+  * @author PortSwigger
+  **/
+  var resp = requestResponse.response();
+  var csp = "Content-Security-Policy";
+  var collaborator = "https://" + api().collaborator().defaultPayloadGenerator().generatePayload();
+  
+  if(!resp.hasHeader(csp)) {
+  	return resp;
+  }
+  
+  var cspValue = resp
+      .headerValue(csp)
+      .replaceAll("(report-uri|report-to)\\s+[^;]+", "report-to csp-reports");
+  
+  return resp
+      .withUpdatedHeader(csp, cspValue)
+      .withRemovedHeader("Reporting-Endpoints")
+      .withAddedHeader("Reporting-Endpoints", "csp-reports=\""+collaborator+"\"");

@@ -1,0 +1,64 @@
+id: 5f7997bf-8a61-4189-bcf0-00f679c580fd
+name: SOAP请求注释
+function: VIEW_FILTER
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+   * 此脚本在Burp代理历史记录的"备注"列中填充SOAP请求的元素。您可以通过编辑正则表达式模式来扩展捕获组。
+   *
+   * 功能描述：
+   * - 自动识别和注释SOAP请求
+   * - 提取SOAP消息中的关键信息
+   * - 在代理历史记录中添加结构化备注
+   * - 支持WS-Security用户名提取
+   * 
+   * 实现逻辑：
+   * 1. 检查请求是否在范围内且为SOAP格式
+   * 2. 验证Content-Type包含soap+xml
+   * 3. 使用正则表达式提取SOAP Body和用户名
+   * 4. 将提取的信息添加到请求备注中
+   * 
+   * 提取内容：
+   * - SOAP Body标签后的第一个元素
+   * - WS-Security头中的用户名
+   * - 可通过修改正则表达式扩展更多字段
+   * 
+   * 使用场景：
+   * - SOAP Web服务测试
+   * - 自动化API文档生成
+   * - 安全测试中的请求分类
+   * - Web服务调用分析
+   * 
+   * 配置说明：
+   * - 默认只处理范围内的请求
+   * - 不会覆盖已有的备注信息
+   * - 支持命名空间前缀的SOAP标签
+   *
+   * @author Nick Coblentz (https://github.com/ncoblentz)
+   *
+   **/
+
+  // 仅适用于范围内的请求，如果您希望应用于所有请求，可以删除此部分if语句
+  if(requestResponse.request().isInScope()
+    && !requestResponse.annotations().hasNotes() //如果已存在备注则不应用
+    && requestResponse.request().hasHeader("Content-Type")
+    && requestResponse.request().headerValue("Content-Type").contains("soap+xml")) //查找soap请求
+  {
+      StringBuilder builder = new StringBuilder();
+    if(requestResponse.request().bodyToString().contains("<s:Body"))
+      {
+          //当前查找body标签后的标签以及ws-security头中的任何用户名。您可以在此处添加更多自定义内容。
+          Matcher m = Pattern.compile("<(?:[a-zA-Z0-9]+:)?Username>([^<]+)</(?:[a-zA-Z0-9]+:)*Username>|<(?:[a-zA-Z0-9]+:)*Body[^>]*><([^ ]+)",Pattern.CASE_INSENSITIVE).matcher(requestResponse.request().bodyToString());
+
+          while(m.find() && m.groupCount()>0) {
+              for(int i=1;i<=m.groupCount();i++) {
+                  if(m.group(i)!=null)
+                    builder.append(m.group(i)+" ");
+              }
+          }
+          requestResponse.annotations().setNotes(builder.toString());
+      }
+  }
+
+  // 在此处放置您的典型过滤器，此过滤器实际上不过滤任何内容
+  return true;

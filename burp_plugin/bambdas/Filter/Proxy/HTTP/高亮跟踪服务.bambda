@@ -1,0 +1,198 @@
+id: 193aab39-8235-a620-b8cd-2b9be43e372b
+name: 高亮跟踪服务
+function: VIEW_FILTER
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+   * 跟踪服务识别高亮脚本
+   * 
+   * 功能描述：
+   * 过滤Burp Suite历史记录，检测和分析来自Web请求的跟踪服务，
+   * 帮助识别网站使用的各种分析和跟踪工具。
+   * 
+   * 实现逻辑：
+   * 1. 定义跟踪服务的主机、路径和参数集合
+   * 2. 提取请求URL的主机和路径信息
+   * 3. 检查主机是否在跟踪服务列表中
+   * 4. 检查路径是否匹配跟踪模式
+   * 5. 检查参数名称和值是否包含跟踪标识
+   * 6. 匹配时设置红色高亮并返回true
+   * 
+   * 跟踪服务主机列表：
+   * - www.gstatic.com：Google静态资源
+   * - events.statsigapi.net：Statsig分析服务
+   * - ingesteer.services-prod.nsvcs.net：数据摄取服务
+   * - js-eu1.hs-analytics.net：HubSpot分析
+   * - static.hotjar.com：Hotjar用户行为分析
+   * - forms-eu1.hscollectedforms.net：HubSpot表单收集
+   * - www.google-analytics.com：Google Analytics
+   * - www.googletagmanager.com：Google Tag Manager
+   * - static.xx.fbcdn.net：Facebook CDN
+   * - stats.g.doubleclick.net：DoubleClick统计
+   * - collector.github.com：GitHub数据收集
+   * 
+   * 跟踪路径模式：
+   * - /logging/v1：日志记录API
+   * - /track：通用跟踪端点
+   * 
+   * 跟踪参数标识：
+   * - logs：日志参数
+   * - log：日志参数简写
+   * 
+   * 使用场景：
+   * - 隐私审计分析
+   * - 第三方服务识别
+   * - 数据泄露风险评估
+   * - 合规性检查
+   * - 用户跟踪分析
+   * 
+   * 跟踪服务类型：
+   * - 网站分析工具
+   * - 用户行为跟踪
+   * - 广告跟踪服务
+   * - 社交媒体插件
+   * - 错误监控服务
+   * - 性能监控工具
+   * 
+   * 隐私风险评估：
+   * - 用户数据收集
+   * - 跨站跟踪
+   * - 指纹识别
+   * - 行为分析
+   * - 个人信息泄露
+   * 
+   * 检测策略：
+   * - 主机名匹配
+   * - URL路径分析
+   * - 参数名称检查
+   * - 参数值分析
+   * - 多维度综合判断
+   * 
+   * 高亮标识：
+   * - 红色高亮：表示检测到跟踪服务
+   * - 统一颜色编码便于识别
+   * - 快速视觉定位
+   * - 批量分析支持
+   * 
+   * 合规性考虑：
+   * - GDPR合规检查
+   * - CCPA隐私法规
+   * - Cookie政策审计
+   * - 用户同意验证
+   * - 数据处理透明度
+   * 
+   * 扩展建议：
+   * - 添加更多跟踪服务
+   * - 支持正则表达式匹配
+   * - 集成威胁情报
+   * - 添加风险等级分类
+   * - 支持自定义规则
+   * 
+   * URL解析逻辑：
+   * - 转换为小写处理
+   * - 分割URL组件
+   * - 提取主机和路径
+   * - 处理查询参数
+   * - 标准化格式
+   * 
+   * 参数检查机制：
+   * - 遍历所有HTTP参数
+   * - 检查参数名称
+   * - 检查参数值
+   * - 大小写不敏感匹配
+   * - 支持部分匹配
+   * 
+   * 性能优化：
+   * - 使用HashSet快速查找
+   * - 早期匹配返回
+   * - 避免重复计算
+   * - 内存效率优化
+   * 
+   * 调试提示：
+   * - 验证URL解析正确性
+   * - 检查主机名提取
+   * - 确认路径匹配逻辑
+   * - 测试参数检查功能
+   * - 验证高亮设置
+   * 
+   * 相关工具：
+   * - 隐私分析工具
+   * - 网站审计工具
+   * - 合规检查工具
+   * - 流量分析工具
+   * 
+   * 最佳实践：
+   * - 定期更新跟踪服务列表
+   * - 建立白名单机制
+   * - 集成自动化检测
+   * - 建立告警机制
+   * - 文档化发现结果
+   * 
+   * 安全分析价值：
+   * - 识别数据泄露风险
+   * - 评估隐私保护水平
+   * - 发现未授权跟踪
+   * - 支持合规审计
+   * - 提升安全意识
+   * 
+   * 跟踪技术识别：
+   * - JavaScript跟踪代码
+   * - 像素跟踪
+   * - Cookie跟踪
+   * - 指纹识别
+   * - 会话重放
+   * 
+   * 数据保护建议：
+   * - 实施Cookie同意
+   * - 提供退出选项
+   * - 数据最小化原则
+   * - 透明度报告
+   * - 定期隐私审计
+   * 
+   * 监管合规：
+   * - 隐私政策更新
+   * - 用户权利保护
+   * - 数据处理记录
+   * - 影响评估
+   * - 监管报告
+   * 
+   * 作者：Tur24Tur / BugBountyzip (https://github.com/BugBountyzip)
+   * 中文注释：bambda脚本中文化项目
+   **/
+
+  // 定义主机、路径和参数的哈希集合
+  Set<String> trackedHosts = new HashSet<>(Arrays.asList("www.gstatic.com", "events.statsigapi.net", "ingesteer.services-prod.nsvcs.net", "js-eu1.hs-analytics.net", "static.hotjar.com", "forms-eu1.hscollectedforms.net", "www.google-analytics.com", "www.googletagmanager.com", "static.xx.fbcdn.net", "stats.g.doubleclick.net", "collector.github.com"));
+  Set<String> trackedPaths = new HashSet<>(Arrays.asList("/logging/v1", "/track"));
+  Set<String> trackedParameters = new HashSet<>(Arrays.asList("logs", "log"));
+
+  // Bambda的主要逻辑
+  var request = requestResponse.request();
+  String requestUrl = request.url().toLowerCase();
+
+  // 从URL中提取主机和路径
+  String[] urlParts = requestUrl.split("/", 4);
+  String host = urlParts.length > 2 ? urlParts[2] : "";
+  String path = urlParts.length > 3 ? "/" + urlParts[3].split("\\?")[0] : "";
+
+  // 检查跟踪主机
+  if (trackedHosts.contains(host)) {
+      requestResponse.annotations().setHighlightColor(HighlightColor.RED);
+      return true;
+  }
+
+  // 检查跟踪路径
+  if (trackedPaths.contains(path)) {
+      requestResponse.annotations().setHighlightColor(HighlightColor.RED);
+      return true;
+  }
+
+  // 检查跟踪参数
+  var parameters = request.parameters();
+  for (HttpParameter param : parameters) {
+      if (trackedParameters.contains(param.name().toLowerCase()) || trackedParameters.contains(param.value().toLowerCase())) {
+          requestResponse.annotations().setHighlightColor(HighlightColor.RED);
+          return true;
+      }
+  }
+
+  return false;

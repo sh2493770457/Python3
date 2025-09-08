@@ -1,0 +1,92 @@
+id: f77a47e4-1826-4684-a6be-f82ff93d9500
+name: 签名请求
+function: MATCH_AND_REPLACE_REQUEST
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+  * 签名请求
+  * 
+  * 功能描述：
+  * - 为HTTP请求添加数字签名
+  * - 计算请求体的SHA-256哈希值
+  * - 将签名作为Content-Sha256头添加到请求中
+  * - 确保请求完整性和防篡改
+  * 
+  * 实现逻辑：
+  * 1. 获取HTTP请求体内容
+  * 2. 使用SHA-256算法计算摘要
+  * 3. 将摘要转换为十六进制格式
+  * 4. 添加Content-Sha256头包含签名
+  * 5. 返回修改后的请求
+  * 
+  * 使用场景：
+  * - API请求完整性验证
+  * - 防止请求内容被篡改
+  * - 实现自定义认证机制
+  * - 满足安全合规要求
+  * 
+  * 签名算法说明：
+  * - 使用SHA-256哈希算法
+  * - 输出256位（32字节）摘要
+  * - 转换为64字符的十六进制字符串
+  * - 具有良好的抗碰撞性
+  * 
+  * 安全特性：
+  * - 完整性保护：检测内容是否被修改
+  * - 不可否认性：证明请求来源
+  * - 防重放：结合时间戳可防重放攻击
+  * - 认证支持：可用于身份验证
+  * 
+  * 头部格式：
+  * - 头名称：Content-Sha256
+  * - 头值：64字符十六进制字符串
+  * - 示例：a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3
+  * 
+  * 验证方式：
+  * - 服务器端重新计算请求体哈希
+  * - 比较计算结果与Content-Sha256头值
+  * - 匹配则验证通过，否则拒绝请求
+  * 
+  * 应用场景：
+  * - RESTful API安全
+  * - 文件上传完整性检查
+  * - 支付接口安全
+  * - 敏感数据传输
+  * 
+  * 安全考虑：
+  * - 仅提供完整性保护，不提供机密性
+  * - 需要安全的传输通道（HTTPS）
+  * - 可能需要结合其他认证机制
+  * - 注意防止签名重放攻击
+  * 
+  * 性能影响：
+  * - SHA-256计算开销相对较小
+  * - 对大文件可能有一定影响
+  * - 增加请求头大小（64字节）
+  * 
+  * 扩展建议：
+  * - 支持其他哈希算法（SHA-512等）
+  * - 添加时间戳防重放
+  * - 实现HMAC签名
+  * - 支持密钥管理
+  * 
+  * 注意事项：
+  * - 仅对请求体进行签名
+  * - 不包括请求头和URL参数
+  * - 空请求体也会生成签名
+  * - 需要服务器端配合验证
+  * 
+  * 相关标准：
+  * - RFC 3174 (SHA-1)
+  * - RFC 6234 (SHA-2)
+  * - RFC 2104 (HMAC)
+  * 
+  * @author PortSwigger
+  **/
+  var digest = utilities.cryptoUtils().generateDigest(
+      requestResponse.request().body(),
+      DigestAlgorithm.SHA_256
+  );
+  var signature = HexFormat.of().formatHex(digest.getBytes());
+  
+  return requestResponse.request().withAddedHeader("Content-Sha256", signature);

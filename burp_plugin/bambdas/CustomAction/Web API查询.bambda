@@ -1,0 +1,47 @@
+id: 5c76199f-cc12-4bda-9e50-6833a2f8d855
+name: Web API查询
+function: CUSTOM_ACTION
+location: REPEATER
+source: |+
+  /**
+  * Web API查询脚本
+  * 
+  * 功能描述：
+  * 该脚本执行Web API查询，向指定的API端点发送请求并处理响应数据。
+  * 脚本提供了一个模板，可以根据需要修改API URL和数据提取逻辑，
+  * 用于集成外部API服务到Burp Suite的测试流程中。
+  * 
+  * 实现逻辑：
+  * 1. 定义要查询的API URL（可根据需要修改）
+  * 2. 发送HTTP请求到指定的API端点
+  * 3. 获取API响应的内容
+  * 4. 使用正则表达式或其他方法提取所需数据
+  * 5. 将提取的数据输出到日志
+  * 
+  * 使用场景：
+  * - 集成威胁情报API进行IP/域名查询
+  * - 调用漏洞数据库API获取CVE信息
+  * - 使用地理位置API获取IP位置信息
+  * - 调用WHOIS API获取域名注册信息
+  * - 集成其他安全工具的API接口
+  * 
+  * 自定义说明：
+  * - 修改apiURL变量以指向所需的API端点
+  * - 根据需要添加来自requestResponse或selection的数据
+  * - 修改正则表达式以适应API响应格式
+  * - 如果响应是JSON格式，考虑使用utilities().jsonUtils()
+  *
+  * @author PortSwigger
+  **/
+  
+  // 修改apiURL，并根据需要添加来自requestResponse或selection的数据
+  var apiURL = "https://portswigger.net/research/rss";
+  
+  // 发送HTTP请求到API端点并获取响应体
+  var responseBody = api().http().sendRequest(HttpRequest.httpRequestFromUrl(apiURL)).response().bodyToString();
+  
+  // 修改正则表达式以适应你的响应格式。如果是JSON，考虑使用utilities().jsonUtils()
+  var extractedData = responseBody.split("<item>")[1].split("<link>")[1].split("<")[0];
+  
+  // 输出提取的数据
+  logging().logToOutput(extractedData);

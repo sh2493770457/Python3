@@ -1,0 +1,98 @@
+id: 0ee2c12e-a051-44df-8aa6-543bc908daf1
+name: 过滤已认证请求
+function: VIEW_FILTER
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+   * 在代理HTTP历史中过滤已认证的200 OK请求。请参见下面的四个配置值。
+   * 
+   * 功能描述：
+   * - 过滤显示包含认证信息的成功请求
+   * - 识别带有Authorization头或会话Cookie的请求
+   * - 可配置是否排除静态资源
+   * - 可配置是否仅显示范围内的请求
+   * 
+   * 实现逻辑：
+   * 1. 确保存在HTTP响应且状态码为2xx成功
+   * 2. 检查请求是否包含Authorization头
+   * 3. 检查是否存在指定的会话Cookie
+   * 4. 根据配置过滤静态资源和范围外请求
+   * 
+   * 使用场景：
+   * - 已认证用户行为分析
+   * - 会话管理测试
+   * - 权限控制评估
+   * - API认证机制分析
+   * 
+   * 认证检测方式：
+   * - Authorization头：HTTP基本认证、Bearer令牌等
+   * - 会话Cookie：自定义会话标识符
+   * - 支持Cookie名称和值的精确匹配
+   * 
+   * 配置参数：
+   * - configNoFilter: 是否显示静态资源（JS、图片、CSS等）
+   * - configNotInScopeOnly: 是否仅显示范围内的请求
+   * - sessionCookieName: 会话Cookie名称
+   * - sessionCookieValue: 会话Cookie值（可选）
+   * 
+   * 过滤的静态资源：
+   * - 样式文件：CSS
+   * - 图片文件：JPEG、GIF、PNG、BMP、TIFF
+   * - 脚本文件：JavaScript
+   * - 多媒体：音频、视频
+   * - 字体文件：WOFF、WOFF2
+   * 
+   * 安全意义：
+   * - 识别认证绕过漏洞
+   * - 分析会话管理机制
+   * - 检测权限提升问题
+   * - 评估认证实现强度
+   * 
+   * @author joe-ds (https://github.com/joe-ds)
+   **/
+
+  var configNoFilter = true;        // 如果设置为false，将不显示JS、GIF、JPG、PNG、CSS。
+  var configNotInScopeOnly = true;  // 如果设置为false，将不显示范围外的项目。
+  var sessionCookieName = "";       // 如果给定，将查找具有该名称的cookie。
+  var sessionCookieValue = "";      // 如果给定，将检查具有sessionCookieName的cookie是否具有此值。
+
+  if (!requestResponse.hasResponse()) {
+      return false;
+  }
+
+  var request = requestResponse.request();
+  var response = requestResponse.response();
+
+  if (!response.isStatusCodeClass(StatusCodeClass.CLASS_2XX_SUCCESS)) {
+      return false;
+  }
+
+  var authHeader = request.hasHeader("Authorization");
+
+  boolean sessionCookie = request.headerValue("Cookie") != null
+                              && !sessionCookieName.isEmpty()
+                              && request.hasParameter(sessionCookieName, HttpParameterType.COOKIE)
+                        && (sessionCookieValue.isEmpty() || sessionCookieValue.equals(request.parameter(sessionCookieName, HttpParameterType.COOKIE).value()));
+
+  var path = request.pathWithoutQuery().toLowerCase();
+  var mimeType = requestResponse.mimeType();
+  var filterDenyList = mimeType != MimeType.CSS
+   && mimeType != MimeType.IMAGE_UNKNOWN
+   && mimeType != MimeType.IMAGE_JPEG
+   && mimeType != MimeType.IMAGE_GIF
+   && mimeType != MimeType.IMAGE_PNG
+   && mimeType != MimeType.IMAGE_BMP
+   && mimeType != MimeType.IMAGE_TIFF
+   && mimeType != MimeType.UNRECOGNIZED
+   && mimeType != MimeType.SOUND
+   && mimeType != MimeType.VIDEO
+   && mimeType != MimeType.FONT_WOFF
+   && mimeType != MimeType.FONT_WOFF2
+   && mimeType != MimeType.APPLICATION_UNKNOWN
+   && !path.endsWith(".js")
+   && !path.endsWith(".gif")
+   && !path.endsWith(".jpg")
+   && !path.endsWith(".png")
+   && !path.endsWith(".css");
+
+  return (authHeader || sessionCookie) && (configNoFilter || filterDenyList) && (configNotInScopeOnly || request.isInScope());

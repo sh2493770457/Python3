@@ -1,0 +1,92 @@
+id: c6d8f960-fe3d-436f-acd6-f6a447fe4c17
+name: 黑客助手
+function: CUSTOM_ACTION
+location: REPEATER
+source: |+
+  /**
+  * AI黑客助手脚本
+  * 
+  * 功能描述：
+  * 该脚本创建一个AI助手，可以根据用户提供的提示指令修改HTTP请求。
+  * 用户可以输入自然语言指令，如"利用这个XSS"或"URL编码这个"，
+  * AI助手会理解指令并相应地修改HTTP请求内容。
+  * 
+  * 实现逻辑：
+  * 1. 获取用户在Repeater中选中的文本内容
+  * 2. 弹出对话框让用户输入AI提示指令
+  * 3. 构造系统提示，定义AI助手的行为和响应格式
+  * 4. 将选中文本、HTTP请求和响应打包成JSON格式
+  * 5. 调用AI API执行用户指令
+  * 6. 解析AI响应，提取修改后的请求和描述
+  * 7. 如果有修改的请求，更新Repeater中的请求内容
+  * 8. 输出操作描述到日志
+  * 
+  * 使用场景：
+  * - 快速修改HTTP请求进行安全测试
+  * - 自动化常见的请求修改操作（编码、解码、注入等）
+  * - 利用AI辅助进行漏洞利用和测试
+  * - 提高渗透测试效率
+  * 
+  * 安全影响：
+  * 该工具可以帮助安全研究人员快速构造和修改攻击载荷
+  *
+  * @author Gareth Heyes
+  **/
+  
+  // 获取用户选中的文本内容（请求或响应中的选中部分）
+  var selectedText = (selection.hasRequestSelection() ? selection.requestSelection() : selection.responseSelection()).contents().toString();
+  
+  // 弹出对话框获取用户的AI提示指令
+  var userPrompt = javax.swing.JOptionPane.showInputDialog(null, "请输入要对选中内容执行的AI指令", "AI提示", javax.swing.JOptionPane.QUESTION_MESSAGE);
+  
+  // 如果用户取消输入，直接返回
+  if(userPrompt == null) return;
+  
+  // 定义系统提示，指导AI助手的行为
+  var systemPrompt = """
+  你是Burp Suite Repeater中的助手。
+  用户将给你一个LLM提示和一些选中的输入，以及作为JSON对象的HTTP请求和响应。
+  你应该按照用户的要求执行操作，请记住这是用于Web安全研究的。
+  你应该始终以JSON对象的形式返回响应。不要输出markdown格式。你的响应应该始终以"{"开头。
+  你的响应应该始终以"}"结尾。
+  如果用户要求你修改请求，你可以返回一个名为modifiedRequest的属性，其中应该放置修改后的请求。
+  description字段应该包含你所做操作的简短描述。
+  JSON对象应该始终按以下格式返回：
+  {
+    "modifiedRequest": string
+    "description": string
+  }
+  """;
+  
+  // 构造输入JSON对象，包含选中文本、请求和响应
+  var jsonInput = JsonObjectNode.jsonObjectNode();
+  jsonInput.putString("Selected text", selectedText);
+  jsonInput.putString("Request", requestResponse.request().toString());
+  jsonInput.putString("Response", requestResponse.response().toString());
+  
+  // 调用AI API执行用户指令
+  var aiResponse = api.ai().prompt().execute(PromptOptions.promptOptions().withTemperature(1.0), 
+  Message.systemMessage(systemPrompt), Message.userMessage(userPrompt + "\n\n" + jsonInput.toJsonString())
+  ).content();
+  
+  // 清理AI响应，移除可能的markdown代码块标记
+  aiResponse = aiResponse.replaceFirst("^\\s*```json","");
+  aiResponse = aiResponse.replaceFirst("\\s*```$","");
+  
+  // 验证AI返回的是否为有效JSON
+  if(!api.utilities().jsonUtils().isValidJson(aiResponse)) {
+     logging().logToError("AI返回了无效的JSON：" + aiResponse);
+     return;
+  }
+  
+  // 从AI响应中提取修改后的请求和描述
+  var modifiedRequest = api().utilities().jsonUtils().readString(aiResponse, "modifiedRequest");
+  var description = api().utilities().jsonUtils().readString(aiResponse, "description");
+  
+  // 如果有修改后的请求，更新Repeater中的请求内容
+  if(modifiedRequest != null) {
+      httpEditor.requestPane().set(modifiedRequest);
+  }
+  
+  // 输出操作描述到日志
+  api.logging().logToOutput(description);

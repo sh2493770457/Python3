@@ -1,0 +1,165 @@
+id: 16c3d20a-77b0-5222-524a-d652dbcd456e
+name: 高亮参数挖掘目标
+function: VIEW_FILTER
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+   * 参数挖掘目标高亮脚本
+   * 
+   * 功能描述：
+   * 过滤非空的200状态码JSON响应类，这些响应可用于通过ParamMiner工具
+   * 猜测JSON参数和自定义词表来寻找容易攻击的路由。
+   * 
+   * 使用示例：
+   * // 从OpenAPI规范文档生成JSON词表
+   * // $ cat your-oas-api-spec-doc.json | jq -r '.components.schemas.[].properties? | keys? | .[]' | sort -u > json-wordlist.txt
+   * 
+   * 实现逻辑：
+   * 1. 检查响应存在性和范围限制
+   * 2. 验证响应状态码为2xx成功类
+   * 3. 过滤静态资源（JS、图片、CSS等）
+   * 4. 检查请求方法为POST、PUT或PATCH
+   * 5. 验证响应Content-Type为application/json
+   * 6. 返回匹配结果
+   * 
+   * 配置选项：
+   * - configNoFilter：设为false时过滤JS、GIF、JPG、PNG、CSS
+   * - configInScopeOnly：设为true时仅显示范围内项目
+   * 
+   * 使用场景：
+   * - API参数发现
+   * - 隐藏参数挖掘
+   * - JSON API安全测试
+   * - 参数污染攻击准备
+   * - API攻击面分析
+   * 
+   * ParamMiner工具集成：
+   * - 自动化参数发现
+   * - 自定义词表支持
+   * - JSON参数猜测
+   * - 批量参数测试
+   * - 隐藏端点发现
+   * 
+   * 目标识别条件：
+   * - 响应状态码：2xx成功状态
+   * - 请求方法：POST、PUT、PATCH
+   * - 响应类型：application/json
+   * - 非静态资源：排除图片、CSS、JS等
+   * - 范围内请求：可配置
+   * 
+   * 过滤的MIME类型：
+   * - CSS样式表
+   * - 各种图片格式（JPEG、GIF、PNG、BMP、TIFF）
+   * - 音频和视频文件
+   * - 字体文件（WOFF、WOFF2）
+   * - 未知应用程序类型
+   * - JavaScript文件
+   * 
+   * 参数挖掘策略：
+   * - 基于OpenAPI规范生成词表
+   * - 常见参数名称字典
+   * - 应用特定参数模式
+   * - 递归参数发现
+   * 
+   * 安全测试价值：
+   * - 发现隐藏的API参数
+   * - 识别未文档化的功能
+   * - 检测参数污染漏洞
+   * - 发现权限绕过机会
+   * - 扩大攻击面
+   * 
+   * JSON API特点：
+   * - 结构化数据格式
+   * - 嵌套参数支持
+   * - 动态参数处理
+   * - 类型敏感性
+   * - 复杂数据结构
+   * 
+   * 词表生成技巧：
+   * - 从API文档提取参数名
+   * - 分析JavaScript代码
+   * - 收集表单字段名称
+   * - 研究应用业务逻辑
+   * - 使用通用参数字典
+   * 
+   * 攻击向量示例：
+   * - 隐藏管理参数
+   * - 调试模式开关
+   * - 权限控制参数
+   * - 缓存控制参数
+   * - 内部状态参数
+   * 
+   * 性能优化：
+   * - 早期过滤条件检查
+   * - MIME类型快速匹配
+   * - 路径扩展名检查
+   * - 避免不必要的字符串操作
+   * 
+   * 扩展建议：
+   * - 支持更多HTTP方法
+   * - 添加响应大小过滤
+   * - 集成参数模式识别
+   * - 支持GraphQL端点
+   * 
+   * 调试提示：
+   * - 验证配置选项设置
+   * - 检查MIME类型识别
+   * - 确认Content-Type头部
+   * - 测试不同请求方法
+   * 
+   * 相关工具：
+   * - Burp Suite ParamMiner扩展
+   * - Arjun参数发现工具
+   * - ffuf模糊测试工具
+   * - wfuzz Web应用模糊器
+   * 
+   * 作者：GangGreenTemperTatum (https://github.com/GangGreenTemperTatum)
+   * 中文注释：bambda脚本中文化项目
+   **/
+
+   var configNoFilter = false;        // 设为false时不显示JS、GIF、JPG、PNG、CSS
+   var configInScopeOnly = true;      // 设为true时不显示范围外项目
+
+   if (!requestResponse.hasResponse() || (configInScopeOnly && !requestResponse.request().isInScope()) || !requestResponse.response().isStatusCodeClass(StatusCodeClass.CLASS_2XX_SUCCESS))
+  {
+      return false;
+  }
+
+  var request = requestResponse.request();
+  var response = requestResponse.response();
+
+   // 处理路径和MIME类型进行过滤
+   var path = request.pathWithoutQuery().toLowerCase();
+   var mimeType = requestResponse.mimeType();
+   var filterDenyList = mimeType != MimeType.CSS
+    && mimeType != MimeType.IMAGE_UNKNOWN
+    && mimeType != MimeType.IMAGE_JPEG
+    && mimeType != MimeType.IMAGE_GIF
+    && mimeType != MimeType.IMAGE_PNG
+    && mimeType != MimeType.IMAGE_BMP
+    && mimeType != MimeType.IMAGE_TIFF
+    && mimeType != MimeType.UNRECOGNIZED
+    && mimeType != MimeType.SOUND
+    && mimeType != MimeType.VIDEO
+    && mimeType != MimeType.FONT_WOFF
+    && mimeType != MimeType.FONT_WOFF2
+    && mimeType != MimeType.APPLICATION_UNKNOWN
+    && !path.endsWith(".js")
+    && !path.endsWith(".gif")
+    && !path.endsWith(".jpg")
+    && !path.endsWith(".png")
+    && !path.endsWith(".css");
+
+   // 如果未应用过滤或满足拒绝列表条件，则继续检查内容类型
+   if (configNoFilter || filterDenyList) {
+       // 验证请求是POST、PUT或PATCH，且响应是JSON
+       if (request.method().equals("POST") || request.method().equals("PATCH") || request.method().equals("PUT")) {
+           var contentType = response.headerValue("Content-Type");
+           // 验证内容类型是JSON
+           if (contentType != null && contentType.contains("application/json")) {
+               return true;
+           }
+       }
+   }
+
+   return false; // 确保方法在所有情况下都返回布尔值

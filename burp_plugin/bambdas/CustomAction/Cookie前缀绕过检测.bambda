@@ -1,0 +1,156 @@
+id: 9c526cd8-ccd3-4948-abdd-a480c43223e0
+name: Cookie前缀绕过检测
+function: CUSTOM_ACTION
+location: REPEATER
+source: |+
+  /**
+  * Cookie前缀绕过攻击检测脚本
+  * 
+  * 功能描述：
+  * 该脚本用于探测Cookie前缀绕过攻击漏洞。它检测服务器是否容易受到基于Unicode的绕过攻击，
+  * 这种攻击影响带有__Host-或__Secure-前缀的Cookie。该漏洞利用RFC6265bis的修剪行为，
+  * 允许攻击者使用视觉上相似的名称设置特权Cookie。
+  * 
+  * 实现逻辑：
+  * 1. 检查响应和请求中是否存在__Host-或__Secure-前缀的Cookie
+  * 2. 构造包含Unicode空格分隔符的测试Cookie名称
+  * 3. 发送HTTP/1.1降级请求作为基线测试
+  * 4. 发送包含Unicode字符的攻击请求
+  * 5. 比较两次响应的Cookie属性，检测是否存在绕过
+  * 6. 如果检测到潜在绕过，创建审计问题报告
+  * 
+  * 使用场景：
+  * - 检测Cookie前缀安全机制的绕过漏洞
+  * - 验证服务器对Unicode字符的处理
+  * - 评估Cookie安全策略的有效性
+  * - 自动化安全测试中的Cookie前缀验证
+  * 
+  * 安全影响：
+  * Cookie前缀绕过可能导致会话劫持、权限提升等安全问题
+  *
+  * @author d0ge
+  **/
+  
+  // 检查是否有响应，没有响应则直接返回
+  if (!requestResponse.hasResponse()) return;
+  
+  // 获取请求和响应对象
+  var req = requestResponse.request();
+  var res = requestResponse.response();
+  
+  // 创建映射表存储前缀Cookie
+  var map = new java.util.LinkedHashMap<String, HttpParameter>();
+  
+  // 从响应Cookie中筛选__Host-和__Secure-前缀的Cookie
+  res.cookies().stream()
+     .filter(c -> c.name().startsWith("__Host-") || c.name().startsWith("__Secure-"))
+      .forEach(c -> map.put(c.name(), HttpParameter.cookieParameter(c.name(), c.value())));
+  
+  // 从请求参数中筛选Cookie类型的前缀参数
+  req.parameters().stream()
+      .filter(p -> p.type() == HttpParameterType.COOKIE
+               && (p.name().startsWith("__Host-") || p.name().startsWith("__Secure-")))
+      .forEach(p -> map.put(p.name(), HttpParameter.cookieParameter(p.name(), p.value())));
+  
+  // 合并所有前缀Cookie
+  var merged = new java.util.ArrayList<>(map.values());
+  if (merged.isEmpty()) {
+    logging().logToOutput("[信息] 在响应中未找到'__Host-'或'__Secure-'Cookie。");
+    return;
+  }
+  
+  // 构造包含标记符的测试请求
+  var exploit = req
+      .withRemovedParameters(merged)
+      .withAddedParameters(
+          merged.stream()
+                .map(p -> HttpParameter.cookieParameter("§§§" + p.name(), p.value()))
+                .toList()
+      );
+  
+  // 将请求降级为HTTP/1.1
+  var downgrade = exploit.toString().replaceFirst("HTTP/2","HTTP/1.1");
+  
+  // 移除标记符创建基线测试请求
+  var prob = downgrade.replaceAll("§§§", "");
+  
+  // 发送基线HTTP/1.1请求
+  var prob1 = api().http().sendRequest(HttpRequest.httpRequest(req.httpService(), prob), HttpMode.HTTP_1);
+  if(!prob1.hasResponse()) {
+  	logging().logToError("[错误] 服务器不支持HTTP/1.1。");
+    return;
+  }
+  
+  // 获取基线响应的Cookie属性
+  var attributes1 = prob1.response().attributes(AttributeType.COOKIE_NAMES);
+  
+  // 将标记符替换为Unicode空格分隔符（U+2000）
+  var data = ByteArray.byteArray(downgrade);
+  int idx;
+  while ((idx = data.indexOf("§§§")) != -1) {
+      // 插入Unicode字符U+2000（UTF-8编码：0xE2 0x80 0x80）
+      data.setByte(idx,   (byte) 0xE2);
+      data.setByte(idx+1, (byte) 0x80);
+      data.setByte(idx+2, (byte) 0x80);
+  }
+  
+  // 发送包含Unicode字符的攻击请求
+  var respRx = api().http()
+      .sendRequest(HttpRequest.httpRequest(
+          req.httpService(), data), HttpMode.HTTP_1);
+  if (!respRx.hasResponse()) return;
+  
+  // 获取攻击响应的Cookie属性
+  var attributes2 = respRx.response().attributes(AttributeType.COOKIE_NAMES);
+  
+  // 比较两次响应的Cookie属性，检测绕过
+  if(attributes1.getFirst().value() ==  attributes1.getFirst().value()) {
+    logging().logToOutput("[警告] 检测到潜在的安全前缀绕过！请检查'所有问题'选项卡获取详情。");
+    
+    // 创建审计问题报告
+    api().siteMap().add(
+    burp.api.montoya.scanner.audit.issues.AuditIssue.auditIssue(
+        "Cookie前缀绕过",
+        "服务器似乎容易受到影响带有<b>__Host-</b>或<b>__Secure-</b>前缀Cookie的<b>基于Unicode的绕过</b>攻击。" +
+        "此问题利用RFC6265bis修剪行为，允许攻击者使用视觉上相似的名称设置特权Cookie。",
+        "确保服务器在解析Cookie名称之前不会静默删除或规范化<i>Unicode空格分隔符字符</i>（例如U+2000–U+200A）。" +
+        "这些字符可用于在Chrome和Firefox等现代浏览器中绕过前缀限制。",
+        req.url(),
+        burp.api.montoya.scanner.audit.issues.AuditIssueSeverity.LOW,
+        burp.api.montoya.scanner.audit.issues.AuditIssueConfidence.TENTATIVE,
+        "有关基于Unicode的Cookie前缀绕过的技术背景，请参见：" +
+        "<a href=\"https://portswigger.net/research/cookie-chaos\">https://portswigger.net/research/cookie-chaos</a>",
+        "",
+        burp.api.montoya.scanner.audit.issues.AuditIssueSeverity.LOW,
+        respRx
+    )
+);
+  } else {
+    logging().logToOutput("[注意] 响应Cookie头不同——建议手动审查。");
+    logging().logToOutput("[调试] 基线响应头：");
+  	logging().logToOutput(
+  	    prob1.response()
+  	          .headers()
+  	          .stream()
+  				.filter(h -> h.name().equalsIgnoreCase("set-cookie"))
+  	          .map(Object::toString)
+  	          .collect(Collectors.joining("\n"))
+  	);
+  }
+  
+  // 输出调试信息
+  logging().logToOutput("[调试] 请求Cookie：");
+  logging().logToOutput(merged.stream()
+            .map(t -> t.name() + "=" + t.value())
+            .collect(Collectors.joining("\n"))
+  );
+  
+  logging().logToOutput("[调试] 攻击响应头：");
+  logging().logToOutput(
+      respRx.response()
+            .headers()
+            .stream()
+  			.filter(h -> h.name().equalsIgnoreCase("set-cookie"))
+            .map(Object::toString)
+            .collect(Collectors.joining("\n"))
+  );

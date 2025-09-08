@@ -111,6 +111,22 @@ class GitHubFollowerPlaywright:
     "https://github.com/testzboy",
     "https://github.com/Ackites",
     "https://github.com/Ghr07h"
+    "https://github.com/watanabe-hsad",
+    "https://github.com/Snow-Mountain-Passengers",
+    "https://github.com/eeeeeeeeee-code",
+    "https://github.com/Chave0v0",
+    "https://github.com/xiaogang000",
+    "https://github.com/doki-byte",
+    "https://github.com/Scorcsoft",
+    "https://github.com/T3nk0",
+    "https://github.com/banchengkemeng",
+    "https://github.com/P001water",
+    "https://github.com/1ucky7",
+    "https://github.com/JaveleyQAQ",
+    "https://github.com/intbjw",
+    "https://github.com/Conan924",
+    "https://github.com/outlaws-bai",
+    "https://github.com/saoshao"
 ]
     
     async def setup_browser(self) -> bool:

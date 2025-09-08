@@ -1,0 +1,57 @@
+id: ea3f5e14-e378-4067-8944-d1596bf6f2f0
+name: 添加GraphQL操作名列
+function: CUSTOM_COLUMN
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+  * 添加GraphQL操作名称列
+  * 
+  * 功能描述：
+  * - 在代理历史中添加自定义列显示GraphQL操作名称
+  * - 从请求体中提取operationName字段
+  * - 帮助识别和分析GraphQL API调用
+  * - 提高GraphQL接口测试效率
+  * 
+  * 实现逻辑：
+  * 1. 获取HTTP请求体内容
+  * 2. 验证请求体是否为有效JSON格式
+  * 3. 从JSON中提取operationName字段值
+  * 4. 返回操作名称用于列显示
+  * 
+  * 使用场景：
+  * - GraphQL API测试和分析
+  * - 识别不同的GraphQL操作类型
+  * - 监控GraphQL查询和变更操作
+  * - GraphQL安全评估
+  * 
+  * GraphQL操作类型：
+  * - Query：数据查询操作
+  * - Mutation：数据修改操作
+  * - Subscription：数据订阅操作
+  * - 自定义操作名称
+  * 
+  * JSON字段说明：
+  * - operationName：GraphQL操作的名称标识
+  * - 通常与query、variables一起发送
+  * - 可选字段，某些请求可能为空
+  * 
+  * 安全意义：
+  * - API滥用检测：识别异常操作模式
+  * - 权限控制：不同操作可能有不同权限要求
+  * - 性能分析：某些操作可能消耗更多资源
+  * - 审计跟踪：记录具体的API操作行为
+  * 
+  * 注意事项：
+  * - 仅处理有效的JSON请求体
+  * - 如果operationName不存在则返回空字符串
+  * - 某些GraphQL请求可能不包含操作名称
+  * 
+  * @author PortSwigger
+  **/
+  String requestBody = requestResponse.request().bodyToString();
+  
+  if (!utilities.jsonUtils().isValidJson(requestBody)) {
+  	return "";
+  }
+  
+  return utilities.jsonUtils().readString(requestBody, "operationName");

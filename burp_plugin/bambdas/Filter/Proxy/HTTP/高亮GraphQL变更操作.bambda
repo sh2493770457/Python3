@@ -1,0 +1,132 @@
+id: 680f0054-e460-4138-9c12-b85ac4b7953b
+name: 高亮GraphQL变更操作
+function: VIEW_FILTER
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+   * 高亮GraphQL变更操作脚本
+   * 
+   * 功能描述：
+   * 识别并高亮显示GraphQL变更(mutation)请求。
+   * GraphQL变更操作用于修改服务器端数据，在安全测试中具有重要意义，
+   * 因为它们可能涉及数据修改、权限提升或其他敏感操作。
+   * 
+   * 实现逻辑：
+   * 1. 获取请求体内容并去除前后空白
+   * 2. 使用正则表达式匹配"query":"mutation"模式
+   * 3. 如果找到匹配项，设置青色高亮
+   * 4. 添加"mutation"备注标识
+   * 5. 返回true显示所有请求（不过滤）
+   * 
+   * GraphQL操作类型：
+   * - Query：查询操作，用于读取数据
+   * - Mutation：变更操作，用于修改数据
+   * - Subscription：订阅操作，用于实时数据推送
+   * 
+   * 使用场景：
+   * - GraphQL API安全测试
+   * - 数据修改操作识别
+   * - 权限控制验证
+   * - API滥用检测
+   * - 审计日志分析
+   * 
+   * 变更操作安全风险：
+   * - 未授权数据修改
+   * - 权限提升攻击
+   * - 数据完整性破坏
+   * - 业务逻辑绕过
+   * - 批量操作滥用
+   * 
+   * 检测模式说明：
+   * - 正则表达式："query":"mutation"
+   * - 匹配JSON格式的GraphQL请求
+   * - 识别mutation关键字
+   * - 可扩展支持更多模式
+   * 
+   * 高亮策略：
+   * - 青色高亮：便于视觉识别
+   * - 自动备注：标记为"mutation"
+   * - 非过滤模式：显示所有请求
+   * 
+   * 扩展建议：
+   * 可以添加POST方法检查：
+   * ```
+   * if (requestResponse.request().method().equals("POST")) {
+   *     // 现有逻辑
+   * }
+   * ```
+   * 
+   * 进阶检测功能：
+   * - 解析具体的mutation操作名称
+   * - 识别敏感字段修改
+   * - 检测批量操作
+   * - 分析变更参数
+   * 
+   * GraphQL Mutation示例：
+   * ```
+   * mutation {
+   *   updateUser(id: "123", input: {
+   *     name: "New Name"
+   *     email: "new@email.com"
+   *   }) {
+   *     id
+   *     name
+   *   }
+   * }
+   * ```
+   * 
+   * 安全测试重点：
+   * - 权限验证：检查是否需要适当授权
+   * - 输入验证：测试参数注入攻击
+   * - 业务逻辑：验证操作合理性
+   * - 速率限制：检查是否有操作频率限制
+   * 
+   * 常见变更操作：
+   * - 用户数据修改
+   * - 密码重置
+   * - 权限变更
+   * - 数据删除
+   * - 文件上传
+   * 
+   * 解析优化建议：
+   * - 使用JsonNode进行更精确解析
+   * - 支持多种GraphQL请求格式
+   * - 处理嵌套查询结构
+   * - 添加语法验证
+   * 
+   * 性能考虑：
+   * - 正则表达式编译一次
+   * - 字符串操作相对高效
+   * - 适合实时流量分析
+   * 
+   * 调试提示：
+   * - 检查请求体格式
+   * - 验证正则表达式匹配
+   * - 确认GraphQL语法正确性
+   * - 测试不同的请求格式
+   * 
+   * 相关工具：
+   * - GraphQL Playground
+   * - GraphiQL
+   * - Apollo Studio
+   * - Burp Suite GraphQL扩展
+   * 
+   * 作者：drwetter (https://github.com/drwetter/)
+   * 中文注释：bambda脚本中文化项目
+   **/
+
+
+  // 去除一些字符以确保准确性，更精确的解析可以使用JsonNode
+  var body = requestResponse.request().bodyToString().trim();
+
+  // 使用正则表达式编写，以便需要时可以扩展
+  String graphqlRegexPattern = "query\":\"mutation";
+  Pattern graphqlPattern = Pattern.compile(graphqlRegexPattern);
+
+  Matcher graphqlMatcher = graphqlPattern.matcher(body);
+  if (graphqlMatcher.find()) {
+      requestResponse.annotations().setHighlightColor(HighlightColor.CYAN);
+      requestResponse.annotations().setNotes("mutation");
+  }
+
+  return true;

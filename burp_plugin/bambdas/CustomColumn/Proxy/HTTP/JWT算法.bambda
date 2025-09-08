@@ -1,0 +1,88 @@
+id: e9b0d6bf-b880-4e33-a563-b7f1fab95ac3
+name: JWT算法
+function: CUSTOM_COLUMN
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+   * 从JWT会话Cookie中提取JWT算法值
+   * 
+   * 功能描述：
+   * - 在代理历史中添加自定义列显示JWT使用的签名算法
+   * - 从session cookie中解析JWT token
+   * - 提取JWT头部的alg字段值
+   * - 帮助识别JWT安全配置和潜在风险
+   * 
+   * 实现逻辑：
+   * 1. 检查请求是否包含名为"session"的cookie
+   * 2. 获取cookie值并按"."分割为JWT三部分
+   * 3. 验证JWT格式是否正确（必须有3部分）
+   * 4. Base64解码JWT头部信息
+   * 5. 使用正则表达式提取alg字段值
+   * 
+   * 使用场景：
+   * - JWT安全审计
+   * - 算法强度评估
+   * - 认证机制分析
+   * - 安全配置检查
+   * 
+   * JWT结构说明：
+   * - Header：包含算法和token类型信息
+   * - Payload：包含声明和用户数据
+   * - Signature：用于验证token完整性
+   * - 格式：header.payload.signature
+   * 
+   * 常见JWT算法：
+   * - HS256：HMAC SHA-256（对称加密）
+   * - HS384：HMAC SHA-384（对称加密）
+   * - HS512：HMAC SHA-512（对称加密）
+   * - RS256：RSA SHA-256（非对称加密）
+   * - RS384：RSA SHA-384（非对称加密）
+   * - RS512：RSA SHA-512（非对称加密）
+   * - ES256：ECDSA SHA-256（椭圆曲线）
+   * - none：无签名（高风险）
+   * 
+   * 安全风险评估：
+   * - none算法：极高风险，可被任意伪造
+   * - 弱算法：如使用过时的加密算法
+   * - 密钥强度：HMAC算法的密钥长度
+   * - 算法降级：攻击者尝试降级到弱算法
+   * 
+   * 安全建议：
+   * - 避免使用none算法
+   * - 优先使用RS256等非对称算法
+   * - 确保密钥具有足够强度
+   * - 定期轮换签名密钥
+   * - 验证算法白名单
+   * 
+   * 分析要点：
+   * - none算法需要立即关注
+   * - 检查是否存在算法混淆攻击
+   * - 验证密钥管理是否安全
+   * - 确认算法选择是否合理
+   * 
+   * 注意事项：
+   * - 仅处理名为"session"的cookie
+   * - 需要有效的JWT格式（3部分）
+   * - Base64解码可能失败
+   * - 正则匹配依赖JSON格式
+   * 
+   * @author trikster
+   **/
+
+  if (!requestResponse.finalRequest().hasParameter("session", HttpParameterType.COOKIE)) {
+      return "";
+  }
+
+  var cookieValue = requestResponse.finalRequest().parameter("session", HttpParameterType.COOKIE).value();
+
+  var jwtFrags = cookieValue.split("\\.");
+
+  if (jwtFrags.length != 3 ) {
+      return "";
+  }
+
+
+  var headerJson = utilities().base64Utils().decode(jwtFrags[0], Base64DecodingOptions.URL);
+  var matcher = Pattern.compile(".+?\"alg\":\"(\\w+)\".+").matcher(headerJson.toString());
+
+  return matcher.matches() ? matcher.group(1) : "";

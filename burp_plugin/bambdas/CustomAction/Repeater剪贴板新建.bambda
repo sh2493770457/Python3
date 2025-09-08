@@ -1,0 +1,93 @@
+id: 8e740b42-3e7a-45c5-9a92-8b18b494bc92
+name: Repeater剪贴板新建
+function: CUSTOM_ACTION
+location: REPEATER
+source: |+
+  /**
+  * Repeater剪贴板新建脚本
+  * 
+  * 功能描述：
+  * 该脚本从剪贴板中读取由RepeaterClip Bambda压缩和编码的请求数据，
+  * 并创建一个包含该请求的新Repeater选项卡。这个功能允许用户
+  * 在不同的Burp Suite实例之间或与其他用户之间共享HTTP请求。
+  * 
+  * 实现逻辑：
+  * 1. 从系统剪贴板获取文本内容
+  * 2. 验证剪贴板内容是否为有效的REPEATERCLIP格式
+  * 3. 解析剪贴板内容，提取协议、主机、端口和Base64编码数据
+  * 4. 对Base64数据进行解码
+  * 5. 对解码后的数据进行GZIP解压缩
+  * 6. 重建HTTP服务对象和HTTP请求对象
+  * 7. 将恢复的请求发送到新的Repeater选项卡
+  * 8. 输出成功信息和请求详情
+  * 
+  * 数据格式：
+  * REPEATERCLIP/protocol/host/port/base64data
+  * - protocol: http或https
+  * - host: 目标主机名
+  * - port: 端口号
+  * - base64data: 压缩并Base64编码的请求数据
+  * 
+  * 使用场景：
+  * - 在不同Burp Suite实例间共享请求
+  * - 团队协作中的请求分享
+  * - 保存和恢复复杂的HTTP请求
+  * - 跨平台的请求数据传输
+  * - 请求模板的快速导入
+  * 
+  * 安全影响：
+  * 便于安全测试人员共享和复用测试请求
+  *
+  * @author 0xd0ug (https://github.com/0xd0ug)
+  **/
+   
+  try {
+      // 从系统剪贴板获取文本内容
+      String clipboardContent = (String) java.awt.Toolkit.getDefaultToolkit().getSystemClipboard().getData(java.awt.datatransfer.DataFlavor.stringFlavor);
+      
+      // 验证剪贴板内容格式
+      if (clipboardContent == null || !clipboardContent.startsWith("REPEATERCLIP/")) {
+          logging.logToError("无效的剪贴板内容。期望格式：REPEATERCLIP/protocol/host/port/base64data");
+          return;
+      }
+      
+      // 解析剪贴板内容，按'/'分割为5个部分
+      String[] parts = clipboardContent.split("/", 5);
+      if (parts.length != 5) {
+          logging.logToError("无效的剪贴板格式。期望5个由'/'分隔的部分");
+          return;
+      }
+      
+      // 提取各个组件
+      String protocol = parts[1];  // 协议（http/https）
+      String host = parts[2];      // 主机名
+      int port = Integer.parseInt(parts[3]);  // 端口号
+      String base64Data = parts[4];  // Base64编码的压缩数据
+      
+      // 解码Base64数据
+      var decodedData = api.utilities().base64Utils().decode(burp.api.montoya.core.ByteArray.byteArray(base64Data));
+      
+      // 解压缩GZIP数据
+      var decompressedRequest = api.utilities().compressionUtils().decompress(decodedData, burp.api.montoya.utilities.CompressionType.GZIP);
+      
+      // 确定是否使用HTTPS
+      boolean isSecure = "https".equals(protocol);
+      
+      // 创建HTTP服务对象
+      var httpService = burp.api.montoya.http.HttpService.httpService(host, port, isSecure);
+      
+      // 重建HTTP请求对象
+      var restoredRequest = burp.api.montoya.http.message.requests.HttpRequest.httpRequest(httpService, decompressedRequest);
+      
+      // 将恢复的请求发送到新的Repeater选项卡
+      api.repeater().sendToRepeater(restoredRequest);
+      
+      // 输出成功信息
+      logging.logToOutput("成功从剪贴板恢复请求并发送到新的Repeater选项卡");
+      logging.logToOutput("协议: " + protocol + ", 主机: " + host + ", 端口: " + port);
+      
+  } catch (Exception e) {
+      // 处理异常情况
+      logging.logToError("从剪贴板恢复请求时出错: " + e.getMessage());
+      e.printStackTrace();
+  }

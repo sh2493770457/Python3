@@ -1,0 +1,87 @@
+id: 60238135-43dd-a723-aa68-c047edcda0cb
+name: 特定高亮颜色过滤器
+function: VIEW_FILTER
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+   * 特定高亮颜色过滤器脚本
+   * 
+   * 功能描述：
+   * 根据特定的高亮颜色过滤请求/响应记录。
+   * Burp Suite虽然可以过滤已高亮的请求/响应，但无法仅显示特定颜色的高亮项目。
+   * 如果您使用特定颜色来分类请求/响应（如基于角色的授权测试、待办事项列表、
+   * 或识别特定浏览器标签/窗口），那么能够仅查看感兴趣的请求/响应将非常有用。
+   * 
+   * 实现逻辑：
+   * 1. 获取请求/响应的高亮颜色注释
+   * 2. 与指定的目标颜色进行比较
+   * 3. 返回匹配结果（true显示，false隐藏）
+   * 
+   * 使用场景：
+   * - 基于角色的授权测试分类
+   * - 安全测试待办事项管理
+   * - 特定浏览器会话识别
+   * - 漏洞类型分类显示
+   * - 测试进度跟踪
+   * - 团队协作标记系统
+   * 
+   * 可用颜色选项：
+   * - HighlightColor.BLUE (蓝色)
+   * - HighlightColor.CYAN (青色)
+   * - HighlightColor.GRAY (灰色)
+   * - HighlightColor.GREEN (绿色)
+   * - HighlightColor.MAGENTA (洋红色)
+   * - HighlightColor.NONE (无高亮)
+   * - HighlightColor.ORANGE (橙色)
+   * - HighlightColor.PINK (粉色)
+   * - HighlightColor.RED (红色)
+   * - HighlightColor.YELLOW (黄色)
+   * 
+   * 颜色分类建议：
+   * - 红色：高危漏洞或关键问题
+   * - 橙色：中等风险问题
+   * - 黄色：低风险或待验证问题
+   * - 绿色：已确认安全或已修复
+   * - 蓝色：信息收集或侦察相关
+   * - 紫色：权限相关测试
+   * - 粉色：会话管理问题
+   * - 青色：API或Web服务相关
+   * - 灰色：已处理或忽略项目
+   * 
+   * 自定义方法：
+   * 1. 修改目标颜色：将CYAN替换为所需颜色
+   * 2. 多颜色过滤：使用逻辑运算符组合多个颜色条件
+   * 3. 反向过滤：使用!equals()排除特定颜色
+   * 
+   * 多颜色过滤示例：
+   * // 显示红色或橙色高亮的项目
+   * return requestResponse.annotations().highlightColor().equals(HighlightColor.RED) ||
+   *        requestResponse.annotations().highlightColor().equals(HighlightColor.ORANGE);
+   * 
+   * 团队协作应用：
+   * - 不同测试人员使用不同颜色标记
+   * - 按测试阶段分配颜色
+   * - 按漏洞严重程度分类
+   * - 按客户端/服务器端问题分类
+   * 
+   * 工作流程集成：
+   * - 与其他Bambda脚本配合使用
+   * - 结合自动化高亮规则
+   * - 集成报告生成流程
+   * 
+   * 性能特点：
+   * - 颜色比较操作高效
+   * - 适合大量数据过滤
+   * - 实时过滤响应快速
+   * 
+   * 扩展建议：
+   * - 添加颜色组合逻辑
+   * - 支持颜色优先级排序
+   * - 集成时间戳过滤
+   * - 添加颜色统计功能
+   * 
+   * 作者：Nick Coblentz (https://github.com/ncoblentz)
+   * 中文注释：bambda脚本中文化项目
+   **/
+
+   return requestResponse.annotations().highlightColor().equals(HighlightColor.CYAN);

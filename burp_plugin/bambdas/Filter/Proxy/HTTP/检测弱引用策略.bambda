@@ -1,0 +1,73 @@
+id: 23b8c135-fd0f-449e-a7d1-3a8dbbb81d18
+name: 检测弱引用策略
+function: VIEW_FILTER
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+  * 用于检测HTTP响应中"弱或缺失的Referrer-Policy"头的Bambda脚本
+  * 
+  * 功能描述：
+  * - 检测HTTP响应中缺失或配置不当的Referrer-Policy头
+  * - 识别可能泄露敏感引用信息的弱策略
+  * - 帮助评估隐私保护和信息泄露风险
+  * - 分析网站的引用策略安全配置
+  * 
+  * 实现逻辑：
+  * 1. 确保存在HTTP响应
+  * 2. 检查是否存在Referrer-Policy头
+  * 3. 如果存在，验证策略是否为弱配置
+  * 4. 返回匹配结果用于过滤显示
+  * 
+  * 使用场景：
+  * - 隐私保护评估
+  * - 信息泄露风险分析
+  * - Web安全配置审计
+  * - GDPR合规性检查
+  * 
+  * 弱策略类型：
+  * - 缺失策略：完全没有Referrer-Policy头
+  * - no-referrer-when-downgrade：HTTPS到HTTP时不发送引用
+  * - unsafe-url：总是发送完整URL作为引用
+  * 
+  * 安全风险：
+  * - 信息泄露：URL参数可能包含敏感信息
+  * - 隐私问题：用户浏览行为可能被跟踪
+  * - 会话劫持：引用中可能包含会话标识符
+  * - 跨站信息泄露：敏感路径信息暴露
+  * 
+  * 推荐策略：
+  * - strict-origin-when-cross-origin：跨域时仅发送源
+  * - same-origin：仅同源时发送引用
+  * - no-referrer：不发送任何引用信息
+  * 
+  * @author ctflearner
+  * 此脚本检查HTTP响应是否缺少"Referrer-Policy"头或使用弱策略，
+  * 如"no-referrer-when-downgrade"或"unsafe-url"。
+  * 它确保存在响应并扫描头以检查Referrer-Policy头的缺失
+  * 或可能暴露敏感引用信息的策略的存在。
+  **/
+
+
+  if (!requestResponse.hasResponse()) {
+      return false;
+  }
+
+  Optional<HttpHeader> referrerPolicyHeader = Optional.ofNullable(
+      requestResponse.response().header("Referrer-Policy")
+  );
+
+  if (referrerPolicyHeader.isEmpty()) {
+      return true;
+  }
+
+  String headerValue = referrerPolicyHeader.get().value().toLowerCase(Locale.US).trim();
+
+  // 使用流检查弱引用策略
+  boolean hasWeakPolicy = requestResponse.response().headers().stream()
+      .filter(header -> header.name().equalsIgnoreCase("Referrer-Policy"))
+      .anyMatch(header -> {
+          String value = header.value().toLowerCase(Locale.US).trim(); // 为toLowerCase()包含Locale
+          return value.equals("no-referrer-when-downgrade") || value.equals("unsafe-url");
+      });
+
+  return headerValue.equals("no-referrer-when-downgrade") || headerValue.equals("unsafe-url") || hasWeakPolicy;

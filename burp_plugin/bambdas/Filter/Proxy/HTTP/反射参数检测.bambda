@@ -1,0 +1,259 @@
+id: 168d5d70-89a7-6535-9d78-64b890b73ad0
+name: 反射参数检测
+function: VIEW_FILTER
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+   * 反射参数检测脚本
+   * 
+   * 功能描述：
+   * 查找在响应中反射参数名称和值的情况，
+   * 用于识别XSS、SSTI、头部注入、开放重定向
+   * 或类似攻击的可能攻击面。
+   * 
+   * 实现逻辑：
+   * 1. 检查响应是否存在
+   * 2. 获取请求和响应对象
+   * 3. 检查查询字符串反射
+   * 4. 遍历所有请求参数
+   * 5. 过滤排除的参数类型
+   * 6. 检查参数名称在响应中的反射
+   * 7. 检查参数值在响应中的反射
+   * 8. 支持URL编码解码匹配
+   * 
+   * 配置参数：
+   * - minimumParameterNameLength: 最小参数名长度
+   * - minimumParameterValueLength: 最小参数值长度
+   * - matchCaseSensitive: 大小写敏感匹配
+   * - excludedStrings: 排除的字符串集合
+   * - excludedParameterTypes: 排除的参数类型
+   * 
+   * 检测目标：
+   * - 参数名称反射
+   * - 参数值反射
+   * - 查询字符串反射
+   * - URL编码参数反射
+   * - 潜在注入点识别
+   * 
+   * 安全风险评估：
+   * - 跨站脚本攻击(XSS)
+   * - 服务器端模板注入(SSTI)
+   * - HTTP头部注入
+   * - 开放重定向攻击
+   * - SQL注入漏洞
+   * 
+   * 使用场景：
+   * - XSS漏洞发现
+   * - 注入点识别
+   * - 攻击面评估
+   * - 安全测试辅助
+   * - 代码审计支持
+   * 
+   * 攻击向量分析：
+   * - 构造恶意参数值
+   * - 利用反射进行注入
+   * - 绕过输入过滤
+   * - 组合多种攻击技术
+   * - 客户端代码执行
+   * 
+   * 参数类型处理：
+   * - URL参数（GET）
+   * - 表单参数（POST）
+   * - Cookie参数（可排除）
+   * - JSON参数
+   * - XML参数
+   * 
+   * 过滤策略：
+   * - 最小长度限制
+   * - 常见值排除
+   * - 参数类型过滤
+   * - 大小写处理
+   * - 编码格式支持
+   * 
+   * 检测价值：
+   * - 快速识别反射点
+   * - 评估注入风险
+   * - 发现潜在漏洞
+   * - 支持自动化测试
+   * - 辅助手工验证
+   * 
+   * 编码处理：
+   * - URL编码检测
+   * - URL解码匹配
+   * - 多种编码格式
+   * - 绕过检测机制
+   * - 编码混淆识别
+   * 
+   * 扩展建议：
+   * - 添加HTML实体解码
+   * - 支持Base64编码
+   * - 集成正则表达式
+   * - 添加上下文分析
+   * - 支持自定义规则
+   * 
+   * 性能优化：
+   * - 早期条件检查
+   * - 高效字符串搜索
+   * - 内存使用控制
+   * - 并行处理支持
+   * 
+   * 调试提示：
+   * - 验证参数提取
+   * - 检查反射匹配
+   * - 确认编码处理
+   * - 测试过滤逻辑
+   * - 验证配置参数
+   * 
+   * 相关安全标准：
+   * - OWASP Top 10
+   * - CWE-79: 跨站脚本
+   * - CWE-94: 代码注入
+   * - CWE-20: 输入验证
+   * - Web安全测试指南
+   * 
+   * 修复建议：
+   * - 实施输出编码
+   * - 验证输入数据
+   * - 使用安全模板
+   * - 设置CSP策略
+   * - 定期安全审计
+   * 
+   * 测试方法：
+   * - 手动参数注入
+   * - 自动化扫描
+   * - 模糊测试技术
+   * - 代码审查
+   * - 动态分析
+   * 
+   * 最佳实践：
+   * - 严格输出编码
+   * - 实施输入验证
+   * - 使用安全框架
+   * - 定期漏洞扫描
+   * - 开发者安全培训
+   * 
+   * 监控策略：
+   * - 反射行为监控
+   * - 异常参数检测
+   * - 攻击模式识别
+   * - 实时告警机制
+   * - 安全事件分析
+   * 
+   * 业务影响：
+   * - 用户数据泄露
+   * - 账户劫持风险
+   * - 恶意代码执行
+   * - 品牌声誉损害
+   * - 合规性问题
+   * 
+   * 开发者注意事项：
+   * - 验证所有用户输入
+   * - 实施安全编码
+   * - 使用输出编码
+   * - 定期安全测试
+   * - 关注安全更新
+   * 
+   * 技术实现：
+   * - 字符串包含检查
+   * - 参数遍历处理
+   * - URL编码解码
+   * - 集合过滤操作
+   * - 条件逻辑判断
+   * 
+   * 教育价值：
+   * - 理解反射攻击
+   * - 学习安全编程
+   * - 掌握检测技巧
+   * - 提升安全意识
+   * - 培养防护思维
+   * 
+   * 相关漏洞类型：
+   * - CWE-79: 跨站脚本
+   * - CWE-94: 代码注入
+   * - CWE-90: LDAP注入
+   * - CWE-91: XML注入
+   * - CWE-93: CRLF注入
+   * 
+   * 防护措施：
+   * - 输出编码处理
+   * - 内容安全策略
+   * - 输入验证过滤
+   * - 安全头部设置
+   * - 定期安全扫描
+   * 
+   * 检测模式：
+   * - 静态代码分析
+   * - 动态运行时检测
+   * - 参数污点分析
+   * - 模式匹配识别
+   * - 行为异常检测
+   * 
+   * 工具集成：
+   * - Web应用扫描器
+   * - 代码审计工具
+   * - 安全测试框架
+   * - 监控告警系统
+   * - 漏洞管理平台
+   * 
+   * 合规要求：
+   * - 数据保护法规
+   * - 网络安全标准
+   * - 行业安全规范
+   * - 隐私保护要求
+   * - 审计合规标准
+   * 
+   * 实际案例：
+   * - 搜索框XSS攻击
+   * - 表单参数注入
+   * - URL参数反射
+   * - 错误页面泄露
+   * - 调试信息暴露
+   * 
+   * 作者：emanuelduss
+   * 中文注释：bambda脚本中文化项目
+   **/
+
+  // 根据需要配置参数
+  int minimumParameterNameLength = 2;  // 最小参数名长度
+  int minimumParameterValueLength = 3; // 最小参数值长度
+  boolean matchCaseSensitive = true;   // 大小写敏感匹配
+  Set<String> excludedStrings = Set.of("true", "false", "null"); // 排除的字符串
+  Set<HttpParameterType> excludedParameterTypes = Set.of(HttpParameterType.COOKIE); // 排除的参数类型，如Cookie
+
+  if (!requestResponse.hasResponse()){
+      return false;
+  }
+
+  HttpRequest request = requestResponse.request();
+  HttpResponse response = requestResponse.response();
+
+  // 检查查询字符串，因为没有值的参数不被视为参数
+  String query = request.path().replace(request.pathWithoutQuery() + "?", "");
+  if (query.length() >= minimumParameterValueLength && !excludedStrings.contains(query)){
+      if (response.contains(query, matchCaseSensitive) || response.contains(utilities().urlUtils().decode(query), matchCaseSensitive)){
+          return true;
+      }
+  }
+
+  if (request.hasParameters()){
+      for (ParsedHttpParameter parameter : request.parameters()){
+          HttpParameterType parameterType = parameter.type();
+          if (excludedParameterTypes.contains(parameter.type())){
+              continue;
+          }
+
+          String parameterName = parameter.name();
+          if (parameterName.length() >= minimumParameterNameLength && ! excludedStrings.contains(parameterName) &&
+              (response.contains(parameterName, matchCaseSensitive) || response.contains(utilities().urlUtils().decode(parameterName), matchCaseSensitive))){
+              return true;
+          }
+
+          String parameterValue = parameter.value();
+          if (parameterValue.length() >= minimumParameterValueLength && ! excludedStrings.contains(parameterValue) &&
+              (response.contains(parameterValue, matchCaseSensitive) || response.contains(utilities().urlUtils().decode(parameterValue), matchCaseSensitive))){
+              return true;
+          }
+      }
+  }
+
+  return false;

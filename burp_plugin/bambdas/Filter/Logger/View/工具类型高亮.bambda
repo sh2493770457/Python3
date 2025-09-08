@@ -1,0 +1,51 @@
+id: 1bd27407-cbc7-46b2-9c49-71c95518c13e
+name: 工具类型高亮
+function: VIEW_FILTER
+location: LOGGER
+source: |+
+  /**
+   * 根据工具类型对消息进行高亮显示。
+   * 
+   * 功能描述：
+   * - 为不同的Burp工具类型设置不同的高亮颜色
+   * - 帮助在Logger中快速识别消息来源
+   * - 提供可视化的工具分类标识
+   * 
+   * 实现逻辑：
+   * 1. 定义工具类型与高亮颜色的映射关系
+   * 2. 获取当前请求响应的工具来源
+   * 3. 根据工具类型设置对应的高亮颜色
+   * 4. 返回true表示显示该消息
+   * 
+   * 颜色映射：
+   * - Target: 红色
+   * - Proxy: 蓝色
+   * - Intruder: 青色
+   * - Repeater: 洋红色
+   * - Extensions: 橙色
+   * - Scanner: 绿色
+   * - Sequencer: 粉色
+   * 
+   * 使用场景：
+   * - Logger视图中的消息分类
+   * - 快速识别请求来源工具
+   * - 提高日志分析效率
+   * - 可视化工具使用情况
+   * 
+   * @author ps-porpoise
+  **/
+  var highlights = Map.of(
+          ToolType.TARGET,     HighlightColor.RED,
+          ToolType.PROXY,      HighlightColor.BLUE,
+          ToolType.INTRUDER,   HighlightColor.CYAN,
+          ToolType.REPEATER,   HighlightColor.MAGENTA,
+          ToolType.EXTENSIONS, HighlightColor.ORANGE,
+          ToolType.SCANNER,    HighlightColor.GREEN,
+          ToolType.SEQUENCER,  HighlightColor.PINK
+  );
+
+  requestResponse.annotations().setHighlightColor(
+          highlights.getOrDefault(requestResponse.toolSource().toolType(), HighlightColor.NONE)
+  );
+
+  return true;

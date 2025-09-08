@@ -1,0 +1,226 @@
+id: 1a4d834d-b173-8764-9477-0ae79a30d30c
+name: 重定向到参数值
+function: VIEW_FILTER
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+   * 重定向到参数值检测脚本
+   * 
+   * 功能描述：
+   * 查找将用户重定向到GET参数提供位置的响应，
+   * 用于识别开放重定向攻击面，可能被用于
+   * 钓鱼攻击、CSP绕过或OAuth令牌窃取。
+   * 
+   * 实现逻辑：
+   * 1. 检查响应是否存在
+   * 2. 获取请求和响应对象
+   * 3. 验证请求包含参数且响应为3xx重定向
+   * 4. 检查响应包含Location头部
+   * 5. 遍历所有请求参数
+   * 6. 检查Location头部值是否匹配参数值
+   * 7. 支持URL编码和解码匹配
+   * 
+   * 检测目标：
+   * - 开放重定向漏洞
+   * - 参数值直接用于重定向
+   * - 未验证的重定向目标
+   * - 可控制的Location头部
+   * - 重定向逻辑缺陷
+   * 
+   * 安全风险评估：
+   * - 钓鱼攻击风险
+   * - CSP策略绕过
+   * - OAuth令牌窃取
+   * - 会话劫持攻击
+   * - 恶意网站重定向
+   * 
+   * 使用场景：
+   * - 开放重定向检测
+   * - 钓鱼攻击防护
+   * - OAuth安全审计
+   * - CSP绕过测试
+   * - Web应用安全评估
+   * 
+   * 攻击向量分析：
+   * - 构造恶意重定向URL
+   * - 绕过域名白名单
+   * - 利用URL编码混淆
+   * - 组合其他攻击技术
+   * - 社会工程学攻击
+   * 
+   * 常见参数名称：
+   * - url, redirect, return
+   * - next, goto, continue
+   * - target, destination
+   * - callback, returnUrl
+   * - forward, location
+   * 
+   * HTTP重定向状态码：
+   * - 301 Moved Permanently
+   * - 302 Found
+   * - 303 See Other
+   * - 307 Temporary Redirect
+   * - 308 Permanent Redirect
+   * 
+   * 检测价值：
+   * - 识别开放重定向漏洞
+   * - 评估钓鱼攻击风险
+   * - 发现逻辑缺陷
+   * - 支持安全测试
+   * - 辅助漏洞挖掘
+   * 
+   * URL编码处理：
+   * - 原始参数值匹配
+   * - URL编码后匹配
+   * - URL解码后匹配
+   * - 多种编码格式支持
+   * - 绕过检测机制
+   * 
+   * 扩展建议：
+   * - 添加域名白名单检查
+   * - 支持相对路径验证
+   * - 集成恶意域名检测
+   * - 添加风险评级
+   * - 支持自定义规则
+   * 
+   * 性能优化：
+   * - 早期条件检查
+   * - 高效参数遍历
+   * - 字符串匹配优化
+   * - 内存使用控制
+   * 
+   * 调试提示：
+   * - 验证响应存在性
+   * - 检查状态码判断
+   * - 确认Location头部
+   * - 测试参数匹配
+   * - 验证编码处理
+   * 
+   * 相关安全标准：
+   * - OWASP Top 10
+   * - CWE-601: 开放重定向
+   * - OAuth 2.0安全最佳实践
+   * - Web应用安全指南
+   * - 钓鱼防护标准
+   * 
+   * 修复建议：
+   * - 实施重定向白名单
+   * - 验证重定向目标
+   * - 使用相对路径
+   * - 添加用户确认
+   * - 记录重定向行为
+   * 
+   * 测试方法：
+   * - 手动参数篡改
+   * - 自动化扫描工具
+   * - 模糊测试技术
+   * - 社会工程学测试
+   * - 钓鱼模拟演练
+   * 
+   * 最佳实践：
+   * - 严格验证重定向目标
+   * - 实施域名白名单
+   * - 使用安全的重定向机制
+   * - 定期安全审计
+   * - 用户安全教育
+   * 
+   * 监控策略：
+   * - 重定向行为监控
+   * - 异常目标检测
+   * - 攻击模式识别
+   * - 实时告警机制
+   * - 日志分析审计
+   * 
+   * 业务影响：
+   * - 用户信任度下降
+   * - 品牌声誉损害
+   * - 数据泄露风险
+   * - 法律合规问题
+   * - 经济损失风险
+   * 
+   * 开发者注意事项：
+   * - 验证所有重定向目标
+   * - 实施安全编码规范
+   * - 定期代码审查
+   * - 使用安全框架
+   * - 进行安全测试
+   * 
+   * 技术实现：
+   * - HTTP状态码检查
+   * - 头部值比较
+   * - 参数遍历处理
+   * - URL编码解码
+   * - 字符串匹配算法
+   * 
+   * 教育价值：
+   * - 理解重定向机制
+   * - 学习安全编程
+   * - 掌握漏洞检测
+   * - 提升安全意识
+   * - 培养防护思维
+   * 
+   * 相关漏洞类型：
+   * - CWE-601: 开放重定向
+   * - CWE-20: 输入验证不当
+   * - CWE-79: 跨站脚本
+   * - CWE-352: 跨站请求伪造
+   * - CWE-200: 信息泄露
+   * 
+   * 防护措施：
+   * - 重定向目标白名单
+   * - 用户确认机制
+   * - 安全头部设置
+   * - 输入验证过滤
+   * - 日志监控告警
+   * 
+   * 检测模式：
+   * - 静态代码分析
+   * - 动态运行时检测
+   * - 参数污点分析
+   * - 行为模式识别
+   * - 异常检测算法
+   * 
+   * 工具集成：
+   * - Web应用扫描器
+   * - 代码审计工具
+   * - 安全测试框架
+   * - 监控告警系统
+   * - 威胁情报平台
+   * 
+   * 合规要求：
+   * - 数据保护法规
+   * - 网络安全法
+   * - 行业安全标准
+   * - 隐私保护规范
+   * - 审计合规要求
+   * 
+   * 实际案例：
+   * - OAuth重定向攻击
+   * - 钓鱼网站跳转
+   * - 恶意广告重定向
+   * - 社交媒体攻击
+   * - 电商平台欺诈
+   * 
+   * 作者：emanuelduss
+   * 中文注释：bambda脚本中文化项目
+   **/
+
+  if (!requestResponse.hasResponse()){
+      return false;
+  }
+
+  HttpRequest request = requestResponse.request();
+  HttpResponse response = requestResponse.response();
+
+  if (request.hasParameters() && response.isStatusCodeClass(StatusCodeClass.CLASS_3XX_REDIRECTION) && response.hasHeader("Location")){
+      for (ParsedHttpParameter parameter : request.parameters()){
+          String parameterValue = parameter.value();
+          if (response.hasHeader("Location", parameterValue) ||
+              response.hasHeader("Location", utilities().urlUtils().encode(parameterValue)) ||
+              response.hasHeader("Location", utilities().urlUtils().decode(parameterValue))){
+              return true;
+          }
+      }
+  }
+
+  return false;

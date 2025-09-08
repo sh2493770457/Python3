@@ -1,0 +1,122 @@
+id: 1b602351-cb19-3604-40a9-2e1fa65d0881
+name: 高亮已弃用HTTP方法
+function: VIEW_FILTER
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+   * 高亮已弃用HTTP方法脚本
+   * 
+   * 功能描述：
+   * 过滤并高亮显示使用不常见或已弃用HTTP方法（如TRACE或CONNECT）的请求。
+   * 这些方法可能存在安全风险或在现代Web应用中不应被使用。
+   * 
+   * 实现逻辑：
+   * 1. 定义已弃用或不常见的HTTP方法集合
+   * 2. 获取请求的HTTP方法
+   * 3. 检查方法是否在已弃用方法集合中
+   * 4. 如果匹配，设置红色高亮并添加备注
+   * 5. 返回过滤结果
+   * 
+   * 已弃用方法说明：
+   * - TRACE：HTTP跟踪方法，可能导致XST攻击
+   * - CONNECT：用于建立隧道连接，通常用于代理
+   * 
+   * 使用场景：
+   * - Web应用安全审计
+   * - HTTP方法安全检查
+   * - 服务器配置验证
+   * - 渗透测试目标识别
+   * - 合规性检查
+   * 
+   * TRACE方法安全风险：
+   * - 跨站跟踪(XST)攻击
+   * - 敏感信息泄露
+   * - 绕过HttpOnly Cookie保护
+   * - 反射型攻击载体
+   * 
+   * CONNECT方法风险：
+   * - 代理滥用
+   * - 隧道建立
+   * - 网络安全绕过
+   * - 未授权访问
+   * 
+   * 高亮策略：
+   * - 红色高亮：表示高风险或已弃用
+   * - 自动备注：记录具体的方法名称
+   * - 可选开关：控制是否启用高亮功能
+   * 
+   * 扩展方法建议：
+   * 可以添加更多不常见或危险的HTTP方法：
+   * - PATCH：部分更新（相对较新）
+   * - PROPFIND：WebDAV方法
+   * - PROPPATCH：WebDAV方法
+   * - MKCOL：WebDAV方法
+   * - COPY：WebDAV方法
+   * - MOVE：WebDAV方法
+   * - LOCK：WebDAV方法
+   * - UNLOCK：WebDAV方法
+   * 
+   * 安全测试价值：
+   * - 发现服务器配置问题
+   * - 识别潜在攻击向量
+   * - 验证HTTP方法限制
+   * - 检测WebDAV服务暴露
+   * 
+   * 修复建议：
+   * - 禁用不必要的HTTP方法
+   * - 配置Web服务器方法白名单
+   * - 实施方法级别的访问控制
+   * - 定期审查服务器配置
+   * 
+   * 检测绕过技术：
+   * - HTTP方法覆盖头部
+   * - X-HTTP-Method-Override
+   * - _method参数
+   * - 大小写变换
+   * 
+   * 合规性标准：
+   * - OWASP Top 10
+   * - PCI DSS要求
+   * - ISO 27001标准
+   * - NIST网络安全框架
+   * 
+   * 性能考虑：
+   * - Set.of()创建不可变集合
+   * - 字符串比较操作高效
+   * - 适合大量请求过滤
+   * 
+   * 调试提示：
+   * - 验证方法名称大小写
+   * - 检查服务器响应状态
+   * - 确认方法是否真正被处理
+   * - 测试方法覆盖技术
+   * 
+   * 相关HTTP状态码：
+   * - 405 Method Not Allowed
+   * - 501 Not Implemented
+   * - 200 OK（方法被支持）
+   * 
+   * 作者：Tur24Tur / BugBountyzip (https://github.com/BugBountyzip)
+   * 中文注释：bambda脚本中文化项目
+   **/
+
+  boolean manualColorHighlightEnabled = true;
+
+  // 定义已弃用或不常见的HTTP方法集合
+  Set<String> deprecatedMethods = Set.of("TRACE", "CONNECT");
+
+  String requestMethod = requestResponse.request().method();
+
+  // 检查请求方法是否在已弃用方法集合中
+  if (deprecatedMethods.contains(requestMethod)) {
+      if (manualColorHighlightEnabled) {
+          // 设置高亮颜色为红色
+          requestResponse.annotations().setHighlightColor(HighlightColor.RED);
+
+          // 可选：为请求/响应添加备注
+          requestResponse.annotations().setNotes("使用了已弃用方法: " + requestMethod);
+      }
+      return true;
+  }
+
+  return false;

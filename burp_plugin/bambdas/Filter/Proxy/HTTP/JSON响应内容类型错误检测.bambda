@@ -1,0 +1,102 @@
+id: 6620a595-520b-1ba2-2b20-5ea8568fdb89
+name: JSON响应内容类型错误检测
+function: VIEW_FILTER
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+   * JSON响应内容类型错误检测脚本
+   * 
+   * 功能描述：
+   * 检测响应内容为JSON格式但Content-Type头部不是application/json的情况。
+   * 这种不匹配可能导致客户端解析错误、安全问题或API文档不一致。
+   * 
+   * 实现逻辑：
+   * 1. 检查响应是否存在
+   * 2. 获取Content-Type头部值
+   * 3. 验证Content-Type是否不包含"application/json"
+   * 4. 检查响应体是否以JSON格式开始（{或[）
+   * 5. 返回匹配结果
+   * 
+   * 检测条件：
+   * - 响应存在且包含Content-Type头
+   * - Content-Type不包含"application/json"
+   * - 响应体以"{"或"["开始（JSON格式特征）
+   * 
+   * 使用场景：
+   * - API接口规范性检查
+   * - 内容类型不一致问题排查
+   * - Web应用安全测试
+   * - 客户端兼容性问题诊断
+   * - API文档准确性验证
+   * 
+   * 常见问题类型：
+   * - text/html返回JSON数据
+   * - text/plain返回JSON数据
+   * - application/xml返回JSON数据
+   * - 缺少Content-Type头部
+   * - 错误的字符集声明
+   * 
+   * 安全影响：
+   * - 可能导致XSS攻击（HTML类型返回JSON）
+   * - 客户端解析错误
+   * - 数据泄露风险
+   * - CSRF保护绕过
+   * 
+   * JSON格式识别：
+   * - 对象格式：以"{"开始
+   * - 数组格式：以"["开始
+   * - 去除前导空白字符
+   * - 简单但有效的启发式检测
+   * 
+   * 扩展检测建议：
+   * - 添加更严格的JSON语法验证
+   * - 检测JSON结束符号
+   * - 支持JSONP格式检测
+   * - 添加字符编码验证
+   * 
+   * 修复建议：
+   * - 设置正确的Content-Type: application/json
+   * - 添加字符集声明: application/json; charset=utf-8
+   * - 统一API响应格式规范
+   * - 实施内容类型验证机制
+   * 
+   * 测试价值：
+   * - 发现API实现不规范问题
+   * - 识别潜在安全风险
+   * - 提高应用质量
+   * - 改善用户体验
+   * 
+   * 性能考虑：
+   * - 字符串操作相对高效
+   * - 仅检查响应开始部分
+   * - 适合大量响应过滤
+   * 
+   * 误报情况：
+   * - 响应体包含HTML但以{开始
+   * - JavaScript代码以{开始
+   * - 其他格式数据碰巧以{或[开始
+   * 
+   * 调试提示：
+   * - 检查Content-Type头部完整值
+   * - 验证响应体实际内容
+   * - 注意字符编码问题
+   * - 考虑响应体大小限制
+   * 
+   * 相关标准：
+   * - RFC 7159: JSON数据交换格式
+   * - RFC 7231: HTTP/1.1语义和内容
+   * - MIME类型规范
+   * 
+   * 作者：albinowax
+   * 中文注释：bambda脚本中文化项目
+   **/
+
+  var contentType = requestResponse.hasResponse() ? requestResponse.response().headerValue("Content-Type") : null;
+
+  if (contentType != null && !contentType.contains("application/json")) {
+   String body = requestResponse.response().bodyToString().trim();
+
+   return body.startsWith( "{" ) || body.startsWith( "[" );
+  }
+
+  return false;

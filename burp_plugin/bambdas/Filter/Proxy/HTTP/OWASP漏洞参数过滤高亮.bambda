@@ -1,0 +1,123 @@
+id: 74c7c6cd-12d3-35a8-8b9b-f2641a331dcf
+name: OWASP漏洞参数过滤高亮
+function: VIEW_FILTER
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+  * OWASP Top 25漏洞参数过滤高亮脚本
+  * 
+  * 功能描述：
+  * 基于OWASP Top 25漏洞清单，过滤代理HTTP历史记录中包含易受攻击参数的请求。
+  * 使用由Tur24Tur / BugBountyzip (https://github.com/BugBountyzip)编写的参数数组。
+  * 为每类漏洞实现颜色高亮显示，并自动添加备注注释，详细说明要测试的参数和漏洞类别。
+  * 
+  * 实现逻辑：
+  * 1. 定义六大类漏洞参数组：SSRF、SQL注入、XSS、LFI、开放重定向、RCE
+  * 2. 为每类漏洞分配特定的高亮颜色
+  * 3. 检查请求中是否包含已知的易受攻击参数名
+  * 4. 根据发现的漏洞类型设置相应的高亮颜色
+  * 5. 在备注中记录发现的漏洞参数信息
+  * 
+  * 漏洞分类说明：
+  * - SSRF (绿色)：服务器端请求伪造漏洞参数
+  * - SQL (蓝色)：SQL注入漏洞相关参数
+  * - XSS (橙色)：跨站脚本攻击漏洞参数
+  * - LFI (黄色)：本地文件包含漏洞参数
+  * - OR (粉色)：开放重定向漏洞参数
+  * - RCE (红色)：远程代码执行漏洞参数
+  * 
+  * 高亮策略：
+  * - 单一漏洞类型：使用对应颜色高亮
+  * - 多种漏洞类型：使用紫色(MAGENTA)高亮
+  * - 自动备注：列出所有发现的漏洞参数
+  * 
+  * 使用场景：
+  * - Web应用安全测试
+  * - 漏洞扫描结果分析
+  * - 渗透测试目标识别
+  * - 安全代码审查
+  * - Bug Bounty漏洞挖掘
+  * 
+  * 参数检测范围：
+  * - URL参数 (GET请求)
+  * - 请求体参数 (POST请求)
+  * - 支持所有HTTP参数类型
+  * 
+  * 安全测试价值：
+  * - 快速识别潜在攻击面
+  * - 优先测试高风险参数
+  * - 提高测试效率
+  * - 减少漏报风险
+  * 
+  * 扩展建议：
+  * - 添加更多漏洞类型参数
+  * - 支持自定义参数列表
+  * - 集成威胁情报数据
+  * - 添加风险评分机制
+  * 
+  * 性能考虑：
+  * - 使用HashSet提高查找效率
+  * - 避免重复参数检查
+  * - 优化正则表达式匹配
+  * 
+  * 作者：Shain Lakin (https://github.com/flamebarke/SkittlesBambda)
+  * 参数列表：Tur24Tur / BugBountyzip
+  * 中文注释：bambda脚本中文化项目
+  **/
+
+  // 定义漏洞参数组记录
+  record VulnParamGroup(String title, HighlightColor color, String... parameterNames) {}
+
+  // 漏洞参数组定义
+  VulnParamGroup ssrf = new VulnParamGroup("SSRF", HighlightColor.GREEN, "dest", "redirect", "uri", "path", "continue", "url", "window", "next", "data", "reference", "site", "html", "val", "validate", "domain", "callback", "return", "page", "feed", "host", "port", "to", "out", "view", "dir");
+  VulnParamGroup sql = new VulnParamGroup("SQL", HighlightColor.BLUE, "id", "page", "report", "dir", "search", "category", "file", "class", "url", "news", "item", "menu", "lang", "name", "ref", "title", "view", "topic", "thread", "type", "date", "form", "main", "nav", "region");
+  VulnParamGroup xss = new VulnParamGroup("XSS", HighlightColor.ORANGE, "q", "s", "search", "id", "lang", "keyword", "query", "page", "keywords", "year", "view", "email", "type", "name", "p", "month", "image", "list_type", "url", "terms", "categoryid", "key", "l", "begindate", "enddate");
+  VulnParamGroup lfi = new VulnParamGroup("LFI", HighlightColor.YELLOW, "cat", "dir", "action", "board", "date", "detail", "file", "download", "path", "folder", "prefix", "include", "page", "inc", "locate", "show", "doc", "site", "type", "view", "content", "document", "layout", "mod", "conf");
+  VulnParamGroup or = new VulnParamGroup("OR", HighlightColor.PINK, "next", "url", "target", "rurl", "dest", "destination", "redir", "redirect_uri", "redirect_url", "redirect", "out", "view", "to", "image_url", "go", "return", "returnTo", "return_to", "checkout_url", "continue", "return_path");
+  VulnParamGroup rce = new VulnParamGroup("RCE", HighlightColor.RED, "cmd", "exec", "command", "execute", "ping", "query", "jump", "code", "reg", "do", "func", "arg", "option", "load", "process", "step", "read", "feature", "exe", "module", "payload", "run", "print");
+
+  // 高亮开关
+  boolean highlightEnabled = true;
+
+  // 设置多漏洞参数组颜色
+  HighlightColor multipleVulnColor = HighlightColor.MAGENTA;
+  VulnParamGroup[] groups = {ssrf, sql, xss, lfi, or, rce};
+  Set<String> foundParams = new HashSet<>();
+  Map<HighlightColor, Integer> colorCounts = new HashMap<>();
+  String combinedNotes = "";
+
+  // 获取请求对象
+  var request = requestResponse.request();
+
+  // 主循环检查匹配项
+  for (VulnParamGroup group : groups) {
+      for (String paramName : group.parameterNames()) {
+          if (request.hasParameter(paramName, HttpParameterType.URL) ||
+              request.hasParameter(paramName, HttpParameterType.BODY)) {
+              if (highlightEnabled) {
+                  foundParams.add(group.title() + ": " + paramName);
+                  colorCounts.put(group.color(), colorCounts.getOrDefault(group.color(), 0) + 1);
+              }
+              // 如果只有一个漏洞类别适用则直接返回
+              if (!highlightEnabled) {
+                  requestResponse.annotations().setHighlightColor(group.color());
+                  return true;
+              }
+          }
+      }
+  }
+
+  // 如果有多个漏洞类别适用，设置多漏洞参数颜色
+  if (!foundParams.isEmpty()) {
+      HighlightColor highlightColor = multipleVulnColor;
+      if (colorCounts.size() == 1) {
+          highlightColor = colorCounts.keySet().iterator().next();
+      }
+
+      requestResponse.annotations().setHighlightColor(highlightColor);
+      combinedNotes = String.join(", ", foundParams);
+      requestResponse.annotations().setNotes(combinedNotes);
+      return true;
+  }
+
+  return false;

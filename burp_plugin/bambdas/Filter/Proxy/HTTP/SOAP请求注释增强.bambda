@@ -1,0 +1,78 @@
+id: 5f7997bf-8a61-4189-bcf0-00f679c580fd
+name: SOAP请求注释增强
+function: VIEW_FILTER
+location: PROXY_HTTP_HISTORY
+source: |+
+  /**
+   * SOAP请求注释增强脚本
+   * 
+   * 功能描述：
+   * 此脚本在Burp Suite代理历史记录的"备注"列中自动填充SOAP请求的关键元素信息。
+   * 通过正则表达式模式匹配，提取SOAP请求中的重要数据并添加到备注中，便于安全测试人员
+   * 快速识别和分析SOAP Web服务调用。
+   * 
+   * 实现逻辑：
+   * 1. 检查请求是否在测试范围内（可选条件）
+   * 2. 验证请求尚未包含备注信息
+   * 3. 确认请求包含Content-Type头且值包含"soap+xml"
+   * 4. 解析SOAP请求体，提取关键信息：
+   *    - WS-Security头中的用户名
+   *    - SOAP Body标签后的第一个元素名称
+   * 5. 将提取的信息组合并设置为请求备注
+   * 
+   * 使用场景：
+   * - SOAP Web服务安全测试
+   * - 批量SOAP请求分析
+   * - 自动化测试结果整理
+   * - 渗透测试报告生成
+   * 
+   * SOAP协议特点：
+   * - 基于XML的消息传递协议
+   * - 通常使用HTTP/HTTPS作为传输协议
+   * - 包含Envelope、Header、Body等标准结构
+   * - 支持WS-Security等安全扩展
+   * 
+   * 正则表达式说明：
+   * - 匹配Username标签：提取WS-Security认证信息
+   * - 匹配Body后元素：识别具体的SOAP操作方法
+   * - 支持命名空间前缀的灵活匹配
+   * 
+   * 扩展建议：
+   * - 添加更多SOAP元素的提取规则
+   * - 支持SOAP Fault信息提取
+   * - 集成WSDL操作名称识别
+   * - 添加参数值提取功能
+   * 
+   * 安全考虑：
+   * - 避免在备注中记录敏感信息
+   * - 注意正则表达式的性能影响
+   * - 考虑大型SOAP消息的处理效率
+   * 
+   * 作者：Nick Coblentz (https://github.com/ncoblentz)
+   * 中文注释：bambda脚本中文化项目
+   **/
+
+  // 仅应用于范围内的请求，如果希望应用于所有请求可以移除此条件
+  if(requestResponse.request().isInScope()
+    && !requestResponse.annotations().hasNotes() // 如果已有备注则不应用
+    && requestResponse.request().hasHeader("Content-Type")
+    && requestResponse.request().headerValue("Content-Type").contains("soap+xml")) // 查找SOAP请求
+  {
+      StringBuilder builder = new StringBuilder();
+    if(requestResponse.request().bodyToString().contains("<s:Body"))
+      {
+          // 当前查找Body标签后的标签和WS-Security头中的用户名，可以在此添加更多提取规则
+          Matcher m = Pattern.compile("<(?:[a-zA-Z0-9]+:)?Username>([^<]+)</(?:[a-zA-Z0-9]+:)*Username>|<(?:[a-zA-Z0-9]+:)*Body[^>]*><([^ ]+)",Pattern.CASE_INSENSITIVE).matcher(requestResponse.request().bodyToString());
+
+          while(m.find() && m.groupCount()>0) {
+              for(int i=1;i<=m.groupCount();i++) {
+                  if(m.group(i)!=null)
+                    builder.append(m.group(i)+" ");
+              }
+          }
+          requestResponse.annotations().setNotes(builder.toString());
+      }
+  }
+
+  // 在此处添加常规过滤条件，当前脚本不进行实际过滤
+  return true;
