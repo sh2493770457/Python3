@@ -82,7 +82,7 @@ class TuLinSix:
         padding_len = decrypt_data[-1]
         plaintext = decrypt_data[:-padding_len]
         print(plaintext)
-        return plaintext.decode('unicode_escape')
+        return plaintext.c
 
     def run(self):
         response_json = self.req_url()

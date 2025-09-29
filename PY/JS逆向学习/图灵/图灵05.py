@@ -14,7 +14,7 @@ import json
 key = b"jo8j9wGw%6HbxfFn"
 iv = b"0123456789ABCDEF"
 
-# # TODO: 来自服务器响应的 hex 密文
+# # TODO: 来自服务器响应的 hex 密文{"xl":"5a8bf85c47362330192855aee8b84b7792ace31e7c8edf6d55ac79b048e8bb2c"}
 # hex_data = "5a8bf85c47362330192855aee8b84b7792ace31e7c8edf6d55ac79b048e8bb2c"
 #
 # # TODO: 转换为字节串

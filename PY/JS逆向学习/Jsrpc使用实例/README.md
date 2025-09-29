@@ -1,3 +1,97 @@
+# 调用文档
+
+#### I 远程调用0：
+
+##### 接口传js代码让浏览器执行
+
+浏览器已经连接上通信后 调用execjs接口就行
+
+```
+import requests
+
+js_code = """
+(function(){
+    console.log("test")
+    return "执行成功"
+})()
+"""
+
+url = "http://localhost:12080/execjs"
+data = {
+    "group": "zzz",
+    "code": js_code
+}
+res = requests.post(url, data=data)
+print(res.text)
+```
+
+#### Ⅱ 远程调用1： 浏览器预先注册js方法 传递函数名调用
+
+##### 远程调用1：无参获取值
+
+```
+// 注册一个方法 第一个参数hello为方法名，
+// 第二个参数为函数，resolve里面的值是想要的值(发送到服务器的)
+demo.regAction("hello", function (resolve) {
+    //这样每次调用就会返回“好困啊+随机整数”
+    var Js_sjz = "好困啊"+parseInt(Math.random()*1000);
+    resolve(Js_sjz);
+})
+```
+
+访问接口，获得js端的返回值http://127.0.0.1:12080/go?group=zzz&action=hello
+
+##### 远程调用2：带参获取值
+
+```
+//写一个传入字符串，返回base64值的接口(调用内置函数btoa)
+demo.regAction("hello2", function (resolve,param) {
+    //这样添加了一个param参数，http接口带上它，这里就能获得
+    var base666 = btoa(param)
+    resolve(base666);
+})
+```
+
+访问接口，获得js端的返回值 http://127.0.0.1:12080/go?group=zzz&action=hello2&param=123456
+
+##### 远程调用3：带多个参获 并且使用post方式 取值
+
+```
+//假设有一个函数 需要传递两个参数
+function hlg(User,Status){
+    return User+"说："+Status;
+}
+
+demo.regAction("hello3", function (resolve,param) {
+    //这里还是param参数 param里面的key 是先这里写，但到时候传接口就必须对应的上
+    res=hlg(param["user"],param["status"])
+    resolve(res);
+})
+```
+
+访问接口，获得js端的返回值
+
+```
+url = "http://127.0.0.1:12080/go"
+data = {
+    "group": "zzz",
+    "action": "hello3",
+    "param": json.dumps({"user":"黑脸怪","status":"好困啊"})
+}
+print(data["param"]) #dumps后就是长这样的字符串{"user": "\u9ed1\u8138\u602a", "status": "\u597d\u56f0\u554a"}
+res=requests.post(url, data=data) #这里换get也是可以的
+print(res.text)
+```
+
+##### 远程调用4：获取页面基础信息
+
+```
+resp = requests.get("http://127.0.0.1:12080/page/html?group=zzz")     # 直接获取当前页面的html
+resp = requests.get("http://127.0.0.1:12080/page/cookie?group=zzz")   # 直接获取当前页面的cookie
+```
+
+# 案例
+
 ### 第一步:断点定义函数
 
 ```js
