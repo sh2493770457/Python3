@@ -10,7 +10,7 @@ total_sum = 0
 for page in range(1, 21):
     url = f'https://www.mashangpa.com/api/problem-detail/1/data/?page={page}'
     headers = {
-        'Cookie': 'Hm_lvt_0d2227abf9548feda3b9cb6fddee26c0=1747962794; Hm_lvt_b5d072258d61ab3cd6a9d485aac7f183=1747983150; sessionid=wr66pa8fxujqpm9wza6c01sieknbvgn0; Hm_lpvt_b5d072258d61ab3cd6a9d485aac7f183=1747984276',
+        'Cookie': '_nano_fp=XpmynqCblpUxn0EYlT_squM__YIjvP6lMIRryTtj; v=QS1SVnhZbzdYOVFkMGFSRFF5eEFGbDhidGVuVGZRa0x5cUtjSmY0RWNfZHlnSXJYSm8zWWR4cXhiS2ROMTc1OTA0NzEyOTI1NQ==; Hm_lvt_0d2227abf9548feda3b9cb6fddee26c0=1760588635,1763018957; HMACCOUNT=5ADB897338667860; sessionid=ah0iz8hna8g7ou7si0xk2z9o5hpiot6q; Hm_lpvt_0d2227abf9548feda3b9cb6fddee26c0=1763019093',
         'Accept': '*/*',
         'Sec-Ch-Ua-Platform': '"Windows"',
         'Priority': 'u=1, i',
