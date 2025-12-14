@@ -1,0 +1,1 @@
+python SmbtouchScanner.py 20 192.168.153.1 192.168.153.254
