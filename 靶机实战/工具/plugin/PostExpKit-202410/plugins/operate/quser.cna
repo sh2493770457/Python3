@@ -1,0 +1,16 @@
+beacon_command_register("quser", "Simple implementation of quser.exe using Windows API", "Example: quser <target ip/hostname>");
+
+alias quser {
+	local('$args');
+	$barch  = barch($1);
+	if(size(@_) < 2)
+	{
+		$target = "127.0.0.1";
+	}
+	$target = $2;
+	$args = bof_pack($1, "z", $target);
+	$handle = openf(script_resource("bin/operate/quser. $+ $barch $+ .o"));
+	$data   = readb($handle, -1);
+	closef($handle);
+	beacon_inline_execute($1, $data, "go", $args);
+}

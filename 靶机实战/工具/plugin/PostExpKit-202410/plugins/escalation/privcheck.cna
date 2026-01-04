@@ -1,0 +1,61 @@
+beacon_command_register(
+    "privcheck", 
+    "A simple beacon object file to find potential weaknesses", 
+    "#github: mertdas"
+    "#twitter: merterpreter"
+);
+
+alias privcheck {
+    local('$handle $data');
+
+    $handle = openf(script_resource("bin/escalation/CheckVuls/PrivKit/unquotedsvcpath.o"));
+    $data = readb($handle, -1);
+    closef($handle);
+
+    btask($1, "Priv Esc Check Bof by @merterpreter");
+    btask($1, "Checking For Unquoted Service Paths..");
+    beacon_inline_execute($1, $data, "go");
+
+    $handle = openf(script_resource("bin/escalation/CheckVuls/PrivKit/autologon.o"));
+    $data = readb($handle, -1);
+    closef($handle);
+
+    btask($1, "Checking For Autologon Registry Keys..");
+    beacon_inline_execute($1, $data, "go");
+    
+    $handle = openf(script_resource("bin/escalation/CheckVuls/PrivKit/alwaysinstallelevated.o"));
+    $data = readb($handle, -1);
+    closef($handle);
+
+    btask($1, "Checking For Always Install Elevated Registry Keys..");
+    beacon_inline_execute($1, $data, "go");
+    
+    $handle = openf(script_resource("bin/escalation/CheckVuls/PrivKit/modifiableautorun.o"));
+    $data = readb($handle, -1);
+    closef($handle);
+
+    btask($1, "Checking For Modifiable Autoruns..");
+    beacon_inline_execute($1, $data, "go");
+    
+    $handle = openf(script_resource("bin/escalation/CheckVuls/PrivKit/hijackablepath.o"));
+    $data = readb($handle, -1);
+    closef($handle);
+
+    btask($1, "Checking For Hijackable Paths..");
+    beacon_inline_execute($1, $data, "go");
+    
+    $handle = openf(script_resource("bin/escalation/CheckVuls/PrivKit/credentialmanager.o"));
+    $data = readb($handle, -1);
+    closef($handle);
+
+    btask($1, "Enumerating Credentials From Credential Manager..");
+    beacon_inline_execute($1, $data, "go");
+    
+    $handle = openf(script_resource("bin/escalation/CheckVuls/PrivKit/tokenprivileges.o"));
+    $data = readb($handle, -1);
+    closef($handle);
+
+    btask($1, "Checking For Token Privileges..");
+    beacon_inline_execute($1, $data, "go");
+    
+}

@@ -1,0 +1,18 @@
+menu "关于" {
+	item "关于插件"{
+		blog($1, "-------------------------------------------------------------插件介绍-------------------------------------------------------------");
+		blog($1,"作者：谢公子");
+		blog($1,"博客：https://xie1997.blog.csdn.net/");
+		blog($1,"简介：这是一款用于后渗透过程中内网快速渗透的CobaltStrike插件。参考了github很多开源优秀CS插件，如：taowu、Ladon、EventLogMaster等,这里就不一一列出。并结合自己在项目中的经验编写。在这里忠心感谢各个开源插件。这是1.0版本，可能会有很多bug，希望大家及时向我提出意见。");
+	}
+	item "QQ2群"{
+		show_message("932811543");
+	}
+	item "我的博客"{
+		url_open("https://xie1997.blog.csdn.net/");
+	}
+	item "微信公众号"{
+		url_open("https://mp.weixin.qq.com/s?__biz=MzI2NDQyNzg1OA==&mid=2247487558&idx=1&sn=c2c1aac7ab5098e065bb7461cf77fb6f&chksm=eaad907bddda196d86b9ae19f7656cda9bcca7b25e83af5dad0930836a47b2eb4d379c370661&token=1815761482&lang=zh_CN#rd");
+	}
+}
+

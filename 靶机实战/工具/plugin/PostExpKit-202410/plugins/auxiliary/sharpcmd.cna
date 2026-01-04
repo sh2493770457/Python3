@@ -1,0 +1,16 @@
+beacon_command_register("sharpcmd", "Do not rely cmd.exe execute command.",
+	"Synopsis: sharpcmd [command]\n" .
+	"          sharpcmd \"whoami\"\n");
+
+alias sharpcmd {
+    local('$bid' '$args');
+	$bid = $1;
+    $args = $2;
+
+    if ($args eq "") {
+		berror($bid, "Please specify a .NET Assembly File.");
+		return;
+	}
+
+    bexecute_assembly($bid, script_resource("bin/auxiliary/sharpcmd.exe"), "\"$args\"");
+}

